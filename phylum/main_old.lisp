@@ -21,19 +21,4 @@
 
 ;; Load all route definitions and core business logic for this phylum.
 (load-file "routes.lisp")
-; (load-file "claim.lisp")
-
-(load-file "substr_connector.lisp")
-(load-file "invoice_endpoints.lisp")
-(load-file "invoice_transitions_camunda.lisp")
-(load-file "invoice_transitions_mysql.lisp")
-(load-file "invoice_transitions_s3.lisp")
-(load-file "invoice_transitions_webhook.lisp")
-(load-file "invoice_transitions_webhook_create.lisp")
-(load-file "invoice_events.lisp")
-(load-file "substr_generic_state_machine.lisp")
-(load-file "substr_ephemeral_storage.lisp")
-(load-file "substr_generic_parser.lisp")
-(load-file "invoice_state_transitions.lisp")
-(load-file "invoice_process_registration.lisp")
-
+(load-file "claim.lisp")

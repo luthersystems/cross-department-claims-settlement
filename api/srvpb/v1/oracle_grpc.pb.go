@@ -11,9 +11,8 @@
 package srv
 
 import (
-	v1 "buf.build/gen/go/luthersystems/protos/protocolbuffers/go/healthcheck/v1"
 	context "context"
-	v11 "github.com/luthersystems/sandbox/api/pb/v1"
+	v1 "github.com/luthersystems/sandbox/api/pb/v1"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -25,26 +24,22 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SandboxService_GetHealthCheck_FullMethodName = "/srvpb.v1.SandboxService/GetHealthCheck"
-	SandboxService_CreateClaim_FullMethodName    = "/srvpb.v1.SandboxService/CreateClaim"
-	SandboxService_AddClaimant_FullMethodName    = "/srvpb.v1.SandboxService/AddClaimant"
-	SandboxService_GetClaim_FullMethodName       = "/srvpb.v1.SandboxService/GetClaim"
+	SandboxService_UploadClaimWF1_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF1"
+	SandboxService_UploadClaimWF2_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF2"
+	SandboxService_UploadClaimWF3_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF3"
+	SandboxService_UploadClaimWF4_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF4"
+	SandboxService_UploadClaimWF5_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF5"
 )
 
 // SandboxServiceClient is the client API for SandboxService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-//
-// REST-JSON API Docs for sandbox.
 type SandboxServiceClient interface {
-	// Check the health of the service. This is used by load balancers to check service health.
-	GetHealthCheck(ctx context.Context, in *v1.GetHealthCheckRequest, opts ...grpc.CallOption) (*v1.GetHealthCheckResponse, error)
-	// Create claim initiates the creation of the claim.
-	CreateClaim(ctx context.Context, in *v11.CreateClaimRequest, opts ...grpc.CallOption) (*v11.CreateClaimResponse, error)
-	// Add claimant updates claim details.
-	AddClaimant(ctx context.Context, in *v11.AddClaimantRequest, opts ...grpc.CallOption) (*v11.AddClaimantResponse, error)
-	// Retrieve claim details.
-	GetClaim(ctx context.Context, in *v11.GetClaimRequest, opts ...grpc.CallOption) (*v11.GetClaimResponse, error)
+	UploadClaimWF1(ctx context.Context, in *v1.UploadClaimWF1Request, opts ...grpc.CallOption) (*v1.UploadClaimWF1Response, error)
+	UploadClaimWF2(ctx context.Context, in *v1.UploadClaimWF2Request, opts ...grpc.CallOption) (*v1.UploadClaimWF2Response, error)
+	UploadClaimWF3(ctx context.Context, in *v1.UploadClaimWF3Request, opts ...grpc.CallOption) (*v1.UploadClaimWF3Response, error)
+	UploadClaimWF4(ctx context.Context, in *v1.UploadClaimWF4Request, opts ...grpc.CallOption) (*v1.UploadClaimWF4Response, error)
+	UploadClaimWF5(ctx context.Context, in *v1.UploadClaimWF5Request, opts ...grpc.CallOption) (*v1.UploadClaimWF5Response, error)
 }
 
 type sandboxServiceClient struct {
@@ -55,40 +50,50 @@ func NewSandboxServiceClient(cc grpc.ClientConnInterface) SandboxServiceClient {
 	return &sandboxServiceClient{cc}
 }
 
-func (c *sandboxServiceClient) GetHealthCheck(ctx context.Context, in *v1.GetHealthCheckRequest, opts ...grpc.CallOption) (*v1.GetHealthCheckResponse, error) {
+func (c *sandboxServiceClient) UploadClaimWF1(ctx context.Context, in *v1.UploadClaimWF1Request, opts ...grpc.CallOption) (*v1.UploadClaimWF1Response, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v1.GetHealthCheckResponse)
-	err := c.cc.Invoke(ctx, SandboxService_GetHealthCheck_FullMethodName, in, out, cOpts...)
+	out := new(v1.UploadClaimWF1Response)
+	err := c.cc.Invoke(ctx, SandboxService_UploadClaimWF1_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *sandboxServiceClient) CreateClaim(ctx context.Context, in *v11.CreateClaimRequest, opts ...grpc.CallOption) (*v11.CreateClaimResponse, error) {
+func (c *sandboxServiceClient) UploadClaimWF2(ctx context.Context, in *v1.UploadClaimWF2Request, opts ...grpc.CallOption) (*v1.UploadClaimWF2Response, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v11.CreateClaimResponse)
-	err := c.cc.Invoke(ctx, SandboxService_CreateClaim_FullMethodName, in, out, cOpts...)
+	out := new(v1.UploadClaimWF2Response)
+	err := c.cc.Invoke(ctx, SandboxService_UploadClaimWF2_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *sandboxServiceClient) AddClaimant(ctx context.Context, in *v11.AddClaimantRequest, opts ...grpc.CallOption) (*v11.AddClaimantResponse, error) {
+func (c *sandboxServiceClient) UploadClaimWF3(ctx context.Context, in *v1.UploadClaimWF3Request, opts ...grpc.CallOption) (*v1.UploadClaimWF3Response, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v11.AddClaimantResponse)
-	err := c.cc.Invoke(ctx, SandboxService_AddClaimant_FullMethodName, in, out, cOpts...)
+	out := new(v1.UploadClaimWF3Response)
+	err := c.cc.Invoke(ctx, SandboxService_UploadClaimWF3_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *sandboxServiceClient) GetClaim(ctx context.Context, in *v11.GetClaimRequest, opts ...grpc.CallOption) (*v11.GetClaimResponse, error) {
+func (c *sandboxServiceClient) UploadClaimWF4(ctx context.Context, in *v1.UploadClaimWF4Request, opts ...grpc.CallOption) (*v1.UploadClaimWF4Response, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(v11.GetClaimResponse)
-	err := c.cc.Invoke(ctx, SandboxService_GetClaim_FullMethodName, in, out, cOpts...)
+	out := new(v1.UploadClaimWF4Response)
+	err := c.cc.Invoke(ctx, SandboxService_UploadClaimWF4_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *sandboxServiceClient) UploadClaimWF5(ctx context.Context, in *v1.UploadClaimWF5Request, opts ...grpc.CallOption) (*v1.UploadClaimWF5Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.UploadClaimWF5Response)
+	err := c.cc.Invoke(ctx, SandboxService_UploadClaimWF5_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,17 +103,12 @@ func (c *sandboxServiceClient) GetClaim(ctx context.Context, in *v11.GetClaimReq
 // SandboxServiceServer is the server API for SandboxService service.
 // All implementations must embed UnimplementedSandboxServiceServer
 // for forward compatibility.
-//
-// REST-JSON API Docs for sandbox.
 type SandboxServiceServer interface {
-	// Check the health of the service. This is used by load balancers to check service health.
-	GetHealthCheck(context.Context, *v1.GetHealthCheckRequest) (*v1.GetHealthCheckResponse, error)
-	// Create claim initiates the creation of the claim.
-	CreateClaim(context.Context, *v11.CreateClaimRequest) (*v11.CreateClaimResponse, error)
-	// Add claimant updates claim details.
-	AddClaimant(context.Context, *v11.AddClaimantRequest) (*v11.AddClaimantResponse, error)
-	// Retrieve claim details.
-	GetClaim(context.Context, *v11.GetClaimRequest) (*v11.GetClaimResponse, error)
+	UploadClaimWF1(context.Context, *v1.UploadClaimWF1Request) (*v1.UploadClaimWF1Response, error)
+	UploadClaimWF2(context.Context, *v1.UploadClaimWF2Request) (*v1.UploadClaimWF2Response, error)
+	UploadClaimWF3(context.Context, *v1.UploadClaimWF3Request) (*v1.UploadClaimWF3Response, error)
+	UploadClaimWF4(context.Context, *v1.UploadClaimWF4Request) (*v1.UploadClaimWF4Response, error)
+	UploadClaimWF5(context.Context, *v1.UploadClaimWF5Request) (*v1.UploadClaimWF5Response, error)
 	mustEmbedUnimplementedSandboxServiceServer()
 }
 
@@ -119,17 +119,20 @@ type SandboxServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedSandboxServiceServer struct{}
 
-func (UnimplementedSandboxServiceServer) GetHealthCheck(context.Context, *v1.GetHealthCheckRequest) (*v1.GetHealthCheckResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetHealthCheck not implemented")
+func (UnimplementedSandboxServiceServer) UploadClaimWF1(context.Context, *v1.UploadClaimWF1Request) (*v1.UploadClaimWF1Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadClaimWF1 not implemented")
 }
-func (UnimplementedSandboxServiceServer) CreateClaim(context.Context, *v11.CreateClaimRequest) (*v11.CreateClaimResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateClaim not implemented")
+func (UnimplementedSandboxServiceServer) UploadClaimWF2(context.Context, *v1.UploadClaimWF2Request) (*v1.UploadClaimWF2Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadClaimWF2 not implemented")
 }
-func (UnimplementedSandboxServiceServer) AddClaimant(context.Context, *v11.AddClaimantRequest) (*v11.AddClaimantResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddClaimant not implemented")
+func (UnimplementedSandboxServiceServer) UploadClaimWF3(context.Context, *v1.UploadClaimWF3Request) (*v1.UploadClaimWF3Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadClaimWF3 not implemented")
 }
-func (UnimplementedSandboxServiceServer) GetClaim(context.Context, *v11.GetClaimRequest) (*v11.GetClaimResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetClaim not implemented")
+func (UnimplementedSandboxServiceServer) UploadClaimWF4(context.Context, *v1.UploadClaimWF4Request) (*v1.UploadClaimWF4Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadClaimWF4 not implemented")
+}
+func (UnimplementedSandboxServiceServer) UploadClaimWF5(context.Context, *v1.UploadClaimWF5Request) (*v1.UploadClaimWF5Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UploadClaimWF5 not implemented")
 }
 func (UnimplementedSandboxServiceServer) mustEmbedUnimplementedSandboxServiceServer() {}
 func (UnimplementedSandboxServiceServer) testEmbeddedByValue()                        {}
@@ -152,74 +155,92 @@ func RegisterSandboxServiceServer(s grpc.ServiceRegistrar, srv SandboxServiceSer
 	s.RegisterService(&SandboxService_ServiceDesc, srv)
 }
 
-func _SandboxService_GetHealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v1.GetHealthCheckRequest)
+func _SandboxService_UploadClaimWF1_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.UploadClaimWF1Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SandboxServiceServer).GetHealthCheck(ctx, in)
+		return srv.(SandboxServiceServer).UploadClaimWF1(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SandboxService_GetHealthCheck_FullMethodName,
+		FullMethod: SandboxService_UploadClaimWF1_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SandboxServiceServer).GetHealthCheck(ctx, req.(*v1.GetHealthCheckRequest))
+		return srv.(SandboxServiceServer).UploadClaimWF1(ctx, req.(*v1.UploadClaimWF1Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SandboxService_CreateClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v11.CreateClaimRequest)
+func _SandboxService_UploadClaimWF2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.UploadClaimWF2Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SandboxServiceServer).CreateClaim(ctx, in)
+		return srv.(SandboxServiceServer).UploadClaimWF2(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SandboxService_CreateClaim_FullMethodName,
+		FullMethod: SandboxService_UploadClaimWF2_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SandboxServiceServer).CreateClaim(ctx, req.(*v11.CreateClaimRequest))
+		return srv.(SandboxServiceServer).UploadClaimWF2(ctx, req.(*v1.UploadClaimWF2Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SandboxService_AddClaimant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v11.AddClaimantRequest)
+func _SandboxService_UploadClaimWF3_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.UploadClaimWF3Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SandboxServiceServer).AddClaimant(ctx, in)
+		return srv.(SandboxServiceServer).UploadClaimWF3(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SandboxService_AddClaimant_FullMethodName,
+		FullMethod: SandboxService_UploadClaimWF3_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SandboxServiceServer).AddClaimant(ctx, req.(*v11.AddClaimantRequest))
+		return srv.(SandboxServiceServer).UploadClaimWF3(ctx, req.(*v1.UploadClaimWF3Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SandboxService_GetClaim_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(v11.GetClaimRequest)
+func _SandboxService_UploadClaimWF4_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.UploadClaimWF4Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SandboxServiceServer).GetClaim(ctx, in)
+		return srv.(SandboxServiceServer).UploadClaimWF4(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: SandboxService_GetClaim_FullMethodName,
+		FullMethod: SandboxService_UploadClaimWF4_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SandboxServiceServer).GetClaim(ctx, req.(*v11.GetClaimRequest))
+		return srv.(SandboxServiceServer).UploadClaimWF4(ctx, req.(*v1.UploadClaimWF4Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _SandboxService_UploadClaimWF5_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.UploadClaimWF5Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SandboxServiceServer).UploadClaimWF5(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SandboxService_UploadClaimWF5_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SandboxServiceServer).UploadClaimWF5(ctx, req.(*v1.UploadClaimWF5Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -232,20 +253,24 @@ var SandboxService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*SandboxServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetHealthCheck",
-			Handler:    _SandboxService_GetHealthCheck_Handler,
+			MethodName: "UploadClaimWF1",
+			Handler:    _SandboxService_UploadClaimWF1_Handler,
 		},
 		{
-			MethodName: "CreateClaim",
-			Handler:    _SandboxService_CreateClaim_Handler,
+			MethodName: "UploadClaimWF2",
+			Handler:    _SandboxService_UploadClaimWF2_Handler,
 		},
 		{
-			MethodName: "AddClaimant",
-			Handler:    _SandboxService_AddClaimant_Handler,
+			MethodName: "UploadClaimWF3",
+			Handler:    _SandboxService_UploadClaimWF3_Handler,
 		},
 		{
-			MethodName: "GetClaim",
-			Handler:    _SandboxService_GetClaim_Handler,
+			MethodName: "UploadClaimWF4",
+			Handler:    _SandboxService_UploadClaimWF4_Handler,
+		},
+		{
+			MethodName: "UploadClaimWF5",
+			Handler:    _SandboxService_UploadClaimWF5_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
