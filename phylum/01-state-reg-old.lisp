@@ -6,9 +6,8 @@
 
 (set 'state-spec
   (sorted-map
-    "CLAIM_STATE_NEW"                   (claim-init-state-handler)
-    "CLAIM_STATE_MYSQL_RETRIEVED"       (claim-mysql-retrieved-state-handler)
-    "CLAIM_STATE_DONE"                  (claim-done-state-handler)
+    "CLAIM_STATE_NEW"                   (claim-1-init-state-handler)
+    "CLAIM_STATE_MYSQL_RETRIEVED"      (claim-oracle-retrieved-state-handler)
   ))
 
 ;; -----------------------------------------------------------------------------
@@ -23,3 +22,7 @@
                   state-spec)))
 
 (register-connector-factory claim-manager)
+
+;; Helper to create a new claim connector object via factory
+(defun create-claim ()
+  (new-connector-object claim-manager))

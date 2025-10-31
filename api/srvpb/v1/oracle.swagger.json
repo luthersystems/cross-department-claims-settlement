@@ -479,9 +479,6 @@
     "v1UploadClaimWF1Request": {
       "type": "object",
       "properties": {
-        "fileContent": {
-          "type": "string"
-        },
         "policyId": {
           "type": "string"
         }
@@ -504,9 +501,6 @@
     "v1UploadClaimWF2Request": {
       "type": "object",
       "properties": {
-        "fileContent": {
-          "type": "string"
-        },
         "policyId": {
           "type": "string"
         }
@@ -529,9 +523,6 @@
     "v1UploadClaimWF3Request": {
       "type": "object",
       "properties": {
-        "fileContent": {
-          "type": "string"
-        },
         "policyId": {
           "type": "string"
         }
@@ -554,9 +545,6 @@
     "v1UploadClaimWF4Request": {
       "type": "object",
       "properties": {
-        "fileContent": {
-          "type": "string"
-        },
         "policyId": {
           "type": "string"
         }
@@ -579,9 +567,6 @@
     "v1UploadClaimWF5Request": {
       "type": "object",
       "properties": {
-        "fileContent": {
-          "type": "string"
-        },
         "policyId": {
           "type": "string"
         }

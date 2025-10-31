@@ -28,7 +28,7 @@ SERVICE_BASE_IMAGE_ALPINE=luthersystems/service-base-alpine
 BUILD_IMAGE_API=luthersystems/build-api
 
 SHIROCLIENT_IMAGE=luthersystems/shiroclient
-CONNECTORHUB_IMAGE=luthersystems/connectorhub
+CONNECTORHUB_IMAGE=connectorhub-local
 NETWORK_BUILDER_IMAGE=luthersystems/fabric-network-builder
 SHIROTESTER_IMAGE=luthersystems/shirotester
 MARTIN_IMAGE=luthersystems/martin

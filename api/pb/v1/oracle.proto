@@ -113,8 +113,7 @@ option go_package = "github.com/luthersystems/sandbox/api/pb/v1";
 // ------------------------------------------------------------
 
 message UploadClaimWF1Request {
-  string file_content = 1;
-  string policy_id = 2;
+  string policy_id = 1;
 }
 
 message UploadClaimWF1Response {
@@ -131,8 +130,7 @@ message UploadClaimWF1Response {
 // ------------------------------------------------------------
 
 message UploadClaimWF2Request {
-  string file_content = 1;
-  string policy_id = 2;
+  string policy_id = 1;
 }
 
 message UploadClaimWF2Response {
@@ -149,8 +147,7 @@ message UploadClaimWF2Response {
 // ------------------------------------------------------------
 
 message UploadClaimWF3Request {
-  string file_content = 1;
-  string policy_id = 2;
+  string policy_id = 1;
 }
 
 message UploadClaimWF3Response {
@@ -167,8 +164,7 @@ message UploadClaimWF3Response {
 // ------------------------------------------------------------
 
 message UploadClaimWF4Request {
-  string file_content = 1;
-  string policy_id = 2;
+  string policy_id = 1;
 }
 
 message UploadClaimWF4Response {
@@ -185,8 +181,7 @@ message UploadClaimWF4Response {
 // ------------------------------------------------------------
 
 message UploadClaimWF5Request {
-  string file_content = 1;
-  string policy_id = 2;
+  string policy_id = 1;
 }
 
 message UploadClaimWF5Response {

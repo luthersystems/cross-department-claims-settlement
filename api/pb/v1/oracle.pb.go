@@ -27,8 +27,7 @@ const (
 
 type UploadClaimWF1Request struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileContent   string                 `protobuf:"bytes,1,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
-	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -61,13 +60,6 @@ func (x *UploadClaimWF1Request) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UploadClaimWF1Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF1Request) Descriptor() ([]byte, []int) {
 	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{0}
-}
-
-func (x *UploadClaimWF1Request) GetFileContent() string {
-	if x != nil {
-		return x.FileContent
-	}
-	return ""
 }
 
 func (x *UploadClaimWF1Request) GetPolicyId() string {
@@ -161,8 +153,7 @@ func (*UploadClaimWF1Response_Exception) isUploadClaimWF1Response_Result() {}
 
 type UploadClaimWF2Request struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileContent   string                 `protobuf:"bytes,1,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
-	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -195,13 +186,6 @@ func (x *UploadClaimWF2Request) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UploadClaimWF2Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF2Request) Descriptor() ([]byte, []int) {
 	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *UploadClaimWF2Request) GetFileContent() string {
-	if x != nil {
-		return x.FileContent
-	}
-	return ""
 }
 
 func (x *UploadClaimWF2Request) GetPolicyId() string {
@@ -295,8 +279,7 @@ func (*UploadClaimWF2Response_Exception) isUploadClaimWF2Response_Result() {}
 
 type UploadClaimWF3Request struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileContent   string                 `protobuf:"bytes,1,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
-	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -329,13 +312,6 @@ func (x *UploadClaimWF3Request) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UploadClaimWF3Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF3Request) Descriptor() ([]byte, []int) {
 	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *UploadClaimWF3Request) GetFileContent() string {
-	if x != nil {
-		return x.FileContent
-	}
-	return ""
 }
 
 func (x *UploadClaimWF3Request) GetPolicyId() string {
@@ -429,8 +405,7 @@ func (*UploadClaimWF3Response_Exception) isUploadClaimWF3Response_Result() {}
 
 type UploadClaimWF4Request struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileContent   string                 `protobuf:"bytes,1,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
-	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -463,13 +438,6 @@ func (x *UploadClaimWF4Request) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UploadClaimWF4Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF4Request) Descriptor() ([]byte, []int) {
 	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{6}
-}
-
-func (x *UploadClaimWF4Request) GetFileContent() string {
-	if x != nil {
-		return x.FileContent
-	}
-	return ""
 }
 
 func (x *UploadClaimWF4Request) GetPolicyId() string {
@@ -563,8 +531,7 @@ func (*UploadClaimWF4Response_Exception) isUploadClaimWF4Response_Result() {}
 
 type UploadClaimWF5Request struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	FileContent   string                 `protobuf:"bytes,1,opt,name=file_content,json=fileContent,proto3" json:"file_content,omitempty"`
-	PolicyId      string                 `protobuf:"bytes,2,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -597,13 +564,6 @@ func (x *UploadClaimWF5Request) ProtoReflect() protoreflect.Message {
 // Deprecated: Use UploadClaimWF5Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF5Request) Descriptor() ([]byte, []int) {
 	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{8}
-}
-
-func (x *UploadClaimWF5Request) GetFileContent() string {
-	if x != nil {
-		return x.FileContent
-	}
-	return ""
 }
 
 func (x *UploadClaimWF5Request) GetPolicyId() string {
@@ -699,42 +659,37 @@ var File_pb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
-	"\x12pb/v1/oracle.proto\x12\x05pb.v1\x1a\x19common/v1/exception.proto\"W\n" +
-	"\x15UploadClaimWF1Request\x12!\n" +
-	"\ffile_content\x18\x01 \x01(\tR\vfileContent\x12\x1b\n" +
-	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\x12pb/v1/oracle.proto\x12\x05pb.v1\x1a\x19common/v1/exception.proto\"4\n" +
+	"\x15UploadClaimWF1Request\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
 	"\x16UploadClaimWF1Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"W\n" +
-	"\x15UploadClaimWF2Request\x12!\n" +
-	"\ffile_content\x18\x01 \x01(\tR\vfileContent\x12\x1b\n" +
-	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\x06result\"4\n" +
+	"\x15UploadClaimWF2Request\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
 	"\x16UploadClaimWF2Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"W\n" +
-	"\x15UploadClaimWF3Request\x12!\n" +
-	"\ffile_content\x18\x01 \x01(\tR\vfileContent\x12\x1b\n" +
-	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\x06result\"4\n" +
+	"\x15UploadClaimWF3Request\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
 	"\x16UploadClaimWF3Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"W\n" +
-	"\x15UploadClaimWF4Request\x12!\n" +
-	"\ffile_content\x18\x01 \x01(\tR\vfileContent\x12\x1b\n" +
-	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\x06result\"4\n" +
+	"\x15UploadClaimWF4Request\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
 	"\x16UploadClaimWF4Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"W\n" +
-	"\x15UploadClaimWF5Request\x12!\n" +
-	"\ffile_content\x18\x01 \x01(\tR\vfileContent\x12\x1b\n" +
-	"\tpolicy_id\x18\x02 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\x06result\"4\n" +
+	"\x15UploadClaimWF5Request\x12\x1b\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
 	"\x16UploadClaimWF5Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +

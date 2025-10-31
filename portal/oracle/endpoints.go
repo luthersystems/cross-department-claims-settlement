@@ -46,27 +46,27 @@ func (p *portal) defaultConfigs(_ context.Context) []shiroclient.Config {
 // 	return oracle.Call(p.orc, ctx, "get_claim", req, &pb.GetClaimResponse{})
 // }
 
-func (p *portal) ProcessInvoiceWF1(ctx context.Context, req *pb.UploadClaimWF1Request) (*pb.UploadClaimWF1Response, error) {
+func (p *portal) UploadClaimWF1(ctx context.Context, req *pb.UploadClaimWF1Request) (*pb.UploadClaimWF1Response, error) {
 	fmt.Printf("ProcessInvoiceWF1 payload: %+v\n", req)
-	return oracle.Call(p.orc, ctx, "process_invoice_wf1", req, &pb.UploadClaimWF1Response{}, p.defaultConfigs(ctx)...)
+	return oracle.Call(p.orc, ctx, "upload_claim_wf1", req, &pb.UploadClaimWF1Response{}, p.defaultConfigs(ctx)...)
 }
 
-func (p *portal) ProcessInvoiceWF2(ctx context.Context, req *pb.UploadClaimWF2Request) (*pb.UploadClaimWF2Response, error) {
+func (p *portal) UploadClaimWF2(ctx context.Context, req *pb.UploadClaimWF2Request) (*pb.UploadClaimWF2Response, error) {
 	fmt.Printf("ProcessInvoiceWF2 payload: %+v\n", req)
-	return oracle.Call(p.orc, ctx, "process_invoice_wf2", req, &pb.UploadClaimWF2Response{}, p.defaultConfigs(ctx)...)
+	return oracle.Call(p.orc, ctx, "upload_claim_wf2", req, &pb.UploadClaimWF2Response{}, p.defaultConfigs(ctx)...)
 }
 
-func (p *portal) ProcessInvoiceWF3(ctx context.Context, req *pb.UploadClaimWF3Request) (*pb.UploadClaimWF3Response, error) {
+func (p *portal) UploadClaimWF3(ctx context.Context, req *pb.UploadClaimWF3Request) (*pb.UploadClaimWF3Response, error) {
 	fmt.Printf("ProcessInvoiceWF3 payload: %+v\n", req)
-	return oracle.Call(p.orc, ctx, "process_invoice_wf3", req, &pb.UploadClaimWF3Response{}, p.defaultConfigs(ctx)...)
+	return oracle.Call(p.orc, ctx, "upload_claim_wf3", req, &pb.UploadClaimWF3Response{}, p.defaultConfigs(ctx)...)
 }
 
-func (p *portal) ProcessInvoiceWF4(ctx context.Context, req *pb.UploadClaimWF4Request) (*pb.UploadClaimWF4Response, error) {
+func (p *portal) UploadClaimWF4(ctx context.Context, req *pb.UploadClaimWF4Request) (*pb.UploadClaimWF4Response, error) {
 	fmt.Printf("ProcessInvoiceWF4 payload: %+v\n", req)
-	return oracle.Call(p.orc, ctx, "process_invoice_wf4", req, &pb.UploadClaimWF4Response{}, p.defaultConfigs(ctx)...)
+	return oracle.Call(p.orc, ctx, "upload_claim_wf4", req, &pb.UploadClaimWF4Response{}, p.defaultConfigs(ctx)...)
 }
 
-func (p *portal) ProcessInvoiceWF5(ctx context.Context, req *pb.UploadClaimWF5Request) (*pb.UploadClaimWF5Response, error) {
+func (p *portal) UploadClaimWF5(ctx context.Context, req *pb.UploadClaimWF5Request) (*pb.UploadClaimWF5Response, error) {
 	fmt.Printf("ProcessInvoiceWF5 payload: %+v\n", req)
-	return oracle.Call(p.orc, ctx, "process_invoice_wf5", req, &pb.UploadClaimWF5Response{}, p.defaultConfigs(ctx)...)
+	return oracle.Call(p.orc, ctx, "upload_claim_wf5", req, &pb.UploadClaimWF5Response{}, p.defaultConfigs(ctx)...)
 }

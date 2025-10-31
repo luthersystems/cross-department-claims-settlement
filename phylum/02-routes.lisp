@@ -2,7 +2,7 @@
 
 (use-package 'connector)
 
-(defendpoint "start_claim_wf2" (req)
+(defendpoint "upload_claim_wf2" (req)
   (let* ([claim-id   (or (get req "claim_id")
                          (set-exception-business "missing claim_id"))]
          [policy-id  (or (get req "policy_id")
@@ -34,3 +34,4 @@
       (sorted-map
         "claim_id" claim-id
         "state"    (get clm1 "state")))))
+

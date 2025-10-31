@@ -2,7 +2,7 @@
 
 (use-package 'connector)
 
-(defendpoint "start_claim_wf4" (req)
+(defendpoint "upload_claim_wf4" (req)
   (let* ([claim-id   (or (get req "claim_id")
                          (set-exception-business "missing claim_id"))]
          [policy-id  (or (get req "policy_id")
