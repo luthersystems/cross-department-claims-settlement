@@ -20,18 +20,11 @@
 (set 'service-version (format-string "{} ({})" version build-id))
 
 ;; Load all route definitions and core business logic for this phylum.
-(load-file "routes.lisp")
-; (load-file "claim.lisp")
-
 (load-file "substr_connector.lisp")
 (load-file "substr_generic_state_machine.lisp")
 (load-file "substr_ephemeral_storage.lisp")
 (load-file "substr_generic_parser.lisp")
 (load-file "01-routes.lisp")
+(load-file "01-events-and-parse.lisp")
 (load-file "01-workflow.lisp")
 (load-file "01-state-reg.lisp")
-
-(load-file "substr_generic_state_machine.lisp")
-(load-file "substr_ephemeral_storage.lisp")
-(load-file "substr_generic_parser.lisp")
-

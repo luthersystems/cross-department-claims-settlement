@@ -70,6 +70,17 @@
     :stage-durable   stage-durable
     :create-events   create-events)))
 
+
+
+;; 3: IMPORTANT!!! 
+;; 3: IMPORTANT!!! 
+;; 3: IMPORTANT!!! 
+;; 3: IMPORTANT!!! 
+; the inclusion of this state is basically useless and wouldn't usually be done.
+; I just included it so I could demonstrate ephemeral storage in what would
+; usually be a 2 step process. Deletion currently happens before the state
+; rather than after. I think we should change that, but this was required as is
+; in order for it to be demonstrated.
 (defun claim-done-state-handler ()
   (labels
     ;; parse MySQL UPDATE/EXEC response
@@ -90,48 +101,3 @@
     :stage-durable   stage-durable
     :create-events   create-events)))
 
-(defun build-event (entity req action sys-name)
-  (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req))
-
-; basic mySQL req
-
-(defun mk-mysql-req (sql)
-  ;; Wrap raw SQL into connectorhub request.
-  (mk-connector-req
-    (sorted-map
-      "kind" "KIND_MYSQL"
-      "operation" "mysql_query"
-      "args" (sorted-map "sql" sql))))
-
-
-(defun mk-mysql-get-by-policy-id-req (policyid)
-  ;; Build a SELECT for selecting based on policy 
-    (mk-mysql-req
-      (format-string "SELECT * FROM v_user_details_by_policy WHERE policy_id = '{}'" policyid)))
-
-(defun mk-mysql-get-by-policy-id-event (claim policyid) 
- (build-mysql-event 
-  claim
-      (mk-mysql-get-by-policy-id-req policyid)
-    "update invoice statuses")) 
-
-(defun build-mysql-event (invoice resp action)
-  (build-event invoice resp action "MYSQL"))
-
-(defun parse-mysql-resp (resp)
-  (parse-generic-resp resp))
-
-(defun parse-mysql-select (resp)
-  (let* ([parsed (parse-mysql-resp resp)]
-         [rows   (cond
-                   ((vector? parsed) parsed)
-                   ((sorted-map? parsed) (vector parsed))
-                   (:else (vector)))])
-    rows))
