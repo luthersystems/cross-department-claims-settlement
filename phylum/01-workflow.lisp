@@ -20,7 +20,7 @@
      (vector
         (sorted-map :key "policy_id_ephem"
                     :value (get parsed "policy_id")
-                    :drop-state "CLAIM_STATE_DONE"))]
+                    :drop-state "CLAIM_STATE_EQUIFAX_VERIFIED"))]
 
     ; example of staging ephemeral data. This is what is sent to 'put to persist
     ; the entity in general. It should be a map of entries
@@ -41,10 +41,13 @@
       :create-events   create-events)))
 
 
-;; =============================
-;; 2) CLAIM_STATE_ORACLE_DETAILS_RETRIEVED -> DONE
-;; =============================
-(defun claim-mysql-retrieved-state-handler ()
+;; =======================================================================
+;; 2) CLAIM_STATE_ORACLE_DETAILS_RETRIEVED -> CLAIM_STATE_EQUIFAX_VERIFIED
+;; Validate identity of user using Equifax
+;; =======================================================================
+
+;; mk-equifax-verify-event
+(defun claim-oracle-details-retrieved-state-handler ()
   (labels
     ;; parse Oracle Response
     ([parse (resp entity) (parse-oracle-get-claim-response resp)]
@@ -65,42 +68,37 @@
       (let* ([claimant (get parsed "claimant")])
         (vector
           (mk-equifax-verify-event
-            entity
-            (sorted-map
-              "firstName"   (get claimant "first_name")
-              "lastName"    (get claimant "last_name")
-              "dateOfBirth" (get claimant "dob")
-              "address"     (get claimant "address")
-              "nationalId"  (get claimant "national_id")
-              "claimId"     (get parsed "claim_id")
-              "policyId"    (get parsed "policy_id")))))])
+            entity claimant)))])
 
   (mk-state-handler
-    :next            "CLAIM_STATE_DONE"
+    :next            "CLAIM_STATE_EQUIFAX_VERIFIED"
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
     :create-events   create-events)))
 
-(defun claim-done-state-handler ()
+;; ====================================================
+;; 2)  CLAIM_STATE_EQUIFAX_VERIFIED -> CLAIM_STATE_DONE
+;; Validate identity of user using Equifax
+;; ====================================================
+
+(defun claim-equifax-verified-state-handler ()
   (labels
-    ;; parse MySQL UPDATE/EXEC response
     ([parse (resp entity) resp]
-
-     ;; final cleanups if any (none here)
      [stage-ephemeral (entity parsed accessors) (vector)]
-
-     ;; no durable changes
      [stage-durable (entity parsed accessors) ()]
-
-     ;; no further events
-     [create-events (entity parsed accessors) (vector)])
-  (mk-state-handler
-    :next            "CLAIM_STATE_DONE"
-    :parse           parse
-    :stage-ephemeral stage-ephemeral
-    :stage-durable   stage-durable
-    :create-events   create-events)))
+     [create-events (entity parsed accessors)
+      (vector
+        (mk-teams-start-thread-event
+          entity
+          "Claim Processing Complete"
+          (format-string "Claim {} has completed all verification steps." (get entity "claim_id"))))])
+    (mk-state-handler
+      :next            "CLAIM_STATE_DONE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
 (defun build-event (entity req action sys-name)
   (sorted-map
@@ -112,48 +110,12 @@
     "eng" action
     "req" req))
 
-; basic mySQL req
-
-(defun mk-mysql-req (sql)
-  ;; Wrap raw SQL into connectorhub request.
-  (mk-connector-req
-    (sorted-map
-      "kind" "KIND_MYSQL"
-      "operation" "mysql_query"
-      "args" (sorted-map "sql" sql))))
-
-
-(defun mk-mysql-get-by-policy-id-req (policyid)
-  ;; Build a SELECT for selecting based on policy 
-    (mk-mysql-req
-      (format-string "SELECT * FROM v_user_details_by_policy WHERE policy_id = '{}'" policyid)))
-
-(defun mk-mysql-get-by-policy-id-event (claim policyid) 
- (build-mysql-event 
-  claim
-      (mk-mysql-get-by-policy-id-req policyid)
-    "update invoice statuses")) 
-
-(defun build-mysql-event (invoice resp action)
-  (build-event invoice resp action "MYSQL"))
-
-(defun parse-mysql-resp (resp)
-  (parse-generic-resp resp))
-
-(defun parse-mysql-select (resp)
-  (let* ([parsed (parse-mysql-resp resp)]
-         [rows   (cond
-                   ((vector? parsed) parsed)
-                   ((sorted-map? parsed) (vector parsed))
-                   (:else (vector)))])
-    rows))
-
 (defun mk-oracle-get-claim-event (entity policy-id) 
   (let* ([sql (format-string 
                 "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = '{}'" 
                 policy-id)] 
          [req (mk-connector-req 
-          (sorted-map "kind" "KIND_ORACLE" "operation" "execute_query" "args" (sorted-map "query" sql)))]) 
+          (sorted-map "kind" "KIND_ORACLE_READONLY" "operation" "execute_query" "args" (sorted-map "query" sql)))]) 
         (build-event entity req "get claim" "ORACLE")))
 
 
@@ -173,3 +135,74 @@
                     "address"     (get row "CLAIMANT_ADDRESS")
                     "national_id" (get row "CLAIMANT_NATIONAL_ID"))))
 )
+
+(defun mk-equifax-verify-event (entity claimant)
+  (let* ([req (sorted-map
+                "equifax"
+                (sorted-map
+                  "entity_screening_request"
+                  (sorted-map
+                    "entity_id" (get entity "claim_id")
+                    "first_name" (get claimant "first_name")
+                    "last_name" (get claimant "last_name")
+                    "birth_date" (get claimant "dob")
+                    "address" (get claimant "address")
+                    "postal_code" "SW1A"
+                    "address_country_code" "GB"
+                    "federal_id" (get claimant "national_id"))))])
+    (build-event entity req "verify claimant" "EQUIFAX")))
+
+(defun parse-equifax-verify-event (entity claimant)
+  (let* ([req (sorted-map
+                "equifax"
+                (sorted-map
+                  "entity_screening_request"
+                  (sorted-map
+                    "entity_id" (get entity "claim_id")
+                    "first_name" (get claimant "first_name")
+                    "last_name" (get claimant "last_name")
+                    "birth_date" (get claimant "dob")
+                    "address" (get claimant "address")
+                    "postal_code" "SW1A"
+                    "address_country_code" "GB"
+                    "federal_id" (get claimant "national_id"))))])
+    (build-event entity req "verify claimant" "EQUIFAX")))
+
+
+(defun mk-teams-start-thread-event (entity title content)
+  (let* ([req (mk-connector-req
+                (sorted-map
+                  "kind"      "KIND_MICROSOFT_TEAMS"
+                  "operation" "start_thread"
+                  "args"      (sorted-map
+                                 "title"   title
+                                 "content" content)))]
+         [action "start thread"]
+         [sys-name "TEAMS"])
+    (build-event entity req action sys-name)))
+
+  (defun parse-equifax-verify-response (resp)
+  (let* ([j-map (parse-generic-resp resp)]
+         [eqfx   (get-in j-map ["equifax" "entity_screening_response"])]
+         [matches (get eqfx "list_matches")])
+    (sorted-map
+      "entity_id"   (get eqfx "entity_id")
+      "status"      (get eqfx "status")
+      "comment"     (get eqfx "comment")
+      "hit_value_emb" (get eqfx "hit_value_emb")
+      "hit_value_pep" (get eqfx "hit_value_pep")
+      "pstatus_det"   (get eqfx "pstatus_det")
+      "list_matches"  matches)))
+
+      (defun validate-equifax-response (parsed)
+  (let* ([status (get parsed "status")]
+         [pep    (get parsed "hit_value_pep")]
+         [emb    (get parsed "hit_value_emb")])
+    (cond
+      ((and (string= status "Check")
+            (or (> pep 90) (> emb 90)))
+        (sorted-map "valid" false "reason" "High-risk claimant match found"))
+      ((string= status "Clear")
+        (sorted-map "valid" true "reason" "No match found"))
+      (t
+        (sorted-map "valid" true "reason" "Non-critical match or manual review passed")))))

@@ -6,9 +6,9 @@
 
 (set 'state-spec
   (sorted-map
-    "CLAIM_STATE_NEW"                   (claim-init-state-handler)
-    "CLAIM_STATE_MYSQL_RETRIEVED"       (claim-mysql-retrieved-state-handler)
-    "CLAIM_STATE_DONE"                  (claim-done-state-handler)
+    "CLAIM_STATE_NEW"                           (claim-init-state-handler)
+    "CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"      (claim-oracle-details-retrieved-state-handler)
+    "CLAIM_STATE_EQUIFAX_VERIFIED"              (claim-equifax-verified-state-handler)
   ))
 
 ;; -----------------------------------------------------------------------------
