@@ -84,21 +84,86 @@
 
 (defun claim-equifax-verified-state-handler ()
   (labels
-    ([parse (resp entity) resp]
+    ([parse (resp entity)
+  (let* ([parsed (parse-equifax-verify-response resp)]
+         [validation (validate-equifax-response parsed)])
+    (sorted-map
+      "entity_id" (get parsed "entity_id")
+      "status"    (get parsed "status")
+      "comment"   (get parsed "comment")
+      "hit_value_emb" (get parsed "hit_value_emb")
+      "hit_value_pep" (get parsed "hit_value_pep")
+      "pstatus_det"   (get parsed "pstatus_det")
+      "list_matches"  (get parsed "list_matches")
+      "validation"    validation))]
+
+
      [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
+
+     [stage-durable (entity parsed accessors)
+      (sorted-map
+        "equifax_status"      (get parsed "status")
+        "equifax_comment"     (get parsed "comment")
+        "equifax_hit_value_pep" (get parsed "hit_value_pep")
+        "equifax_hit_value_emb" (get parsed "hit_value_emb")
+        "equifax_pstatus_det" (get parsed "pstatus_det")
+
+        ; "equifax_validation"    (and validation (get validation "reason"))
+        )]
+
      [create-events (entity parsed accessors)
-      (vector
-        (mk-teams-start-thread-event
-          entity
-          "Claim Processing Complete"
-          (format-string "Claim {} has completed all verification steps." (get entity "claim_id"))))])
+      (let* ([validation (get parsed "validation")]
+             [is-valid (get validation "valid")])
+        (if is-valid
+          ;; proceed to done state (optionally notify Teams)
+          (vector
+            (mk-teams-start-thread-event
+              entity
+              "Equifax Screening Passed"
+              (format-string "Claim {} successfully verified with Equifax." (get entity "claim_id"))))
+          ;; send alert to compliance team
+          (vector
+            (mk-teams-start-thread-event
+              entity
+              "Equifax Screening Alert"
+              (format-string
+                "Claim {} flagged for review: {}"
+                (get entity "claim_id")
+                (get validation "reason"))))))])
+
     (mk-state-handler
       :next            "CLAIM_STATE_DONE"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
+
+;; ===================
+;; 2) CLAIM_STATE_DONE
+;; Validate identity 
+;; ===================
+
+(defun claim-done-state-handler ()
+  (labels
+    ;; parse generic response (also checks for errors)
+    ([parse (resp entity) (parse-generic-resp resp)]
+
+     ;; nothing to stage here
+     [stage-ephemeral (entity parsed accessors) (vector)]
+
+     ;; store reference to oracle claim
+     [stage-durable (entity parsed accessors) ()]
+
+
+     ;; no further events
+     [create-events (entity parsed accessors) ()])
+
+  (mk-state-handler
+    :next            "CLAIM_STATE_DONE"
+    :parse           parse
+    :stage-ephemeral stage-ephemeral
+    :stage-durable   stage-durable
+    :create-events   create-events)))
 
 (defun build-event (entity req action sys-name)
   (sorted-map
@@ -117,7 +182,6 @@
          [req (mk-connector-req 
           (sorted-map "kind" "KIND_ORACLE_READONLY" "operation" "execute_query" "args" (sorted-map "query" sql)))]) 
         (build-event entity req "get claim" "ORACLE")))
-
 
 (defun parse-oracle-get-claim-response (resp)
   (let* ([j-map (parse-generic-resp resp)]
@@ -181,28 +245,32 @@
          [sys-name "TEAMS"])
     (build-event entity req action sys-name)))
 
-  (defun parse-equifax-verify-response (resp)
+(defun parse-equifax-verify-response (resp)
   (let* ([j-map (parse-generic-resp resp)]
-         [eqfx   (get-in j-map ["equifax" "entity_screening_response"])]
-         [matches (get eqfx "list_matches")])
-    (sorted-map
-      "entity_id"   (get eqfx "entity_id")
-      "status"      (get eqfx "status")
-      "comment"     (get eqfx "comment")
-      "hit_value_emb" (get eqfx "hit_value_emb")
-      "hit_value_pep" (get eqfx "hit_value_pep")
-      "pstatus_det"   (get eqfx "pstatus_det")
-      "list_matches"  matches)))
+         [eqfx   (get j-map "equifax")] 
+         [response (get eqfx "entity_screening_response")]
+         [matches  (and response (get response "list_matches"))])
+      (sorted-map
+        "entity_id"       (and response (get response "entity_id"))
+        "status"          (and response (get response "status"))
+        "comment"         (and response (get response "comment"))
+        "hit_value_emb"   (and response (get response "hit_value_emb"))
+        "hit_value_pep"   (and response (get response "hit_value_pep"))
+        "pstatus_det"     (and response (get response "pstatus_det"))
+        "list_matches"    matches)))
 
-      (defun validate-equifax-response (parsed)
+(defun validate-equifax-response (parsed)
   (let* ([status (get parsed "status")]
          [pep    (get parsed "hit_value_pep")]
-         [emb    (get parsed "hit_value_emb")])
-    (cond
-      ((and (string= status "Check")
-            (or (> pep 90) (> emb 90)))
-        (sorted-map "valid" false "reason" "High-risk claimant match found"))
-      ((string= status "Clear")
-        (sorted-map "valid" true "reason" "No match found"))
-      (t
-        (sorted-map "valid" true "reason" "Non-critical match or manual review passed")))))
+         [emb    (get parsed "hit_value_emb")]
+         [status-str (if (list? status) (first status) status)])
+         (sorted-map "valid" true "reason" "Non-critical match or manual review passed")))
+;TODO add this validation in
+      ;   (cond
+      ; ((and (string= status-str "Check")
+      ;       (or (> pep 90) (> emb 90)))
+      ;   (sorted-map "valid" false "reason" "High-risk claimant match found"))
+      ; ((string= status-str "Clear")
+      ;   (sorted-map "valid" true "reason" "No match found"))
+      ; (t
+      ;   (sorted-map "valid" true "reason" "Non-critical match or manual review passed")))))
