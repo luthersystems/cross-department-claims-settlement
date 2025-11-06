@@ -503,6 +503,9 @@
       "properties": {
         "policyId": {
           "type": "string"
+        },
+        "guidewireClaimId": {
+          "type": "string"
         }
       }
     },
@@ -523,8 +526,30 @@
     "v1UploadClaimWF3Request": {
       "type": "object",
       "properties": {
-        "policyId": {
+        "claimId": {
           "type": "string"
+        },
+        "invoiceAmount": {
+          "type": "string",
+          "title": "or double"
+        },
+        "signerName": {
+          "type": "string"
+        },
+        "signerEmail": {
+          "type": "string"
+        },
+        "originatorName": {
+          "type": "string",
+          "title": "optional"
+        },
+        "recipientName": {
+          "type": "string",
+          "title": "optional"
+        },
+        "issueDate": {
+          "type": "string",
+          "title": "YYYY-MM-DD"
         }
       }
     },

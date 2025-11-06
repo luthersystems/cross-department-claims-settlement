@@ -152,10 +152,11 @@ type UploadClaimWF1Response_Exception struct {
 func (*UploadClaimWF1Response_Exception) isUploadClaimWF1Response_Result() {}
 
 type UploadClaimWF2Request struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	PolicyId         string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	GuidewireClaimId string                 `protobuf:"bytes,2,opt,name=guidewire_claim_id,json=guidewireClaimId,proto3" json:"guidewire_claim_id,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *UploadClaimWF2Request) Reset() {
@@ -191,6 +192,13 @@ func (*UploadClaimWF2Request) Descriptor() ([]byte, []int) {
 func (x *UploadClaimWF2Request) GetPolicyId() string {
 	if x != nil {
 		return x.PolicyId
+	}
+	return ""
+}
+
+func (x *UploadClaimWF2Request) GetGuidewireClaimId() string {
+	if x != nil {
+		return x.GuidewireClaimId
 	}
 	return ""
 }
@@ -278,10 +286,16 @@ type UploadClaimWF2Response_Exception struct {
 func (*UploadClaimWF2Response_Exception) isUploadClaimWF2Response_Result() {}
 
 type UploadClaimWF3Request struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ClaimId        string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`
+	InvoiceAmount  string                 `protobuf:"bytes,2,opt,name=invoice_amount,json=invoiceAmount,proto3" json:"invoice_amount,omitempty"` // or double
+	SignerName     string                 `protobuf:"bytes,3,opt,name=signer_name,json=signerName,proto3" json:"signer_name,omitempty"`
+	SignerEmail    string                 `protobuf:"bytes,4,opt,name=signer_email,json=signerEmail,proto3" json:"signer_email,omitempty"`
+	OriginatorName string                 `protobuf:"bytes,5,opt,name=originator_name,json=originatorName,proto3" json:"originator_name,omitempty"` // optional
+	RecipientName  string                 `protobuf:"bytes,6,opt,name=recipient_name,json=recipientName,proto3" json:"recipient_name,omitempty"`    // optional
+	IssueDate      string                 `protobuf:"bytes,7,opt,name=issue_date,json=issueDate,proto3" json:"issue_date,omitempty"`                // YYYY-MM-DD
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *UploadClaimWF3Request) Reset() {
@@ -314,9 +328,51 @@ func (*UploadClaimWF3Request) Descriptor() ([]byte, []int) {
 	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *UploadClaimWF3Request) GetPolicyId() string {
+func (x *UploadClaimWF3Request) GetClaimId() string {
 	if x != nil {
-		return x.PolicyId
+		return x.ClaimId
+	}
+	return ""
+}
+
+func (x *UploadClaimWF3Request) GetInvoiceAmount() string {
+	if x != nil {
+		return x.InvoiceAmount
+	}
+	return ""
+}
+
+func (x *UploadClaimWF3Request) GetSignerName() string {
+	if x != nil {
+		return x.SignerName
+	}
+	return ""
+}
+
+func (x *UploadClaimWF3Request) GetSignerEmail() string {
+	if x != nil {
+		return x.SignerEmail
+	}
+	return ""
+}
+
+func (x *UploadClaimWF3Request) GetOriginatorName() string {
+	if x != nil {
+		return x.OriginatorName
+	}
+	return ""
+}
+
+func (x *UploadClaimWF3Request) GetRecipientName() string {
+	if x != nil {
+		return x.RecipientName
+	}
+	return ""
+}
+
+func (x *UploadClaimWF3Request) GetIssueDate() string {
+	if x != nil {
+		return x.IssueDate
 	}
 	return ""
 }
@@ -666,16 +722,25 @@ const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"4\n" +
+	"\x06result\"b\n" +
 	"\x15UploadClaimWF2Request\x12\x1b\n" +
-	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12,\n" +
+	"\x12guidewire_claim_id\x18\x02 \x01(\tR\x10guidewireClaimId\"\x89\x01\n" +
 	"\x16UploadClaimWF2Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"4\n" +
-	"\x15UploadClaimWF3Request\x12\x1b\n" +
-	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\x06result\"\x8c\x02\n" +
+	"\x15UploadClaimWF3Request\x12\x19\n" +
+	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12%\n" +
+	"\x0einvoice_amount\x18\x02 \x01(\tR\rinvoiceAmount\x12\x1f\n" +
+	"\vsigner_name\x18\x03 \x01(\tR\n" +
+	"signerName\x12!\n" +
+	"\fsigner_email\x18\x04 \x01(\tR\vsignerEmail\x12'\n" +
+	"\x0foriginator_name\x18\x05 \x01(\tR\x0eoriginatorName\x12%\n" +
+	"\x0erecipient_name\x18\x06 \x01(\tR\rrecipientName\x12\x1d\n" +
+	"\n" +
+	"issue_date\x18\a \x01(\tR\tissueDate\"\x89\x01\n" +
 	"\x16UploadClaimWF3Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +

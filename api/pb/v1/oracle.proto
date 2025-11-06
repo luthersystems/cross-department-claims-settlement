@@ -131,6 +131,7 @@ message UploadClaimWF1Response {
 
 message UploadClaimWF2Request {
   string policy_id = 1;
+  string guidewire_claim_id = 2;
 }
 
 message UploadClaimWF2Response {
@@ -147,7 +148,13 @@ message UploadClaimWF2Response {
 // ------------------------------------------------------------
 
 message UploadClaimWF3Request {
-  string policy_id = 1;
+  string claim_id = 1;
+  string invoice_amount = 2; // or double
+  string signer_name = 3;
+  string signer_email = 4;
+  string originator_name = 5; // optional
+  string recipient_name = 6; // optional
+  string issue_date = 7; // YYYY-MM-DD
 }
 
 message UploadClaimWF3Response {
