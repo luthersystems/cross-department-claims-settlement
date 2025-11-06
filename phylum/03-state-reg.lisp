@@ -8,12 +8,13 @@
 
 (set 'state-spec
   (sorted-map
-    "CLAIM_STATE_INIT"                  (claim-init-state-handler)
-    "CLAIM_STATE_BASWARE_INVOICED"      (claim-basware-invoiced-state-handler)
-    "CLAIM_STATE_SF_SYNCED"             (claim-sf-synced-state-handler)
-    "CLAIM_STATE_SMTP_DISPATCHED"       (claim-smtp-dispatched-state-handler)
+    "CLAIM_STATE_INVOICE_INIT"                  (invoice-init-state-handler)
+    "CLAIM_STATE_INVOICE_ESIG_CREATED"      (invoice-esig-created-state-handler)
+    "CLAIM_STATE_INVOICE_SF_SYNCED"             (invoice-sf-synced-state-handler)
+    "CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"       (invoice-email-dispatched-state-handler)
     ;; Terminal state is CLAIM_STATE_DONE (no handler needed)
   ))
+
 
 ;; -----------------------------------------------------------------------------
 ;; Build the claims connector from the generic factory
@@ -23,7 +24,7 @@
      (singleton (mk-entity-manager
                   "claim"            ;; entity kind
                   "claim_id"         ;; primary key field
-                  "CLAIM_STATE_INIT" ;; initial state
+                  "CLAIM_STATE_INVOICE_INIT" ;; initial state
                   state-spec)))
 
 (register-connector-factory claim-manager)
