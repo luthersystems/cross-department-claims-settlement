@@ -8,7 +8,7 @@
 
 (set 'state-spec
   (sorted-map
-    "CLAIM_STATE_INIT"                  (claim-init-2-state-handler)
+    "CLAIM_STATE_INIT"                  (claim-2-init-state-handler)
     "CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED" (claim-guidewire-snapshotted-state-handler)
     "CLAIM_STATE_MYSQL_VALIDATED"       (claim-mysql-validated-state-handler)
     "CLAIM_STATE_SP_DOCS_COLLECTED"     (claim-sp-docs-collected-state-handler)

@@ -1,37 +1,26 @@
 (in-package 'sandbox)
 
 (use-package 'connector)
+(in-package 'sandbox)
 
 (defendpoint "upload_claim_wf2" (req)
-  (let* ([claim-id   (or (get req "claim_id")
-                         (set-exception-business "missing claim_id"))]
-         [policy-id  (or (get req "policy_id")
-                         (set-exception-business "missing policy_id"))]
+  (let* ([policy-id (or (get req "policy_id")
+                        (set-exception-business "missing policy_id"))]
+         [guidewire-claim-id (or (get req "guidewire_claim_id")
+                        (set-exception-business "missing claim_id"))]
 
-         ;; Initialize durable claim object
-         [claim      (new-connector-object claim-manager)]
-         [claim      (assoc! claim
-                        "claim_id"  claim-id
-                        "policy_id" policy-id
-                        "state"     "CLAIM_STATE_NEW")]
+         ;; Step 1: create new object -> commits a tx (no events)
+         [claim     (new-connector-object claim-manager)]
+         [claim-id  (get claim "claim_id")]
 
-         ;; Emulate ConnectorHub-style payload (even if empty)
-         [chresp     (sorted-map
-                       "claim_id"  claim-id
-                       "policy_id" policy-id)]
+         ;; Step 2: The init state's parse expects a CH response style input
+         [chresp    (sorted-map "policy_id" policy-id "gw_claim_id" guidewire-claim-id)])
 
-         ;; Run one state step (parse → stage-ephemeral → stage-durable → transition)
-         [step       (run-state-step "claim" "claim_id" claim chresp)]
-         [clm1       (get step "put")]
-         [events     (get step "events")])
-
-    ;; Persist durable doc and trigger connector events
-    (claim-manager 'put clm1)
-    (trigger-connector-object claim-manager claim-id
-      (sorted-map "put" clm1 "events" events))
+    ;; Step 3: trigger flow
+    (trigger-connector-object claim-manager claim-id chresp)
 
     (route-success
       (sorted-map
         "claim_id" claim-id
-        "state"    (get clm1 "state")))))
+        "state"    "CLAIM_STATE_ORACLE_RETRIEVED"))))
 
