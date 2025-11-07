@@ -295,3 +295,19 @@
          ;; Construct connector request
          [req (mk-email-req "jack.clarke@luthersystems.com" subject body)])
     (build-event entity req "dispatch invoice email" "EMAIL")))
+
+
+(defun claim-done-state-handler ()
+  (labels
+    ;; parse generic response (also checks for errors)
+    ([parse (resp entity) (parse-generic-resp resp)]
+
+     ;; nothing to stage here
+     [stage-ephemeral (entity parsed accessors) (vector)]
+
+     ;; store reference to oracle claim
+     [stage-durable (entity parsed accessors) ()]
+
+
+     ;; no further events
+     [create-events (entity parsed accessors) ()])))

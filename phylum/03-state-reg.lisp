@@ -9,10 +9,11 @@
 (set 'state-spec
   (sorted-map
     "CLAIM_STATE_INVOICE_INIT"                  (invoice-init-state-handler)
-    "CLAIM_STATE_INVOICE_ESIG_CREATED"      (invoice-esig-created-state-handler)
+    "CLAIM_STATE_INVOICE_ESIG_CREATED"          (invoice-esig-created-state-handler)
     "CLAIM_STATE_INVOICE_SF_SYNCED"             (invoice-sf-synced-state-handler)
-    "CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"       (invoice-email-dispatched-state-handler)
-    ;; Terminal state is CLAIM_STATE_DONE (no handler needed)
+    "CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (invoice-email-dispatched-state-handler)
+    "CLAIM_STATE_DONE"                          (claim-done-state-handler)
+
   ))
 
 

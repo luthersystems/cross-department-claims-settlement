@@ -1,24 +1,7 @@
 (in-package 'sandbox)
 (use-package 'connector)
 
-;; Proto shape you asked for (extend to include invoice params):
-;; message StartInvoiceFlowRequest {
-;;   string claim_id         = 1;
-;;   string invoice_amount   = 2;  // or double
-;;   string signer_name      = 3;
-;;   string signer_email     = 4;
-;;   string originator_name  = 5;  // optional
-;;   string recipient_name   = 6;  // optional
-;;   string issue_date       = 7;  // YYYY-MM-DD
-;; }
-
 (defendpoint "upload_claim_wf3" (req)
-  (cc:infof (sorted-map "req" req) "upload_claim_wf3")
-    (cc:infof (sorted-map "claim ID" (get req "claim_id")) "claim ID")
-    (cc:infof (sorted-map "invoice_amount" (get req "invoice_amount")) "invoice_amount")
-    (cc:infof (sorted-map "signer_name" (get req "signer_name")) "signer_name")
-
-
   (let* ([claim-id        (or (get req "claim_id")        (set-exception-business "missing claim_id"))]
          [invoice-amount  (or (get req "invoice_amount")  (set-exception-business "missing invoice_amount"))]
          [signer-name     (or (get req "signer_name")     (set-exception-business "missing signer_name"))]

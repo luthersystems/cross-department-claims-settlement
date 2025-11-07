@@ -8,11 +8,11 @@
 
 (set 'state-spec
   (sorted-map
-    "CLAIM_STATE_INIT"                  (claim-2-init-state-handler)
+    "CLAIM_STATE_INIT"                  (claim-init-state-handler)
     "CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED" (claim-guidewire-snapshotted-state-handler)
     "CLAIM_STATE_MYSQL_VALIDATED"       (claim-mysql-validated-state-handler)
     "CLAIM_STATE_SP_DOCS_COLLECTED"     (claim-sp-docs-collected-state-handler)
-    ;; Terminal state is CLAIM_STATE_DONE (no handler needed)
+    "CLAIM_STATE_DONE"                   (claim-done-state-handler)
   ))
 
 ;; -----------------------------------------------------------------------------

@@ -27,9 +27,9 @@
 (load-file "substr_generic_state_machine.lisp")
 (load-file "substr_ephemeral_storage.lisp")
 (load-file "substr_generic_parser.lisp")
-(load-file "01-routes.lisp")
-(load-file "01-workflow.lisp")
-(load-file "01-state-reg.lisp")
+(load-file "05-routes.lisp")
+(load-file "05-workflow.lisp")
+(load-file "05-state-reg.lisp")
 
 (load-file "substr_generic_state_machine.lisp")
 (load-file "substr_ephemeral_storage.lisp")

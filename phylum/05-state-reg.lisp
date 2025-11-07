@@ -9,11 +9,8 @@
 (set 'state-spec
   (sorted-map
     "CLAIM_STATE_INIT"                  (claim-init-state-handler)
-    "CLAIM_STATE_ABS_OUT"
-    "CLAIM_STATE_ABS_RES"
-    "CLAIM_STATE_SAP_PAID"              (claim-sap-paid-state-handler)
-    "CLAIM_STATE_NETSUITE_RECONCILED"   (claim-netsuite-reconciled-state-handler)
-    ;; Terminal state is CLAIM_STATE_DONE (no handler needed)
+    "CLAIM_STATE_APPROVED"              (claim-state-approved-handler)
+    "CLAIM_STATE_DONE"                  (claim-state-done-handler)
   ))
 
 ;; -----------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-(defun claim-2-init-state-handler ()
+(defun claim-init-state-handler ()
   (labels
     ([parse (resp entity)
       ;; resp can be empty; we drive off entity.claim_id/policy_id
@@ -102,6 +102,22 @@
     :create-events   create-events)))
 
 ;;;; guidewire (start)
+
+
+(defun claim-done-state-handler ()
+  (labels
+    ;; parse generic response (also checks for errors)
+    ([parse (resp entity) (parse-generic-resp resp)]
+
+     ;; nothing to stage here
+     [stage-ephemeral (entity parsed accessors) (vector)]
+
+     ;; store reference to oracle claim
+     [stage-durable (entity parsed accessors) ()]
+
+
+     ;; no further events
+     [create-events (entity parsed accessors) ()])))
 
 (defun mk-guidewire-get-claim-event (entity claim-id)
   (let* ([req (mk-connector-req
