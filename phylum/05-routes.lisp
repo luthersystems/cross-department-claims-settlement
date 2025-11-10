@@ -34,6 +34,16 @@
          [payment-id  (get body "paymentID")]
          [status      (get body "status")])
 
+      ;; Validate claim exists
+      (let* ([claim (claim-manager 'get claim-id)]
+             [_     (when (nil? claim)
+                      (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
+             [claim-state (claim 'entity-state)])
+
+        ;; Enforce initial state
+        (when (not (equal? claim-state "CLAIM_STATE_AWAITING_APPROVAL"))
+          (set-exception-business
+            (format-string "invalid claim state: expected CLAIM_STATE_AWAITING_APPROVAL, got {}" claim-state)))
 
     
         ;; dev logs
@@ -59,7 +69,7 @@
     (route-success
       (sorted-map
         "claim_id" claim-id
-        "state"    "CLAIM_STATE_ORACLE_RETRIEVED"))))
+        "state"    "CLAIM_STATE_ORACLE_RETRIEVED")))))
 
 ; (defun mk-invoice-oid-index-key (invoice-id)
 ;   ;; Namespaced key. Use sidedb "private" for privacy (preferred), fall back OK.

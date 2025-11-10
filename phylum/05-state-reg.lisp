@@ -9,6 +9,7 @@
 (set 'state-spec
   (sorted-map
     "CLAIM_STATE_INIT"                  (claim-init-state-handler)
+    "CLAIM_STATE_AWAITING_APPROVAL"     (claim-state-awaiting-approval-handler)
     "CLAIM_STATE_APPROVED"              (claim-state-approved-handler)
     "CLAIM_STATE_DONE"                  (claim-state-done-handler)
   ))

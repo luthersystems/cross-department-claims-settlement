@@ -31,27 +31,35 @@
 
 
     (mk-state-handler
-      :next            "CLAIM_STATE_APPROVED"
+      :next            "CLAIM_STATE_AWAITING_APPROVAL"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
 
+(defun claim-state-awaiting-approval-handler ()
+  (labels
+    ;; assumes approved
+    ([parse (resp entity) resp]
+     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-durable (entity parsed accessors) parsed]
+     [create-events (entity parsed accessors) (mk-sap-store-payment-event entity)])
+  (mk-state-handler
+    :next            "CLAIM_STATE_APPROVED"
+    :parse           parse
+    :stage-ephemeral stage-ephemeral
+    :stage-durable   stage-durable
+    :create-events   create-events)))
 
 
 (defun claim-state-approved-handler ()
   (labels
     ([parse (resp entity) (
-      (cc:infof (sorted-map "resp" resp) "i have made it") resp)]
+      (cc:infof (sorted-map "resp" resp "entity" entity) "i have made it")  resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       (sorted-map "sn_state" (get parsed "state") "loop" 14)]
-     [create-events (entity parsed accessors)
-      (vector (mk-sap-execute-payment-event entity
-                (sorted-map "invoice_id"    (get entity "invoice_id")
-                            "claim_id"      (get entity "claim_id")
-                            "amount"        (get entity "amount")
-                            "payment_memo"  "Inter-entity settlement")))])
+     [create-events (entity parsed accessors)])
   (mk-state-handler
     :next            "CLAIM_STATE_SAP_PAID"
     :parse           parse
@@ -172,3 +180,36 @@
     "sys" sys-name
     "eng" action
     "req" req))
+
+    ;; SAP HANA: store payment event
+(defun mk-sap-store-payment-event (entity)
+  ;; optional dev log
+  (cc:infof (sorted-map "entity" entity) "mk-sap-store-payment-event: entity")
+
+  ;; (1) construct the SQL INSERT statement
+  ;; for now we’ll use hardcoded fields, but you can expand with values from entity/args
+  (let* ([payment-id   (or (get entity "payment_id") "PAYM-002")]
+         [invoice-id   (or (get entity "invoice_id") "INV-1002")]
+         [reference    (or (get entity "reference") "Batch-Nov-01")]
+         [vendor-id    (or (get entity "vendor_id") "VEND-001")]
+         [amount       (or (get entity "amount") 2500.00)]
+         [currency     (or (get entity "currency") "USD")]
+         [method       (or (get entity "payment_method") "EFT")]
+         [payment-date (or (get entity "payment_date") "2025-11-06")]
+         [status       (or (get entity "status") "PENDING")]
+
+         [query (format-string
+           "INSERT INTO PAYMENTS_STAGING (PAYMENT_ID, INVOICE_ID, REFERENCE, VENDOR_ID, AMOUNT, CURRENCY, PAYMENT_METHOD, PAYMENT_DATE, STATUS) VALUES ('{}', '{}', '{}', '{}', {}, '{}', '{}', '{}', '{}');"
+            payment-id invoice-id reference vendor-id amount currency method payment-date status)]
+
+; (cc:infof (sorted-map "query" query) "mk-sap-store-payment-event: query")
+
+         ;; (2) wrap the request using mk-connector-req
+         [req (mk-connector-req
+                (sorted-map
+                  "kind"      "KIND_SAP_HANA"
+                  "operation" "hana_execute_query"
+                  "args" (sorted-map "query" query)))])
+
+    ;; (3) wrap it into a standard event via build-event
+    (build-event entity req "store sap payment" "SAP")))

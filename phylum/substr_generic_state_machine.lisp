@@ -56,8 +56,11 @@
          (sidedb:put (mk-storage-key (get entity-doc entity-key)) entity-doc)]
 
        [storage-get (entity-id)
+          (cc:infof (sorted-map "entity-id" entity-id) "entity ID in storage-get")
          (let* ([key (mk-storage-key entity-id)]
                 [entity-doc (sidedb:get key)])
+                          (cc:infof (sorted-map "entity-doc" entity-doc) "entity doc in storage-get")
+
            (when entity-doc
              (mk-entity-instance entity-name entity-key initial-state states entity-doc)))]
 
@@ -92,6 +95,7 @@
 ;;   ('handle) -> advance one step given a connector response
 ;;
 (defun mk-entity-instance (entity-name entity-key initial-state states entity)
+  (cc:infof (sorted-map "entity-name" entity-name "entity-key" entity-key) "making entity instance")
   (labels
     ([init ()
        (when (nil? (get entity entity-key)) (assoc! entity entity-key (mk-uuid)))
@@ -120,6 +124,8 @@
     (lambda (op &rest args)
       (cond ((equal? op 'init)   (apply init args))
             ((equal? op 'handle) (apply handle args))
+            ; todo should we make this accept a key
+            ((equal? op 'entity-state) (get entity "state"))
             (:else (error 'unknown-entity-op op))))))
 
 
