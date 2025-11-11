@@ -10,9 +10,13 @@
              [originator-name (or (get resp "originator_name") "Acme Insurance Ltd.")]
              [recipient-name  (or (get resp "recipient_name") "BlueRiver Underwriting Partners")]
              [issue-date      (or (get resp "issue_date") (format-date (now) "%Y-%m-%d"))]
+             [policy-id       (or (get resp "policy_id") (get entity "policy_id"))]
              [chain-to-wf4    (normalize-bool (or (get resp "chain_to_wf4")
                                                   (get entity "chain_to_wf4"))
-                                             *wf3-chain-enabled*)])
+                                             *wf3-chain-enabled*)]
+             [chain-to-wf5    (normalize-bool (or (get resp "chain_to_wf5")
+                                                  (get entity "chain_to_wf5"))
+                                             *wf4-chain-enabled*)])
         (sorted-map
           "claim_id"        claim-id
           "amount"          amount
@@ -21,7 +25,9 @@
           "originator_name" originator-name
           "recipient_name"  recipient-name
           "issue_date"      issue-date
-          "chain_to_wf4"    chain-to-wf4))]
+          "policy_id"       policy-id
+          "chain_to_wf4"    chain-to-wf4
+          "chain_to_wf5"    chain-to-wf5))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) parsed]
      [create-events (entity parsed accessors)

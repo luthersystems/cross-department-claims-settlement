@@ -1,23 +1,39 @@
 (in-package 'sandbox)
 
+(use-package 'connector)
+
+;; Build input parameters for WF5 from a request map.
+;; Provides sensible defaults so chaining from WF4 can reuse this helper.
+(defun build-wf5-inputs (req)
+  (let* ([policy-id (or (get req "policy_id") (set-exception-business "missing policy_id"))]
+         [existing-claim-id (get req "claim_id")]
+         [new-claim (and (nil? existing-claim-id) (new-connector-object claim-manager-wf5))]
+         [claim-id (or existing-claim-id (get new-claim "claim_id"))]
+         [_ (when new-claim (claim-manager-wf5 'put (assoc new-claim "policy_id" policy-id)))]
+         [sap-overrides (or (get req "sap") (sorted-map))]
+         [sap (sorted-map
+                "payment_id"     (or (get sap-overrides "payment_id") "PAYM-002")
+                "invoice_id"     (or (get sap-overrides "invoice_id") "INV-1002")
+                "reference"      (or (get sap-overrides "reference") "Batch-Nov-01")
+                "vendor_id"      (or (get sap-overrides "vendor_id") "VEND-001")
+                "amount"         (or (get sap-overrides "amount") 2500.00)
+                "currency"       (or (get sap-overrides "currency") "USD")
+                "payment_method" (or (get sap-overrides "payment_method") "EFT")
+                "payment_date"   (or (get sap-overrides "payment_date") "2025-11-06")
+                "status"         (or (get sap-overrides "status") "PENDING"))]
+         [chain-to-wf5 (normalize-bool (get req "chain_to_wf5") true)])
+    (sorted-map
+      "claim_id"    claim-id
+      "policy_id"   policy-id
+      "sap"         sap
+      "chain_to_wf5" chain-to-wf5)))
+
 (defendpoint "upload_claim_wf5" (req)
-  (let* ([policy-id (or (get req "policy_id")
-                        (set-exception-business "missing policy_id"))]
-
-         ;; Step 1: create new object -> commits a tx (no events)
-         [claim     (new-connector-object claim-manager)]
-         [claim-id  (get claim "claim_id")]
-
-         ;; Step 2: The init state's parse expects a CH response style input
-         [chresp    (sorted-map "policy_id" policy-id)])
-
-    ;; Step 3: trigger flow
-    (trigger-connector-object claim-manager claim-id chresp)
-
-    (route-success
-      (sorted-map
-        "claim_id" claim-id
-        "state"    "CLAIM_STATE_ORACLE_RETRIEVED"))))
+  (cc:infof (sorted-map "req" req) "upload_claim_wf5 called")
+  (let* ([inputs (build-wf5-inputs req)]
+         [result (invoke-workflow claim-manager-wf5 inputs)])
+    (cc:infof (sorted-map "result" result) "upload_claim_wf5 completed")
+    (route-success (sorted-map "claim_id" (get result "claim_id")))))
 
 (defendpoint "update_payment_status_handler" (req)
   ;; req is empty/placeholder; ignore it and use transient instead
@@ -35,7 +51,7 @@
          [status      (get body "status")])
 
       ;; Validate claim exists
-      (let* ([claim (claim-manager 'get claim-id)]
+      (let* ([claim (claim-manager-wf5 'get claim-id)]
              [_     (when (nil? claim)
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
              [claim-state (claim 'entity-state)])
@@ -62,7 +78,7 @@
               ; if claim state != CLAIM_STATE_APPROVED error
 
     (trigger-connector-object 
-      claim-manager 
+      claim-manager-wf5
       claim-id 
       (sorted-map "payment_id" payment-id "status" status))
 

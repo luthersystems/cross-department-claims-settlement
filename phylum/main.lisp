@@ -39,5 +39,8 @@
 (load-file "03-workflow.lisp")
 (load-file "04-workflow.lisp")
 (load-file "04-routes.lisp")
+(load-file "05-workflow.lisp")
+(load-file "05-routes.lisp")
+; (load-file "05-state-reg.lisp")
 (load-file "workflow-reg.lisp")     ; Registers managers after handlers are defined
 

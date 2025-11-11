@@ -11,6 +11,9 @@
          [claim-id (or (get req "claim_id")
                        (get zoho-raw "reference_number")
                        (set-exception-business "missing claim_id"))]
+         [policy-id (or (get req "policy_id") "POL-8872")]
+         [chain-to-wf5 (normalize-bool (or (get req "chain_to_wf5")
+                                           (get sharepoint-raw "chain_to_wf5")) *wf4-chain-enabled*)]
          [customer-id      (or (get zoho-raw "customer_id")      (get req "customer_id")      "1234567000001")]
          [reference-number (or (get zoho-raw "reference_number") (get req "reference_number") claim-id)]
          [due-date         (or (get zoho-raw "due_date")         (get req "due_date")         (format-date (now) "%Y-%m-%d"))]
@@ -57,9 +60,11 @@
                        "caller_id"        (or (get servicenow-raw "caller_id")        (get req "caller_id")))])
     (sorted-map
       "claim_id"   claim-id
+      "policy_id"  policy-id
       "zoho"       zoho
       "sharepoint" sharepoint
-      "servicenow" servicenow)))
+      "servicenow" servicenow
+      "chain_to_wf5" chain-to-wf5)))
 
 (defendpoint "upload_claim_wf4" (req)
   (cc:infof (sorted-map "req" req) "upload_claim_wf4 called")

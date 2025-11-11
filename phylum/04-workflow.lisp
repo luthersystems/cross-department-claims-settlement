@@ -58,21 +58,28 @@
       (let* ([zoho       (or (get resp "zoho") (set-exception-business "missing zoho payload"))]
              [sharepoint (or (get resp "sharepoint") (set-exception-business "missing sharepoint payload"))]
              [servicenow (or (get resp "servicenow") (set-exception-business "missing servicenow payload"))]
-             [claim-id   (or (get resp "claim_id") (get entity "claim_id"))])
+             [claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
+             [policy-id  (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
+             [chain-to-wf5 (normalize-bool (or (get resp "chain_to_wf5")
+                                               (get entity "chain_to_wf5")) *wf4-chain-enabled*)])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
           "claim_id"   claim-id
+          "policy_id"  policy-id
           "zoho"       zoho
           "sharepoint" sharepoint
-          "servicenow" servicenow))]
+          "servicenow" servicenow
+          "chain_to_wf5" chain-to-wf5))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       (sorted-map
         "claim_id"   (get parsed "claim_id")
+        "policy_id"  (get parsed "policy_id")
         "zoho"       (get parsed "zoho")
         "sharepoint" (get parsed "sharepoint")
-        "servicenow" (get parsed "servicenow"))]
+        "servicenow" (get parsed "servicenow")
+        "chain_to_wf5" (get parsed "chain_to_wf5"))]
      [create-events (entity parsed accessors)
       (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))])
     (mk-state-handler

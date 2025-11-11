@@ -52,6 +52,7 @@
                  "reference_number" "CLAIM-8472"
                  "due_date"         "2025-11-17"
                  "is_inclusive_tax" true
+                 "currency_code"    "GBP"
                  "line_items"       (vector (sorted-map
                                              "name"     "Inter-Entity Settlement"
                                              "rate"     1250.0
@@ -68,7 +69,9 @@
                       "category"         "Finance"
                       "impact"           "2"
                       "urgency"          "2"
-                      "assignment_group" "Finance Ops")))
+                      "assignment_group" "Finance Ops")
+       "chain_to_wf4" true
+       "chain_to_wf5" true))
 
 (defun normalize-bool (value &optional default-value)
   "Best-effort boolean coercion with sensible defaults."
@@ -144,6 +147,7 @@
          [zoho-base       (or (get defaults "zoho") (sorted-map))]
          [sharepoint-base (or (get defaults "sharepoint") (sorted-map))]
          [servicenow-base (or (get defaults "servicenow") (sorted-map))]
+         [chain-to-wf5    (normalize-bool (or (get defaults "chain_to_wf5") (get entity "chain_to_wf5")) true)]
          [line-items (or (get zoho-base "line_items")
                          (vector (sorted-map
                                    "name"     "Inter-Entity Settlement"
@@ -181,14 +185,67 @@
          [chain-flag (normalize-bool (get defaults "chain_to_wf4") true)])
     (sorted-map
       "claim_id"    claim-id
+      "policy_id"   (or (get entity "policy_id") "POL-8872")
       "zoho"        zoho
       "sharepoint"  sharepoint
       "servicenow"  servicenow
-      "chain_to_wf4" chain-flag)))
+      "chain_to_wf4" chain-flag
+      "chain_to_wf5" chain-to-wf5)))
 
 (defun wf3-build-wf4-inputs (entity parsed)
   "Construct WF4 inputs, preferring configured defaults when provided."
   (wf3-derive-wf4-inputs entity parsed))
+
+;; -----------------------------------------------------------------------------
+;; WF4 → WF5 chaining (Zoho/SharePoint/ServiceNow -> SAP/NetSuite)
+;; -----------------------------------------------------------------------------
+(set '*wf4-chain-enabled* true)
+
+(set '*wf4-wf5-default-inputs*
+     (sorted-map
+       "claim_id" "CLM-4567"
+       "policy_id" "POL-8872"
+       "sap" (sorted-map
+                "payment_id"     "PAYM-1001"
+                "invoice_id"     "INV-10001"
+                "reference"      "Batch-Nov-02"
+                "vendor_id"      "VEND-001"
+                "amount"         2500.00
+                "currency"       "USD"
+                "payment_method" "EFT"
+                "payment_date"   "2025-11-07"
+                "status"         "PENDING")
+       "netsuite" (sorted-map
+                    "invoice_id" "INV-10001"
+                    "amount"     2500.00
+                    "currency"   "USD"
+                    "memo"       "Inter-entity settlement reconciliation")
+       "chain_to_wf5" true))
+
+(defun wf4-should-chain? (entity)
+  (normalize-bool (get entity "chain_to_wf5") *wf4-chain-enabled*))
+
+(defun wf4-derive-wf5-inputs (entity parsed)
+  (let* ([defaults (or *wf4-wf5-default-inputs* (sorted-map))]
+         [claim-id (or (get entity "claim_id") (get defaults "claim_id")
+                       (set-exception-business "missing claim_id for WF5 handoff"))]
+         [policy-id (or (get entity "policy_id") (get defaults "policy_id")
+                        (set-exception-business "missing policy_id for WF5 handoff"))]
+         [sap (or (get entity "sap") (get defaults "sap") (sorted-map))]
+         [netsuite (or (get entity "netsuite") (get defaults "netsuite") (sorted-map))]
+         [sap (assoc sap "invoice_id" (or (get sap "invoice_id") (get entity "zoho_invoice_id") "INV-10001"))]
+         [netsuite (assoc netsuite "invoice_id" (or (get netsuite "invoice_id") (get entity "zoho_invoice_id") "INV-10001"))]
+         [netsuite (assoc netsuite "amount" (or (get netsuite "amount") (get entity "zoho_invoice_total") 2500.00))]
+         [chain-flag (normalize-bool (or (get entity "chain_to_wf5") (get defaults "chain_to_wf5")) *wf4-chain-enabled*)])
+    (sorted-map
+      "claim_id"    claim-id
+      "policy_id"   policy-id
+      "sap"         sap
+      "netsuite"    netsuite
+      "chain_to_wf5" chain-flag)))
+
+(defun wf4-build-wf5-inputs (entity parsed)
+  (wf4-derive-wf5-inputs entity parsed))
 
 (defun wf2-should-chain? (entity)
   "Determine whether WF2 should hand off to WF3 for the given entity."
@@ -211,6 +268,7 @@
          [issue-date (or (get entity "issue_date") (format-date (now) "%Y-%m-%d"))])
     (sorted-map
       "claim_id"        claim-id
+      "policy_id"       (or (get entity "policy_id") claim-id)
       "invoice_amount"  invoice-amount
       "signer_name"     signer-name
       "signer_email"    signer-email
@@ -227,6 +285,10 @@
 (defun set-wf1-chain-enabled! (flag)
   "Update the global WF1 chaining toggle at runtime."
   (set '*wf1-chain-enabled* (normalize-bool flag *wf1-chain-enabled*)))
+
+(defun set-wf4-chain-enabled! (flag)
+  "Update the global WF4 chaining toggle at runtime."
+  (set '*wf4-chain-enabled* (normalize-bool flag *wf4-chain-enabled*)))
 
 (defun set-wf3-chain-enabled! (flag)
   "Update the global WF3 chaining toggle at runtime."

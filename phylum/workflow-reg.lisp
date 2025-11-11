@@ -45,6 +45,13 @@
     "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)
     "WF4_CLAIM_STATE_DONE"                          (wf4-claim-done-state-handler)))
 
+(set 'state-spec-wf5
+  (sorted-map
+    "WF5_CLAIM_STATE_INIT"              (wf5-claim-init-state-handler)
+    "WF5_CLAIM_STATE_AWAITING_APPROVAL" (wf5-claim-awaiting-approval-handler)
+    "WF5_CLAIM_STATE_SAP_PAID"          (wf5-claim-sap-paid-handler)
+    "WF5_CLAIM_STATE_DONE"              (wf5-claim-done-state-handler)))
+
 ;; Completion hook for WF2: decide whether to chain and trigger WF3 as needed.
 (set 'wf2-completion-hook
      (lambda (entity-name entity state parsed)
@@ -109,7 +116,26 @@
        (cc:infof (sorted-map "entity-name" entity-name
                               "claim_id" (get entity "claim_id")
                               "state" state)
-                 "WF4 flow complete")))
+                 "WF4 flow complete")
+       (let* ([chain-enabled (wf4-should-chain? entity)])
+         (if (not chain-enabled)
+             (cc:infof (sorted-map "entity-name" entity-name
+                                    "claim_id" (get entity "claim_id"))
+                       "WF4 chaining disabled; skipping WF5 trigger")
+             (let* ([wf5-inputs (wf4-build-wf5-inputs entity parsed)]
+                    [result (invoke-workflow claim-manager-wf5 wf5-inputs)])
+               (cc:infof (sorted-map
+                           "wf4_claim_id" (get entity "claim_id")
+                           "wf5_claim_id" (get result "claim_id")
+                           "wf5_state" (get result "state"))
+                         "WF4 chained to WF5"))))))
+
+(set 'wf5-completion-hook
+     (lambda (entity-name entity state parsed)
+       (cc:infof (sorted-map "entity-name" entity-name
+                              "claim_id" (get entity "claim_id")
+                              "state" state)
+                 "WF5 flow complete")))
 
 ;; Define WF3 manager first so it's available when WF2/F1 completion hooks reference it
 (set 'claim-manager-wf3
@@ -196,6 +222,28 @@
         "workflow" workflow-name
         "claim_id" (get entity "claim_id"))
       "Zoho/ServiceNow workflow completed!")))
+
+;; Define WF4 manager last to absorb chained traffic from WF3
+(set 'claim-manager-wf5
+     (singleton (mk-entity-manager
+                  "claim_wf5"
+                  "claim_id"
+                  "WF5_CLAIM_STATE_INIT"
+                  state-spec-wf5
+                  "WF5_CLAIM_STATE_DONE"
+                  wf5-completion-hook)))
+
+(register-connector-factory claim-manager-wf5)
+(register-workflow "wf5" claim-manager-wf5)
+
+(register-workflow-completion-listener
+  "wf5"
+  (lambda (workflow-name entity)
+    (cc:infof
+      (sorted-map
+        "workflow" workflow-name
+        "claim_id" (get entity "claim_id"))
+      "SAP/NetSuite workflow completed!")))
 
 ; AS IS: an event is raised for a state transition. The connetorhub routes the
 ; event to the correct manager based on the event type. When we create the event

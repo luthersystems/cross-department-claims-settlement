@@ -1,71 +1,118 @@
 
-;; =============================
-;; 1) INIT -> MYSQL_RETRIEVED
-;; Retrieve cross‑dept claim from Oracle
-;; =============================
+(in-package 'sandbox)
 
-(defun claim-init-state-handler ()
+;; -----------------------------------------------------------------------------
+;; Helper constructors and parsers for Workflow 5 (SAP payment acknowledgement)
+;; -----------------------------------------------------------------------------
+
+(defun wf5-mk-sap-store-payment-event (entity sap-payload)
+  (let* ([payment-id   (or (get sap-payload "payment_id") "PAYM-002")]
+         [invoice-id   (or (get sap-payload "invoice_id") "INV-1002")]
+         [reference    (or (get sap-payload "reference") "Batch-Nov-01")]
+         [vendor-id    (or (get sap-payload "vendor_id") "VEND-001")]
+         [amount       (or (get sap-payload "amount") 2500.00)]
+         [currency     (or (get sap-payload "currency") "USD")]
+         [method       (or (get sap-payload "payment_method") "EFT")]
+         [payment-date (or (get sap-payload "payment_date") "2025-11-06")]
+         [status       (or (get sap-payload "status") "PENDING")]
+         [query (format-string
+                  "INSERT INTO PAYMENTS_STAGING (PAYMENT_ID, INVOICE_ID, REFERENCE, VENDOR_ID, AMOUNT, CURRENCY, PAYMENT_METHOD, PAYMENT_DATE, STATUS) VALUES ('{}', '{}', '{}', '{}', {}, '{}', '{}', '{}', '{}');"
+                  payment-id invoice-id reference vendor-id amount currency method payment-date status)]
+         [req (mk-connector-req
+                (sorted-map
+                  "kind" "KIND_SAP_HANA"
+                  "operation" "hana_execute_query"
+                  "args" (sorted-map "query" query)))])
+    (build-event entity req "store sap payment" "SAP")))
+
+(defun wf5-parse-sap-payment (resp)
+  (let* ([parsed (parse-generic-resp resp)]
+         [payment (or (get parsed "payment") parsed)])
+    (sorted-map
+      "transaction_id" (or (get payment "transaction_id") "SAP-TXN-1001")
+      "amount"         (or (get payment "amount") 2500.00)
+      "posting_ref"    (or (get payment "posting_ref") "SAP-POST-REF")
+      "status"         (or (get payment "status") "posted"))))
+
+;; -----------------------------------------------------------------------------
+;; State handlers (WF5 ends after SAP payment acknowledgement)
+;; -----------------------------------------------------------------------------
+
+(defun wf5-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ; resp is ch resp
-      ; entity is the entity object e.g. claim in this case.
-      ; we essentially just parse the incoming request here.
-      (let* ([policy-id (or (get entity "policy_id") (get resp "policy_id"))])
+      (let* ([claim-id  (or (get resp "claim_id") (get entity "claim_id"))]
+             [policy-id (or (get resp "policy_id") (get entity "policy_id")
+                             (set-exception-business "missing policy_id"))]
+             [sap       (or (get resp "sap") (sorted-map))])
+        (when (nil? claim-id)
+          (set-exception-business "missing claim_id"))
         (sorted-map
-          "policy_id" policy-id))]
-
-    ; example of staging ephemeral data until pre-defined state. This can be
-    ; accessed in later stages using (accessors 'get-ephem <key>). It should be
-    ; a vector of entries. parsed is the sorted map from parse step
+          "claim_id"  claim-id
+          "policy_id" policy-id
+          "sap"       sap
+          "chain_to_wf5" (normalize-bool (get resp "chain_to_wf5") true)))]
      [stage-ephemeral (entity parsed accessors) (vector)]
-
-    ; example of staging ephemeral data. This is what is sent to 'put to persist
-    ; the entity in general. It should be a map of entries
      [stage-durable (entity parsed accessors)
       (sorted-map
-        "policy_id" (get parsed "policy_id"))]
-    
-    ; then we create our events to pair with the 'put we created in "stage durable"
-      [create-events (entity parsed accessors)
+        "claim_id"  (get parsed "claim_id")
+        "policy_id" (get parsed "policy_id")
+        "sap"       (get parsed "sap")
+        "chain_to_wf5" (get parsed "chain_to_wf5"))]
+     [create-events (entity parsed accessors)
       (vector)])
-
-
     (mk-state-handler
-      :next            "CLAIM_STATE_AWAITING_APPROVAL"
+      :next            "WF5_CLAIM_STATE_AWAITING_APPROVAL"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun claim-state-awaiting-approval-handler ()
+(defun wf5-claim-awaiting-approval-handler ()
   (labels
-    ;; assumes approved
     ([parse (resp entity) resp]
      [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors) parsed]
-     [create-events (entity parsed accessors) (mk-sap-store-payment-event entity)])
-  (mk-state-handler
-    :next            "CLAIM_STATE_APPROVED"
-    :parse           parse
-    :stage-ephemeral stage-ephemeral
-    :stage-durable   stage-durable
-    :create-events   create-events)))
+     [stage-durable (entity parsed accessors) (or parsed (sorted-map))]
+     [create-events (entity parsed accessors)
+      (vector (wf5-mk-sap-store-payment-event entity
+                 (or (get entity "sap") (sorted-map))))])
+    (mk-state-handler
+      :next            "WF5_CLAIM_STATE_SAP_PAID"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
-
-(defun claim-state-approved-handler ()
+(defun wf5-claim-sap-paid-handler ()
   (labels
-    ([parse (resp entity) (
-      (cc:infof (sorted-map "resp" resp "entity" entity) "i have made it")  resp)]
+    ([parse (resp entity) (wf5-parse-sap-payment resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (sorted-map "sn_state" (get parsed "state") "loop" 14)]
-     [create-events (entity parsed accessors)])
-  (mk-state-handler
-    :next            "CLAIM_STATE_SAP_PAID"
-    :parse           parse
-    :stage-ephemeral stage-ephemeral
-    :stage-durable   stage-durable
-    :create-events   create-events)))
+      (sorted-map
+        "sap_payment_txn_id" (get parsed "transaction_id")
+        "sap_paid_amount"    (get parsed "amount")
+        "sap_posting_ref"    (get parsed "posting_ref")
+        "sap_status"         (get parsed "status"))]
+     [create-events (entity parsed accessors) (vector)])
+    (mk-state-handler
+      :next            "WF5_CLAIM_STATE_DONE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
+
+(defun wf5-claim-done-state-handler ()
+  (labels
+    ([parse (resp entity) (if (nil? resp) (sorted-map) (parse-generic-resp resp))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-durable (entity parsed accessors) ()]
+     [create-events (entity parsed accessors) ()])
+    (mk-state-handler
+      :next            "WF5_CLAIM_STATE_DONE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
 
 ;; =============================
@@ -180,36 +227,3 @@
     "sys" sys-name
     "eng" action
     "req" req))
-
-    ;; SAP HANA: store payment event
-(defun mk-sap-store-payment-event (entity)
-  ;; optional dev log
-  (cc:infof (sorted-map "entity" entity) "mk-sap-store-payment-event: entity")
-
-  ;; (1) construct the SQL INSERT statement
-  ;; for now we’ll use hardcoded fields, but you can expand with values from entity/args
-  (let* ([payment-id   (or (get entity "payment_id") "PAYM-002")]
-         [invoice-id   (or (get entity "invoice_id") "INV-1002")]
-         [reference    (or (get entity "reference") "Batch-Nov-01")]
-         [vendor-id    (or (get entity "vendor_id") "VEND-001")]
-         [amount       (or (get entity "amount") 2500.00)]
-         [currency     (or (get entity "currency") "USD")]
-         [method       (or (get entity "payment_method") "EFT")]
-         [payment-date (or (get entity "payment_date") "2025-11-06")]
-         [status       (or (get entity "status") "PENDING")]
-
-         [query (format-string
-           "INSERT INTO PAYMENTS_STAGING (PAYMENT_ID, INVOICE_ID, REFERENCE, VENDOR_ID, AMOUNT, CURRENCY, PAYMENT_METHOD, PAYMENT_DATE, STATUS) VALUES ('{}', '{}', '{}', '{}', {}, '{}', '{}', '{}', '{}');"
-            payment-id invoice-id reference vendor-id amount currency method payment-date status)]
-
-; (cc:infof (sorted-map "query" query) "mk-sap-store-payment-event: query")
-
-         ;; (2) wrap the request using mk-connector-req
-         [req (mk-connector-req
-                (sorted-map
-                  "kind"      "KIND_SAP_HANA"
-                  "operation" "hana_execute_query"
-                  "args" (sorted-map "query" query)))])
-
-    ;; (3) wrap it into a standard event via build-event
-    (build-event entity req "store sap payment" "SAP")))
