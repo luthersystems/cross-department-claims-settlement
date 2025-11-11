@@ -41,11 +41,25 @@
 ;;   ('get  <id>)            -> entity-instance | ()
 ;;   ('put  <entity-map>)    -> ()
 ;;   ('del  <id>)            -> ()
+;;   ('final-state)          -> final-state | nil
 ;;
-(defun mk-entity-manager (entity-name entity-key initial-state states)
+;; Parameters:
+;;   entity-name: Name of the entity type (e.g., "claim_wf2")
+;;   entity-key: Primary key field name (e.g., "claim_id")
+;;   initial-state: Starting state for new entities
+;;   states: Map of state-name -> state-handler
+;;   final-state: (optional) Terminal state that triggers completion hooks
+;;   completion-hook: (optional) Function called when workflow reaches final-state
+;;                    Signature: (completion-hook entity-name entity state parsed)
+;;                    - entity-name: Name of the entity type
+;;                    - entity: The completed entity
+;;                    - state: The final state that was reached
+;;                    - parsed: The parsed response that triggered the completion
+(defun mk-entity-manager (entity-name entity-key initial-state states &optional final-state completion-hook)
   (lambda ()
     (labels
       ([name () entity-name]
+       [final-state-hook () final-state]
 
        ;; Key in PDC: "sandbox:<entity-name>:<entity-id>"
        [mk-storage-key (entity-id)
@@ -63,7 +77,7 @@
                           (cc:infof (sorted-map "entity-doc" entity-doc) "entity doc in storage-get")
 
            (when entity-doc
-             (mk-entity-instance entity-name entity-key initial-state states entity-doc)))]
+             (mk-entity-instance entity-name entity-key initial-state states final-state completion-hook entity-doc)))]
 
        [storage-del (entity-id)
          (sidedb:purge (mk-storage-key entity-id))]
@@ -71,7 +85,7 @@
        ;; constructor
        [new-instance ()
          (let* ([doc      (sorted-map entity-key (mk-uuid))]
-                [instance (mk-entity-instance entity-name entity-key initial-state states doc)])
+                [instance (mk-entity-instance entity-name entity-key initial-state states final-state completion-hook doc)])
            (instance 'init))]
            
       [ephemeral-get (entity-id ekey)
@@ -79,6 +93,7 @@
 
       (lambda (op &rest args)
         (cond ((equal? op 'name) (apply name args))
+              ((equal? op 'final-state) (apply final-state-hook args))
               ((equal? op 'new)  (apply new-instance args))
               ((equal? op 'get)  (apply storage-get args))
               ((equal? op 'del)  (apply storage-del args))
@@ -95,7 +110,7 @@
 ;;   ('init)   -> { "put": entity, "events": [] }
 ;;   ('handle) -> advance one step given a connector response
 ;;
-(defun mk-entity-instance (entity-name entity-key initial-state states entity)
+(defun mk-entity-instance (entity-name entity-key initial-state states final-state completion-hook entity)
   (cc:infof (sorted-map "entity-name" entity-name "entity-key" entity-key) "making entity instance")
   (labels
     ([init ()
@@ -119,7 +134,7 @@
                   current-state required-state)))
       ;; Proceed with FSM transition
       ; step 2 run invoked here with
-      (run-state-step entity-name entity-key entity resp states))])
+      (run-state-step entity-name entity-key entity resp states final-state completion-hook))])
 
 
     (lambda (op &rest args)
@@ -133,7 +148,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Step runner (no process-local ephemeral; uses staged ephemerals API)
 ;; -----------------------------------------------------------------------------
-(defun run-state-step (entity-name entity-key instance resp states)
+(defun run-state-step (entity-name entity-key instance resp states &optional final-state completion-hook)
   (let* ([state   (get instance "state")]
          [spec    (lookup-state-spec state states)]
 
@@ -177,6 +192,13 @@
 
     ;; advance state on the durable entity
     (assoc! durable-entity "state" next-state)
+
+    ;; Call completion hook if we've reached the final state
+    (when (and entity-id final-state (equal? next-state final-state))
+      (when completion-hook
+        (completion-hook entity-name durable-entity next-state parsed))
+      ;; Also call the global completion notification system
+      (notify-workflow-completion-by-entity-name entity-name durable-entity))
 
     ;; purge ephemerals scheduled for the state we just entered
     (when entity-id

@@ -130,7 +130,11 @@
       (sorted-map
         "approval_status" (get parsed "approval_status")
         "approval_confirmation" (get parsed "confirmation"))]
-     [create-events (entity parsed accessors) (vector)])
+     [create-events (entity parsed accessors)
+      ;; Hand off to the next workflow in the chain (if registered)
+      ;; This is async - the next workflow is triggered immediately
+      (handoff-to-next "wf2" entity parsed)
+      (vector)])
     (mk-state-handler
       :next            "CLAIM_STATE_DONE"  ; WF2 is done after handoff
       :parse           parse
