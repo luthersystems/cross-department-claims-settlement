@@ -4,7 +4,8 @@
       ;; resp can be empty; we drive off entity.claim_id/policy_id
       ;; Also capture optional fields for workflow 3 chaining
       (let* ([claim-id  (or (get entity "claim_id")  (get resp "guidewire_claim_id"))]
-             [policy-id (or (get entity "policy_id") (get resp "policy_id"))])
+             [policy-id (or (get entity "policy_id") (get resp "policy_id"))]
+             [chain-flag (normalize-bool (get resp "chain_to_wf3") *wf2-chain-enabled*)])
         (sorted-map
           "guidewire_claim_id"  claim-id
           "policy_id"           policy-id
@@ -14,7 +15,8 @@
           "signer_name"         (get resp "signer_name")
           "originator_name"     (get resp "originator_name")
           "recipient_name"      (get resp "recipient_name")
-          "issue_date"          (get resp "issue_date")))]
+          "issue_date"          (get resp "issue_date")
+          "chain_to_wf3"        chain-flag))]
 
      [stage-ephemeral (entity parsed accessors) ()]
 
@@ -28,7 +30,8 @@
         "signer_name"         (get parsed "signer_name")
         "originator_name"     (get parsed "originator_name")
         "recipient_name"      (get parsed "recipient_name")
-        "issue_date"          (get parsed "issue_date"))]
+        "issue_date"          (get parsed "issue_date")
+        "chain_to_wf3"        (get parsed "chain_to_wf3"))]
 
      [create-events (entity parsed accessors)
       (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id")))])

@@ -54,6 +54,26 @@
         "claim_id" (get entity "claim_id"))
       "Invoice workflow completed!")))
 
+;; Completion hook for WF2: decide whether to chain and trigger WF3 as needed.
+(set 'wf2-completion-hook
+     (lambda (entity-name entity state parsed)
+       (cc:infof (sorted-map "entity-name" entity-name
+                              "claim_id" (get entity "claim_id")
+                              "state" state)
+                 "WF2 flow complete")
+       (let* ([chain-enabled (wf2-should-chain? entity)])
+         (if (not chain-enabled)
+             (cc:infof (sorted-map "entity-name" entity-name
+                                    "claim_id" (get entity "claim_id"))
+                       "WF2 chaining disabled; skipping WF3 trigger")
+             (let* ([wf3-inputs (wf2-build-wf3-inputs entity parsed)]
+                    [result (invoke-workflow claim-manager-wf3 wf3-inputs)])
+               (cc:infof (sorted-map
+                           "wf2_claim_id" (get entity "claim_id")
+                           "wf3_claim_id" (get result "claim_id")
+                           "wf3_state" (get result "state"))
+                         "WF2 chained to WF3"))))))
+
 ;; Define WF2 manager after WF3 so claim-manager-wf3 is available in the completion hook
 (set 'claim-manager-wf2
      (singleton (mk-entity-manager
@@ -62,21 +82,7 @@
                   "WF2_CLAIM_STATE_INIT" ;; initial state
                   state-spec-wf2
                   "WF2_CLAIM_STATE_DONE"  ;; final state - triggers completion hooks
-                  (lambda (entity-name entity state parsed)
-                    (cc:infof (sorted-map "entity-name" entity-name "claim_id" (get entity "claim_id") "state" state)
-                              "Flow complete!")
-                    ;; Trigger workflow 3 after WF2 completes
-                    (let* ([wf3-inputs (sorted-map
-                                         "claim_id"        "CLM-4567"
-                                         "invoice_amount"  "20000.00"
-                                         "signer_name"     "Jack Clarke"
-                                         "signer_email"    "jack.clarke@luthersystems.com"
-                                         "originator_name" "Acme Insurance Ltd."
-                                         "recipient_name"  "BlueRiver Underwriting Partners"
-                                         "issue_date"      "2025-11-05")]
-                           [result (invoke-workflow claim-manager-wf3 wf3-inputs)])
-                      (cc:infof (sorted-map "wf3_claim_id" (get result "claim_id") "wf3_state" (get result "state"))
-                                "Workflow 3 triggered from WF2 completion"))))))
+                  wf2-completion-hook)))
 
 (register-connector-factory claim-manager-wf2)
 
