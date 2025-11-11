@@ -1,4 +1,4 @@
-(defun claim-init-state-handler ()
+(defun wf2-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
       ;; resp can be empty; we drive off entity.claim_id/policy_id
@@ -12,7 +12,7 @@
           "signer_email"        (get resp "signer_email")
           "invoice_amount"      (get resp "invoice_amount")
           "signer_name"         (get resp "signer_name")
-          "originator_name"    (get resp "originator_name")
+          "originator_name"     (get resp "originator_name")
           "recipient_name"      (get resp "recipient_name")
           "issue_date"          (get resp "issue_date")))]
 
@@ -34,7 +34,7 @@
       (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id")))])
 
     (mk-state-handler
-      :next            "CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED"
+      :next            "WF2_CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
@@ -44,7 +44,7 @@
 ;; 5) GUIDEWIRE_SNAPSHOTTED -> MYSQL_VALIDATED
 ;; MySQL policy check (may run in parallel with SharePoint docs fetch)
 ;; =============================
-(defun claim-guidewire-snapshotted-state-handler ()
+(defun wf2-claim-guidewire-snapshotted-state-handler ()
   (labels
     ([parse (resp entity) (parse-guidewire-claim (parse-generic-resp resp))] ; create
      [stage-ephemeral (entity parsed accessors) ()]
@@ -56,7 +56,7 @@
                 (sorted-map "policy_id" (get entity "policy_id")
                             "claim_id"  (get entity "claim_id"))))])
   (mk-state-handler
-    :next            "CLAIM_STATE_MYSQL_VALIDATED"
+    :next            "WF2_CLAIM_STATE_MYSQL_VALIDATED"
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
@@ -67,7 +67,7 @@
 ;; 6) MYSQL_VALIDATED -> SP_DOCS_COLLECTED
 ;; SharePoint: collect supporting docs
 ;; =============================
-(defun claim-mysql-validated-state-handler ()
+(defun wf2-claim-mysql-validated-state-handler ()
   (labels
     ([parse (resp entity) 
       (cc:infof (sorted-map "resp" resp) "parse mysql resp")
@@ -88,7 +88,7 @@
         "item_id"  "01RAAXWAZH6LCSA5FLHRE2QJXBSIVDOGV4"
         "filename" "id-verification.txt")))])
   (mk-state-handler
-    :next            "CLAIM_STATE_SP_DOCS_COLLECTED"
+    :next            "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
@@ -99,7 +99,7 @@
 ;; 7) SP_DOCS_COLLECTED -> GUIDEWIRE_APPROVED
 ;; Update/sync approval in Guidewire
 ;; =============================
-(defun claim-sp-docs-collected-state-handler ()
+(defun wf2-claim-sp-docs-collected-state-handler ()
   (labels
     ([parse (resp entity) (parse-sharepoint-docs resp)] ; create
      [stage-ephemeral (entity parsed accessors) ()]
@@ -110,7 +110,7 @@
                              "approval" "approved"
                              "approved_by" (get entity "handler"))))] )
   (mk-state-handler
-    :next            "CLAIM_STATE_GUIDEWIRE_APPROVED"
+    :next            "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
@@ -122,7 +122,7 @@
 ;; 8) GUIDEWIRE_APPROVED -> (handoff to WF3)
 ;; After Guidewire approval, hand off to workflow 3 (invoice generation)
 ;; =============================
-(defun claim-guidewire-approved-state-handler ()
+(defun wf2-claim-guidewire-approved-state-handler ()
   (labels
     ([parse (resp entity) (parse-guidewire-approval-update resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -131,32 +131,14 @@
         "approval_status" (get parsed "approval_status")
         "approval_confirmation" (get parsed "confirmation"))]
      [create-events (entity parsed accessors)
-      ;; Hand off to the next workflow in the chain (if registered)
-      ;; This is async - the next workflow is triggered immediately
-      (handoff-to-next "wf2" entity parsed)
       (vector)])
     (mk-state-handler
-      :next            "CLAIM_STATE_DONE"  ; WF2 is done after handoff
+      :next            "WF2_CLAIM_STATE_DONE"  ; WF2 is done after handoff
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-
-(defun claim-done-state-handler ()
-  (labels
-    ;; parse generic response (also checks for errors)
-    ([parse (resp entity) (parse-generic-resp resp)]
-
-     ;; nothing to stage here
-     [stage-ephemeral (entity parsed accessors) (vector)]
-
-     ;; store reference to oracle claim
-     [stage-durable (entity parsed accessors) ()]
-
-
-     ;; no further events
-     [create-events (entity parsed accessors) ()])))
 
 (defun mk-guidewire-get-claim-event (entity claim-id)
   (let* ([req (mk-connector-req
@@ -245,6 +227,22 @@
   (sorted-map
     "approval_status" (get resp "status")
     "confirmation"    (get resp "message")))
+
+;; =============================
+;; 9) DONE (terminal state)
+;; =============================
+(defun wf2-claim-done-state-handler ()
+  (labels
+    ([parse (resp entity) (parse-generic-resp resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-durable (entity parsed accessors) ()]
+     [create-events (entity parsed accessors) ()])
+    (mk-state-handler
+      :next            "WF2_CLAIM_STATE_DONE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
 (defun build-event (entity req action sys-name)
   (cc:infof (sorted-map "event" (sorted-map

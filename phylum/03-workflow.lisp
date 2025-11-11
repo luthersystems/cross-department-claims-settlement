@@ -152,7 +152,7 @@
     (or j (sorted-map "status" "OK"))))
 
 ;; 1) INIT → ESIG_CREATED
-(defun invoice-init-state-handler ()
+(defun wf3-invoice-init-state-handler ()
   (labels
     ([parse (resp entity)
       ;; pull everything from request entity
@@ -176,12 +176,12 @@
      [create-events (entity parsed accessors)
       (vector (mk-esignature-create-contract-event parsed))])
     (mk-state-handler
-      :next "CLAIM_STATE_INVOICE_ESIG_CREATED"
+      :next "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable :create-events create-events)))
 
 ;; 2) ESIG_CREATED → SF_SYNCED
-(defun invoice-esig-created-state-handler ()
+(defun wf3-invoice-esig-created-state-handler ()
   (labels
     ([parse (resp entity) (parse-esignature-create-contract resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -198,12 +198,12 @@
                   "contract_id"   (get parsed "contract_id")
                   "sign_page_url" (get parsed "sign_page_url"))))])
     (mk-state-handler
-      :next "CLAIM_STATE_INVOICE_SF_SYNCED"
+      :next "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable :create-events create-events)))
 
 ;; 3) SF_SYNCED → EMAIL_DISPATCHED
-(defun invoice-sf-synced-state-handler ()
+(defun wf3-invoice-sf-synced-state-handler ()
   (labels
     ([parse (resp entity) (parse-salesforce-create-record resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -214,21 +214,22 @@
                 entity
                 (sorted-map "sf_record_id" (get parsed "sf_record_id"))))])
     (mk-state-handler
-      :next "CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"
+      :next "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable :create-events create-events)))
 
 ;; 4) EMAIL_DISPATCHED → DONE
-(defun invoice-email-dispatched-state-handler ()
+(defun wf3-invoice-email-dispatched-state-handler ()
   (labels
     ([parse (resp entity) (parse-smtp-send resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (sorted-map "email_dispatched" true)]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next "CLAIM_STATE_WF3_DONE"
+      :next "WF3_CLAIM_STATE_DONE"
       :parse parse :stage-ephemeral stage-ephemeral
-      :stage-durable stage-durable :create-events create-events)))
+      :stage-durable stage-durable 
+      :create-events create-events)))
 
 (defun build-event (entity req action sys-name)
   (cc:infof (sorted-map "event" (sorted-map
@@ -297,17 +298,15 @@
     (build-event entity req "dispatch invoice email" "EMAIL")))
 
 
-(defun claim-done-state-handler ()
+(defun wf3-claim-done-state-handler ()
   (labels
-    ;; parse generic response (also checks for errors)
     ([parse (resp entity) (parse-generic-resp resp)]
-
-     ;; nothing to stage here
      [stage-ephemeral (entity parsed accessors) (vector)]
-
-     ;; store reference to oracle claim
      [stage-durable (entity parsed accessors) ()]
-
-
-     ;; no further events
-     [create-events (entity parsed accessors) ()])))
+     [create-events (entity parsed accessors) ()])
+    (mk-state-handler
+      :next            "WF3_CLAIM_STATE_DONE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
