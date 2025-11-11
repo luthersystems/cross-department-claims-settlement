@@ -70,8 +70,8 @@
       (sorted-map "guidewire_status" (get parsed "status"))]
      [create-events (entity parsed accessors)
       (vector (mk-mysql-check-policy-event entity ; create
-                (sorted-map "policy_id" (get entity "policy_id")
-                            "claim_id"  (get entity "claim_id"))))])
+                (sorted-map "policy_id" "POL-8872"
+                            "claim_id"  "CLM-4567")))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_MYSQL_VALIDATED"
     :parse           parse

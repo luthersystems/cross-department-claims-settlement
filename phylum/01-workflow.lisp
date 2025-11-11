@@ -158,7 +158,7 @@
                 (get validation "reason"))))))])
 
     (mk-state-handler
-      :next            "CLAIM_STATE_DONE"
+      :next            "WF1_CLAIM_STATE_DONE"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
@@ -185,7 +185,7 @@
      [create-events (entity parsed accessors) ()])
 
   (mk-state-handler
-    :next            "CLAIM_STATE_DONE"
+    :next            "WF1_CLAIM_STATE_DONE"
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
