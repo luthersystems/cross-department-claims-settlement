@@ -2,18 +2,33 @@
   (labels
     ([parse (resp entity)
       ;; resp can be empty; we drive off entity.claim_id/policy_id
+      ;; Also capture optional fields for workflow 3 chaining
       (let* ([claim-id  (or (get entity "claim_id")  (get resp "guidewire_claim_id"))]
              [policy-id (or (get entity "policy_id") (get resp "policy_id"))])
         (sorted-map
           "guidewire_claim_id"  claim-id
-          "policy_id" policy-id))]
+          "policy_id"           policy-id
+          ;; Pass through optional fields for WF3
+          "signer_email"        (get resp "signer_email")
+          "invoice_amount"      (get resp "invoice_amount")
+          "signer_name"         (get resp "signer_name")
+          "originator_name"    (get resp "originator_name")
+          "recipient_name"      (get resp "recipient_name")
+          "issue_date"          (get resp "issue_date")))]
 
      [stage-ephemeral (entity parsed accessors) ()]
 
      [stage-durable (entity parsed accessors)
+      ;; Store all fields including optional ones for WF3
       (sorted-map
         "guidewire_claim_id"  (get parsed "claim_id")
-        "policy_id"           (get parsed "policy_id"))]
+        "policy_id"           (get parsed "policy_id")
+        "signer_email"        (get parsed "signer_email")
+        "invoice_amount"      (get parsed "invoice_amount")
+        "signer_name"         (get parsed "signer_name")
+        "originator_name"     (get parsed "originator_name")
+        "recipient_name"      (get parsed "recipient_name")
+        "issue_date"          (get parsed "issue_date"))]
 
      [create-events (entity parsed accessors)
       (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id")))])
@@ -102,6 +117,35 @@
     :create-events   create-events)))
 
 ;;;; guidewire (start)
+
+;; =============================
+;; 8) GUIDEWIRE_APPROVED -> (handoff to WF3)
+;; After Guidewire approval, hand off to workflow 3 (invoice generation)
+;; =============================
+(defun claim-guidewire-approved-state-handler ()
+  (labels
+    ([parse (resp entity) (parse-guidewire-approval-update resp)]
+     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-durable (entity parsed accessors)
+      (sorted-map
+        "approval_status" (get parsed "approval_status")
+        "approval_confirmation" (get parsed "confirmation"))]
+     [create-events (entity parsed accessors)
+      ;; Hand off to workflow 3 (invoice generation)
+      ;; The handoff function will create the next workflow object and trigger it
+      (let* ([next-claim-id (handoff-to-next "wf2" entity parsed)])
+        (cc:infof
+          (sorted-map
+            "wf2_claim_id" (get entity "claim_id")
+            "wf3_claim_id" next-claim-id)
+          "Handed off from WF2 to WF3")
+        (vector))])  ; No external events, handoff is internal
+    (mk-state-handler
+      :next            "CLAIM_STATE_DONE"  ; WF2 is done after handoff
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
 
 (defun claim-done-state-handler ()

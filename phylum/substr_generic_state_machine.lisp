@@ -118,7 +118,7 @@
                   current-state required-state)))
       ;; Proceed with FSM transition
       ; step 2 run invoked here with
-      (run-state-step entity-name entity-key entity resp))])
+      (run-state-step entity-name entity-key entity resp states))])
 
 
     (lambda (op &rest args)
@@ -132,9 +132,9 @@
 ;; -----------------------------------------------------------------------------
 ;; Step runner (no process-local ephemeral; uses staged ephemerals API)
 ;; -----------------------------------------------------------------------------
-(defun run-state-step (entity-name entity-key instance resp)
+(defun run-state-step (entity-name entity-key instance resp states)
   (let* ([state   (get instance "state")]
-         [spec    (lookup-state-spec state)]
+         [spec    (lookup-state-spec state states)]
 
          ;; 1) parse
          [parsed  ((spec-parse spec) resp instance)]
@@ -172,7 +172,7 @@
 
     ;; persist staged ephemerals for the default drop-state = next-state
     (when (and entity-id (> (length staged-ephemeral) 0))
-      (ephem-persist-staged! entity-name entity-id next-state staged-ephemeral))
+      (ephem-persist-staged! entity-name entity-id next-state staged-ephemeral states))
 
     ;; advance state on the durable entity
     (assoc! durable-entity "state" next-state)
@@ -211,8 +211,9 @@
 (defun _noop-create-events (entity parsed accessors) (vector))
 
 ;; registry / lookup
-(defun lookup-state-spec (state)
-  (or (get state-spec state) (sorted-map)))
+;; states parameter is the state spec map passed from the entity manager
+(defun lookup-state-spec (state states)
+  (or (get states state) (sorted-map)))
 
 ;; accessors (with fallbacks)
 (defun spec-next (spec)              (or (get spec :next) "STATE_UNKNOWN"))

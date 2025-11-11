@@ -38,7 +38,7 @@
 
 ;; Persist a vector of intents returned by stage-ephemeral
 ;; Each intent: {:key <string> :value <any> [:drop-state <string>]}
-(defun ephem-persist-staged! (entity-name entity-id default-drop-state intents)
+(defun ephem-persist-staged! (entity-name entity-id default-drop-state intents states)
   (map ()
     (lambda (it)
       (let* ([ekey (get it :key)]
@@ -48,7 +48,7 @@
              [bucket (or (sidedb:get bkey) (sorted-map))])
 
         ;; Validate the drop-state before persisting
-        (validate-state-exists! ds)
+        (validate-state-exists! ds states)
 
         ;; write bucket first
         (assoc! bucket ekey eval)
@@ -85,8 +85,8 @@
 
   (sorted-map "ok" true))
   
-  (defun validate-state-exists! (state)
-  (when (or (nil? state) (empty? (lookup-state-spec state)))
+  (defun validate-state-exists! (state states)
+  (when (or (nil? state) (empty? (lookup-state-spec state states)))
     (set-exception-unexpected
       (format-string "invalid or missing state name: {}" state))))
 

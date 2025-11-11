@@ -11,7 +11,7 @@
          [issue-date      (or (get req "issue_date")      "2025-11-05")]
 
          ;; create entity
-         [claim     (new-connector-object claim-manager)]
+         [claim     (new-connector-object claim-manager-wf3)]
          [claim-id  (get claim "claim_id")]
 
          ;; feed init state's parser with CH-style map
@@ -23,7 +23,7 @@
                     "originator_name" originator-name
                     "recipient_name"  recipient-name
                     "issue_date"      issue-date)])
-    (trigger-connector-object claim-manager claim-id chresp)
+    (trigger-connector-object claim-manager-wf3 claim-id chresp)
     (route-success
       (sorted-map
         "claim_id" claim-id
