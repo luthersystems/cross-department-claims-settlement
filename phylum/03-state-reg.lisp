@@ -21,14 +21,18 @@
 ;; Build the claims connector from the generic factory
 ;; -----------------------------------------------------------------------------
 
+; register the clam manager for workflow 3 againt the name claim_wf3
 (set 'claim-manager-wf3
      (singleton (mk-entity-manager
-                  "claim"            ;; entity kind
+                  "claim_wf3"            ;; entity kind
                   "claim_id"         ;; primary key field
                   "CLAIM_STATE_INVOICE_INIT" ;; initial state
                   state-spec-wf3)))
 
 (register-connector-factory claim-manager-wf3)
+(cc:infof (sorted-map "claim-manager-wf3" claim-manager-wf3) "claim-manager-wf3 registered")
+(cc:infof (sorted-map "claim-manager-wf2" claim-manager-wf2) "claim-manager-wf2 registered")
+
 
 ;; Helper to create a new claim connector object via factory
 (defun create-claim-wf3 ()

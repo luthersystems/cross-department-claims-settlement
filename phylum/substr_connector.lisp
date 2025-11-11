@@ -100,11 +100,18 @@
        [invoke-handler-helper (resp-body)
          (unless resp-body (error 'missing-resp "missing response"))
          (let* ([req-id (get resp-body "request_id")]
+                [_       (cc:infof (sorted-map "req-id" req-id) "req-id in invoke-handler-helper")]
                 [callback-state (get-callback-state req-id)]
+                [_       (cc:infof (sorted-map "callback-state" callback-state) "callback-state in invoke-handler-helper")]
                 [handler-name (get callback-state "handler_name")]
+                [_       (cc:infof (sorted-map "handler-name" handler-name) "handler-name in invoke-handler-helper")]
                 [ctx (default (get callback-state "ctx") (sorted-map))]
+                [_       (cc:infof (sorted-map "ctx" ctx) "ctx in invoke-handler-helper")]
                 [msp (get ctx "msp")]
-                [handler-fn (get reg-handlers handler-name)])
+                [_       (cc:infof (sorted-map "msp" msp) "msp in invoke-handler-helper")]
+                [handler-fn (get reg-handlers handler-name)]
+                [_       (cc:infof (sorted-map "handler-fn" handler-fn) "handler-fn in invoke-handler-helper")]
+                )
            (when msp 
              (cc:debugf (sorted-map "msp" msp "req_id" req-id) "validating MSP")
              (if (valid-msp? msp)
@@ -236,6 +243,23 @@
          [transition (obj 'handle resp ctx)])
     (do-transition obj-factory transition)))
 
+;; Register a connector factory (entity manager) with the callback handler system.
+;;
+;; This function:
+;; 1. Gets the handler name from the factory (e.g., "claim" from claim-manager-wf2)
+;; 2. Registers a closure in the global connector-handlers registry
+;; 3. The closure captures the obj-factory, allowing it to route callbacks to the
+;;    correct manager even when multiple factories share the same handler name
+;;
+;; When a callback arrives:
+;; - The connector hub calls $ch_callback with a request_id
+;; - invoke-handler-helper looks up the handler by handler_name from the callback state
+;; - The closure is invoked with (resp ctx), which then calls trigger-connector-object
+;;   with the captured obj-factory
+;;
+;; This closure pattern allows multiple workflows (e.g., claim-manager-wf2 and
+;; claim-manager-wf3) to both register handlers named "claim" - each closure
+;; captures its own factory reference, so callbacks route to the correct manager.
 (export 'register-connector-factory)
 (defun register-connector-factory
   (obj-factory)

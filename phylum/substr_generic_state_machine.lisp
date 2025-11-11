@@ -49,6 +49,7 @@
 
        ;; Key in PDC: "sandbox:<entity-name>:<entity-id>"
        [mk-storage-key (entity-id)
+        (cc:infof (sorted-map "entity-name" entity-name "entity-id" entity-id) "entity ID in mk-storage-key")
          (join-index-cols "sandbox" entity-name entity-id)]
 
        ;; persistence (PDC)
