@@ -133,7 +133,7 @@
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler
-      :next            "WF2_CLAIM_STATE_DONE"  ; WF2 is done after handoff
+      :next            "WF2_CLAIM_STATE_DONE"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable

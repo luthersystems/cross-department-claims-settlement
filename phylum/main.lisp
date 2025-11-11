@@ -27,14 +27,11 @@
 (load-file "substr_generic_state_machine.lisp")
 (load-file "substr_ephemeral_storage.lisp")
 (load-file "substr_generic_parser.lisp")
+(load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
 (load-file "02-routes.lisp")
 (load-file "02-workflow.lisp")
 (load-file "03-routes.lisp")
 (load-file "03-workflow.lisp")
-(load-file "workflow-chaining.lisp")  ; Load before state-reg so register-workflow is available
-(load-file "state-reg.lisp")
-(load-file "02-workflow-chain.lisp")
-(load-file "substr_generic_state_machine.lisp")
-(load-file "substr_ephemeral_storage.lisp")
-(load-file "substr_generic_parser.lisp")
+(load-file "workflow-reg.lisp")     ; Registers managers after handlers are defined
+(load-file "02-workflow-chain.lisp") ; Chain requires managers from workflow-reg
 
