@@ -9,7 +9,10 @@
              [signer-email    (or (get resp "signer_email") (set-exception-business "missing signer_email"))]
              [originator-name (or (get resp "originator_name") "Acme Insurance Ltd.")]
              [recipient-name  (or (get resp "recipient_name") "BlueRiver Underwriting Partners")]
-             [issue-date      (or (get resp "issue_date") (format-date (now) "%Y-%m-%d"))])
+             [issue-date      (or (get resp "issue_date") (format-date (now) "%Y-%m-%d"))]
+             [chain-to-wf4    (normalize-bool (or (get resp "chain_to_wf4")
+                                                  (get entity "chain_to_wf4"))
+                                             *wf3-chain-enabled*)])
         (sorted-map
           "claim_id"        claim-id
           "amount"          amount
@@ -17,7 +20,8 @@
           "signer_email"    signer-email
           "originator_name" originator-name
           "recipient_name"  recipient-name
-          "issue_date"      issue-date))]
+          "issue_date"      issue-date
+          "chain_to_wf4"    chain-to-wf4))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) parsed]
      [create-events (entity parsed accessors)

@@ -3,19 +3,32 @@
     ([parse (resp entity)
       ;; resp can be empty; we drive off entity.claim_id/policy_id
       ;; Also capture optional fields for workflow 3 chaining
-      (let* ([claim-id  (or (get entity "claim_id")  (get resp "guidewire_claim_id"))]
+      (let* ([guidewire-claim-id (or (get entity "guidewire_claim_id")
+                                     (get entity "gw_claim_id")
+                                     (get resp "guidewire_claim_id")
+                                     (get resp "gw_claim_id")
+                                     (get entity "claim_id"))]
              [policy-id (or (get entity "policy_id") (get resp "policy_id"))]
-             [chain-flag (normalize-bool (get resp "chain_to_wf3") *wf2-chain-enabled*)])
+             [signer-email (or (get entity "signer_email") (get resp "signer_email"))]
+             [invoice-amount (or (get entity "invoice_amount") (get resp "invoice_amount"))]
+             [signer-name (or (get entity "signer_name") (get resp "signer_name"))]
+             [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
+             [recipient-name (or (get entity "recipient_name") (get resp "recipient_name"))]
+             [issue-date (or (get entity "issue_date") (get resp "issue_date"))]
+             [chain-flag (normalize-bool (or (get resp "chain_to_wf3")
+                                             (get entity "chain_to_wf3"))
+                                         *wf2-chain-enabled*)])
         (sorted-map
-          "guidewire_claim_id"  claim-id
+          "guidewire_claim_id"  guidewire-claim-id
+          "gw_claim_id"         guidewire-claim-id
           "policy_id"           policy-id
           ;; Pass through optional fields for WF3
-          "signer_email"        (get resp "signer_email")
-          "invoice_amount"      (get resp "invoice_amount")
-          "signer_name"         (get resp "signer_name")
-          "originator_name"     (get resp "originator_name")
-          "recipient_name"      (get resp "recipient_name")
-          "issue_date"          (get resp "issue_date")
+          "signer_email"        signer-email
+          "invoice_amount"      invoice-amount
+          "signer_name"         signer-name
+          "originator_name"     originator-name
+          "recipient_name"      recipient-name
+          "issue_date"          issue-date
           "chain_to_wf3"        chain-flag))]
 
      [stage-ephemeral (entity parsed accessors) ()]
@@ -23,7 +36,8 @@
      [stage-durable (entity parsed accessors)
       ;; Store all fields including optional ones for WF3
       (sorted-map
-        "guidewire_claim_id"  (get parsed "claim_id")
+        "guidewire_claim_id"  (get parsed "guidewire_claim_id")
+        "gw_claim_id"         (get parsed "gw_claim_id")
         "policy_id"           (get parsed "policy_id")
         "signer_email"        (get parsed "signer_email")
         "invoice_amount"      (get parsed "invoice_amount")

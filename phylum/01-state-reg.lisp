@@ -6,10 +6,10 @@
 
 (set 'state-spec
   (sorted-map
-    "CLAIM_STATE_NEW"                           (claim-init-state-handler)
-    "CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"      (claim-oracle-details-retrieved-state-handler)
-    "CLAIM_STATE_EQUIFAX_VERIFIED"              (claim-equifax-verified-state-handler)
-    "CLAIM_STATE_DONE"                          (claim-done-state-handler)
+    "WF1_CLAIM_STATE_NEW"                      (wf1-claim-init-state-handler)
+    "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED" (wf1-claim-oracle-details-retrieved-state-handler)
+    "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"         (wf1-claim-equifax-verified-state-handler)
+    "WF1_CLAIM_STATE_DONE"                     (wf1-claim-done-state-handler)
   ))
 
 ;; -----------------------------------------------------------------------------
@@ -18,9 +18,9 @@
 
 (set 'claim-manager
      (singleton (mk-entity-manager
-                  "claim"            ;; entity kind
-                  "claim_id"         ;; primary key field
-                  "CLAIM_STATE_NEW"  ;; initial state
+                  "claim_wf1"
+                  "claim_id"
+                  "WF1_CLAIM_STATE_NEW"
                   state-spec)))
 
 (register-connector-factory claim-manager)

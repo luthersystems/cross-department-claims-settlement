@@ -29,11 +29,15 @@
 (load-file "substr_generic_parser.lisp")
 (load-file "workflow-config.lisp")      ; Shared workflow chaining config & helpers
 (load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
+(load-file "01-workflow.lisp")
+(load-file "01-routes.lisp")
 (load-file "02-routes.lisp")
 (load-file "02-workflow.lisp")
 (load-file "02-helpers.lisp")
 (load-file "03-routes.lisp")
 (load-file "03-helpers.lisp")
 (load-file "03-workflow.lisp")
+(load-file "04-workflow.lisp")
+(load-file "04-routes.lisp")
 (load-file "workflow-reg.lisp")     ; Registers managers after handlers are defined
 

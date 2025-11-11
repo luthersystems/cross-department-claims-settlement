@@ -3,43 +3,69 @@
 ;; Retrieve cross‑dept claim from Oracle
 ;; =============================
 
-(defun claim-init-state-handler ()
+(defun wf1-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
       ; resp is ch resp
       ; entity is the entity object e.g. claim in this case.
       ; we essentially just parse the incoming request here.
-      (let* ([policy-id (or (get entity "policy_id") (get resp "policy_id"))])
+      (let* ([policy-id (or (get entity "policy_id") (get resp "policy_id"))]
+             [gw-claim-id (or (get entity "gw_claim_id")
+                              (get resp "gw_claim_id")
+                              (get resp "guidewire_claim_id"))]
+             [signer-email (or (get entity "signer_email") (get resp "signer_email"))]
+             [signer-name  (or (get entity "signer_name")  (get resp "signer_name"))]
+             [invoice-amount (or (get entity "invoice_amount") (get resp "invoice_amount"))]
+             [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
+             [recipient-name  (or (get entity "recipient_name")  (get resp "recipient_name"))]
+             [issue-date      (or (get entity "issue_date")      (get resp "issue_date"))]
+             [chain-to-wf2 (normalize-bool (or (get resp "chain_to_wf2")
+                                               (get entity "chain_to_wf2"))
+                                           *wf1-chain-enabled*)]
+             [chain-to-wf3 (normalize-bool (or (get resp "chain_to_wf3")
+                                               (get entity "chain_to_wf3"))
+                                           *wf2-chain-enabled*)])
         (sorted-map
-          "policy_id" policy-id))]
+          "policy_id"          policy-id
+          "gw_claim_id"        gw-claim-id
+          "signer_email"       signer-email
+          "signer_name"        signer-name
+          "invoice_amount"     invoice-amount
+          "originator_name"    originator-name
+          "recipient_name"     recipient-name
+          "issue_date"         issue-date
+          "chain_to_wf2"       chain-to-wf2
+          "chain_to_wf3"       chain-to-wf3))]
 
-    ; example of staging ephemeral data until pre-defined state. This can be
-    ; accessed in later stages using (accessors 'get-ephem <key>). It should be
-    ; a vector of entries. parsed is the sorted map from parse step
      [stage-ephemeral (entity parsed accessors)   
      (vector
         (sorted-map :key "policy_id_ephem"
                     :value (get parsed "policy_id")
-                    :drop-state "CLAIM_STATE_EQUIFAX_VERIFIED"))]
+                    :drop-state "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"))]
 
-    ; example of staging ephemeral data. This is what is sent to 'put to persist
-    ; the entity in general. It should be a map of entries
      [stage-durable (entity parsed accessors)
       (sorted-map
-        "policy_id" (get parsed "policy_id"))]
+        "policy_id"        (get parsed "policy_id")
+        "gw_claim_id"      (get parsed "gw_claim_id")
+        "signer_email"     (get parsed "signer_email")
+        "signer_name"      (get parsed "signer_name")
+        "invoice_amount"   (get parsed "invoice_amount")
+        "originator_name"  (get parsed "originator_name")
+        "recipient_name"   (get parsed "recipient_name")
+        "issue_date"       (get parsed "issue_date")
+        "chain_to_wf2"     (get parsed "chain_to_wf2")
+        "chain_to_wf3"     (get parsed "chain_to_wf3"))]
     
-    ; then we create our events to pair with the 'put we created in "stage durable"
     [create-events (entity parsed accessors)
       (vector
         (mk-oracle-get-claim-event entity (get parsed "policy_id")))])
 
     (mk-state-handler
-      :next            "CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"
+      :next            "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
-
 
 ;; =======================================================================
 ;; 2) CLAIM_STATE_ORACLE_DETAILS_RETRIEVED -> CLAIM_STATE_EQUIFAX_VERIFIED
@@ -47,7 +73,7 @@
 ;; =======================================================================
 
 ;; mk-equifax-verify-event
-(defun claim-oracle-details-retrieved-state-handler ()
+(defun wf1-claim-oracle-details-retrieved-state-handler ()
   (labels
     ;; parse Oracle Response
     ([parse (resp entity) (parse-oracle-get-claim-response resp)]
@@ -71,7 +97,7 @@
             entity claimant)))])
 
   (mk-state-handler
-    :next            "CLAIM_STATE_EQUIFAX_VERIFIED"
+    :next            "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
@@ -82,7 +108,7 @@
 ;; Validate identity of user using Equifax
 ;; ====================================================
 
-(defun claim-equifax-verified-state-handler ()
+(defun wf1-claim-equifax-verified-state-handler ()
   (labels
     ([parse (resp entity)
   (let* ([parsed (parse-equifax-verify-response resp)]
@@ -143,7 +169,7 @@
 ;; Validate identity 
 ;; ===================
 
-(defun claim-done-state-handler ()
+(defun wf1-claim-done-state-handler ()
   (labels
     ;; parse generic response (also checks for errors)
     ([parse (resp entity) (parse-generic-resp resp)]
