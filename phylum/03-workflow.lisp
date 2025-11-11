@@ -226,7 +226,7 @@
      [stage-durable (entity parsed accessors) (sorted-map "email_dispatched" true)]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next "CLAIM_STATE_INVOICE_DONE"
+      :next "CLAIM_STATE_WF3_DONE"
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable :create-events create-events)))
 

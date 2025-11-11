@@ -131,15 +131,6 @@
         "approval_status" (get parsed "approval_status")
         "approval_confirmation" (get parsed "confirmation"))]
      [create-events (entity parsed accessors) (vector)])
-      ;; Hand off to workflow 3 (invoice generation)
-      ; ;; The handoff function will create the next workflow object and trigger it
-      ; (let* ([next-claim-id (handoff-to-next "wf2" entity parsed)])
-      ;   (cc:infof
-      ;     (sorted-map
-      ;       "wf2_claim_id" (get entity "claim_id")
-      ;       "wf3_claim_id" next-claim-id)
-      ;     "Handed off from WF2 to WF3")
-      ;   (vector))])  ; No external events, handoff is internal
     (mk-state-handler
       :next            "CLAIM_STATE_DONE"  ; WF2 is done after handoff
       :parse           parse
