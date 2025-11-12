@@ -9,13 +9,14 @@
                 (sorted-map
                   "kind" "KIND_ZOHO_BOOKS"
                   "operation" "create_invoice"
-                  "args" payload))])
+                  "args" (sorted-map "json_data" payload)))])
     (build-event entity req "create invoice" "ZOHO")))
 
 (defun parse-zoho-create-invoice (resp)
   (let* ([parsed (parse-generic-resp resp)]
          [invoice (or (get parsed "invoice")
                       (set-exception-business "Zoho response missing invoice"))])
+    (cc:infof (sorted-map "parsed" parsed "invoice" invoice) "parsing Zoho invoice response")
     (sorted-map
       "invoice_id"      (get invoice "invoice_id")
       "invoice_number"  (get invoice "invoice_number")
@@ -27,7 +28,7 @@
       "reference_number"(get invoice "reference_number")
       "total"           (get invoice "total")
       "balance"         (get invoice "balance")
-      "url"             (get invoice "url")
+      "url"             (or (get invoice "url") (get invoice "invoice_url"))
       "line_items"      (get invoice "line_items"))))
 
 (defun mk-servicenow-create-incident-event (entity payload)

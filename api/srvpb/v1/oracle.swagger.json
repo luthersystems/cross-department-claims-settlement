@@ -476,6 +476,23 @@
       "default": "INVALID_TYPE",
       "description": "Type of exception.\n\n - INVALID_TYPE: Default for no exception.\n - BUSINESS: Business logic error.\n - SERVICE_NOT_AVAILABLE: A service was unavailable.\n - INFRASTRUCTURE: Infrastructure was down.\n - UNEXPECTED: Catch-all for all other types.\n - SECURITY_VIOLATION: Security related error."
     },
+    "v1LineItem": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "rate": {
+          "type": "number",
+          "format": "double"
+        },
+        "quantity": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "Line item for Zoho invoice"
+    },
     "v1UploadClaimWF1Request": {
       "type": "object",
       "properties": {
@@ -571,7 +588,42 @@
       "type": "object",
       "properties": {
         "policyId": {
-          "type": "string"
+          "type": "string",
+          "title": "Optional: defaults to \"POL-8872\" if not provided"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Required: Zoho customer ID",
+          "title": "Zoho invoice fields"
+        },
+        "referenceNumber": {
+          "type": "string",
+          "title": "Required: Claim reference number (used as claim_id if claim_id not provided)"
+        },
+        "dueDate": {
+          "type": "string",
+          "title": "Required: Invoice due date (YYYY-MM-DD)"
+        },
+        "isInclusiveTax": {
+          "type": "boolean",
+          "title": "Required: Whether tax is inclusive"
+        },
+        "lineItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LineItem"
+          },
+          "title": "Required: Invoice line items"
+        },
+        "claimId": {
+          "type": "string",
+          "description": "Optional: Override claim_id (defaults to reference_number)",
+          "title": "Optional overrides"
+        },
+        "currencyCode": {
+          "type": "string",
+          "title": "Optional: Currency code (defaults to \"GBP\")"
         }
       }
     },
