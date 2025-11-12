@@ -25,7 +25,7 @@ NETWORK_BUILDER_TARGET ?= docker-pull/${NETWORK_BUILDER_IMAGE}\:${NETWORK_BUILDE
 NETWORK_BUILDER=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION} --chown "${DOCKER_CHOWN_USER}"
 
 SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
-CONNECTORHUB_IMAGE ?= luthersystems/connectorhub
+CONNECTORHUB_IMAGE ?= connectorhub-local
 
 SHIROCLIENT_TARGET ?= docker-pull/${SHIROCLIENT_IMAGE}\:${SHIROCLIENT_VERSION}
 CONNECTORHUB_TARGET ?= docker-pull/${CONNECTORHUB_IMAGE}\:${CONNECTORHUB_VERSION}
@@ -41,6 +41,7 @@ GATEWAYS ?= 1.shiroclient_gw_a.a
 CONNECTORHUBS ?= 1.connectorhub_a.a
 START_GATEWAYS=$(addprefix start-gw-,${GATEWAYS})
 START_CONNECTORHUBS=$(addprefix start-ch-,${CONNECTORHUBS})
+# possibly this
 NOTIFY_GATEWAYS=$(addprefix notify-gw-,${GATEWAYS})
 FUNCTIONAL_TEST_PHYLA=$(addprefix functional-test-phylum-,${PHYLA})
 SHIRO_INIT_PHYLA=$(addprefix shiro-init-phylum-,${PHYLA})
@@ -234,20 +235,35 @@ start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
 start-ch-%: ccname=$(word 3,${parts}) # TODO
 start-ch-%: port=$$(( 9091 + ${idx} ))
-ifdef EXPOSE_CONNECTORHUB
 start-gw-%: port_fw=-p "${port}:8080"
-endif
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	${DOCKER_RUN} -d --name ${name} \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		-v "$(abspath build/volume/checkpoint):/tmp/checkpoint:rw" \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+  		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		-p "8090:8090" \
 		${port_fw} \
 		--network ${FABRIC_DOCKER_NETWORK} \
 		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
 			start -v \
 			--config-file /tmp/fabric/connectorhub.yaml \
 			--checkpoint-file /tmp/checkpoint/checkpoint.txt
+		
+		@echo "⌛ Waiting for ${name} to start..."
+	@sleep 3
+
+	@if ! docker ps | grep -q "${name}"; then \
+		echo "❌ ConnectorHub ${name} exited unexpectedly!"; \
+		echo "🔍 Showing last 50 log lines:"; \
+		docker logs --tail 50 ${name} || true; \
+		echo ""; \
+		echo "💡 Tip: check connectorhub.yaml for invalid keys or indentation"; \
+		exit 1; \
+	else \
+		echo "✅ ConnectorHub ${name} is running successfully."; \
+	fi
 
 .SECONDEXPANSION:
 notify-gw-%: parts=$(subst ., ,$*)
