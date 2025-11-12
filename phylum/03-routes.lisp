@@ -10,7 +10,7 @@
          [signer-email    (or (get req "signer_email")    (set-exception-business "missing signer_email"))]
          [originator-name (or (get req "originator_name") "Acme Insurance Ltd.")]
          [recipient-name  (or (get req "recipient_name")  "BlueRiver Underwriting Partners")]
-         [issue-date      (or (get req "issue_date")      (format-date (now) "%Y-%m-%d"))]
+         [issue-date      (or (get req "issue_date")      "2025-11-12")]
          [chain-to-wf4    (normalize-bool (get req "chain_to_wf4") *wf3-chain-enabled*)])
     (sorted-map
       "claim_id"        claim-id

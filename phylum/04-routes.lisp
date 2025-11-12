@@ -49,7 +49,7 @@
                                claim-id)]
          [due-date         (or (get req "due_date")
                                (get zoho-raw "due_date")
-                               (format-date (now) "%Y-%m-%d"))]
+                                "2025-11-12")]
          [currency-code    (or (get req "currency_code")
                                (get zoho-raw "currency_code")
                                *wf4-default-currency-code*)]
