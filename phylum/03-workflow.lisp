@@ -9,7 +9,7 @@
              [signer-email    (or (get resp "signer_email") (set-exception-business "missing signer_email"))]
              [originator-name (or (get resp "originator_name") "Acme Insurance Ltd.")]
              [recipient-name  (or (get resp "recipient_name") "BlueRiver Underwriting Partners")]
-             [issue-date      (or (get resp "issue_date") (format-date (now) "%Y-%m-%d"))]
+             [issue-date      (or (get resp "issue_date")  "2025-11-12")]
              [policy-id       (or (get resp "policy_id") (get entity "policy_id"))]
              [chain-to-wf4    (normalize-bool (or (get resp "chain_to_wf4")
                                                   (get entity "chain_to_wf4"))

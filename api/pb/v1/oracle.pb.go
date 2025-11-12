@@ -459,16 +459,87 @@ type UploadClaimWF3Response_Exception struct {
 
 func (*UploadClaimWF3Response_Exception) isUploadClaimWF3Response_Result() {}
 
-type UploadClaimWF4Request struct {
+// Line item for Zoho invoice
+type LineItem struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	PolicyId      string                 `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Rate          float64                `protobuf:"fixed64,2,opt,name=rate,proto3" json:"rate,omitempty"`
+	Quantity      int32                  `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LineItem) Reset() {
+	*x = LineItem{}
+	mi := &file_pb_v1_oracle_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LineItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LineItem) ProtoMessage() {}
+
+func (x *LineItem) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_v1_oracle_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LineItem.ProtoReflect.Descriptor instead.
+func (*LineItem) Descriptor() ([]byte, []int) {
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *LineItem) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *LineItem) GetRate() float64 {
+	if x != nil {
+		return x.Rate
+	}
+	return 0
+}
+
+func (x *LineItem) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
+type UploadClaimWF4Request struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional: defaults to "POL-8872" if not provided
+	PolicyId string `protobuf:"bytes,1,opt,name=policy_id,json=policyId,proto3" json:"policy_id,omitempty"`
+	// Zoho invoice fields
+	CustomerId      string      `protobuf:"bytes,2,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`                // Required: Zoho customer ID
+	ReferenceNumber string      `protobuf:"bytes,3,opt,name=reference_number,json=referenceNumber,proto3" json:"reference_number,omitempty"` // Required: Claim reference number (used as claim_id if claim_id not provided)
+	DueDate         string      `protobuf:"bytes,4,opt,name=due_date,json=dueDate,proto3" json:"due_date,omitempty"`                         // Required: Invoice due date (YYYY-MM-DD)
+	IsInclusiveTax  bool        `protobuf:"varint,5,opt,name=is_inclusive_tax,json=isInclusiveTax,proto3" json:"is_inclusive_tax,omitempty"` // Required: Whether tax is inclusive
+	LineItems       []*LineItem `protobuf:"bytes,6,rep,name=line_items,json=lineItems,proto3" json:"line_items,omitempty"`                   // Required: Invoice line items
+	// Optional overrides
+	ClaimId       string `protobuf:"bytes,7,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`                // Optional: Override claim_id (defaults to reference_number)
+	CurrencyCode  string `protobuf:"bytes,8,opt,name=currency_code,json=currencyCode,proto3" json:"currency_code,omitempty"` // Optional: Currency code (defaults to "GBP")
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UploadClaimWF4Request) Reset() {
 	*x = UploadClaimWF4Request{}
-	mi := &file_pb_v1_oracle_proto_msgTypes[6]
+	mi := &file_pb_v1_oracle_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -480,7 +551,7 @@ func (x *UploadClaimWF4Request) String() string {
 func (*UploadClaimWF4Request) ProtoMessage() {}
 
 func (x *UploadClaimWF4Request) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_v1_oracle_proto_msgTypes[6]
+	mi := &file_pb_v1_oracle_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -493,12 +564,61 @@ func (x *UploadClaimWF4Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadClaimWF4Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF4Request) Descriptor() ([]byte, []int) {
-	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{6}
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *UploadClaimWF4Request) GetPolicyId() string {
 	if x != nil {
 		return x.PolicyId
+	}
+	return ""
+}
+
+func (x *UploadClaimWF4Request) GetCustomerId() string {
+	if x != nil {
+		return x.CustomerId
+	}
+	return ""
+}
+
+func (x *UploadClaimWF4Request) GetReferenceNumber() string {
+	if x != nil {
+		return x.ReferenceNumber
+	}
+	return ""
+}
+
+func (x *UploadClaimWF4Request) GetDueDate() string {
+	if x != nil {
+		return x.DueDate
+	}
+	return ""
+}
+
+func (x *UploadClaimWF4Request) GetIsInclusiveTax() bool {
+	if x != nil {
+		return x.IsInclusiveTax
+	}
+	return false
+}
+
+func (x *UploadClaimWF4Request) GetLineItems() []*LineItem {
+	if x != nil {
+		return x.LineItems
+	}
+	return nil
+}
+
+func (x *UploadClaimWF4Request) GetClaimId() string {
+	if x != nil {
+		return x.ClaimId
+	}
+	return ""
+}
+
+func (x *UploadClaimWF4Request) GetCurrencyCode() string {
+	if x != nil {
+		return x.CurrencyCode
 	}
 	return ""
 }
@@ -517,7 +637,7 @@ type UploadClaimWF4Response struct {
 
 func (x *UploadClaimWF4Response) Reset() {
 	*x = UploadClaimWF4Response{}
-	mi := &file_pb_v1_oracle_proto_msgTypes[7]
+	mi := &file_pb_v1_oracle_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -529,7 +649,7 @@ func (x *UploadClaimWF4Response) String() string {
 func (*UploadClaimWF4Response) ProtoMessage() {}
 
 func (x *UploadClaimWF4Response) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_v1_oracle_proto_msgTypes[7]
+	mi := &file_pb_v1_oracle_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -542,7 +662,7 @@ func (x *UploadClaimWF4Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadClaimWF4Response.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF4Response) Descriptor() ([]byte, []int) {
-	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{7}
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *UploadClaimWF4Response) GetClaimId() string {
@@ -594,7 +714,7 @@ type UploadClaimWF5Request struct {
 
 func (x *UploadClaimWF5Request) Reset() {
 	*x = UploadClaimWF5Request{}
-	mi := &file_pb_v1_oracle_proto_msgTypes[8]
+	mi := &file_pb_v1_oracle_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -606,7 +726,7 @@ func (x *UploadClaimWF5Request) String() string {
 func (*UploadClaimWF5Request) ProtoMessage() {}
 
 func (x *UploadClaimWF5Request) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_v1_oracle_proto_msgTypes[8]
+	mi := &file_pb_v1_oracle_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -619,7 +739,7 @@ func (x *UploadClaimWF5Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadClaimWF5Request.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF5Request) Descriptor() ([]byte, []int) {
-	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{8}
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *UploadClaimWF5Request) GetPolicyId() string {
@@ -643,7 +763,7 @@ type UploadClaimWF5Response struct {
 
 func (x *UploadClaimWF5Response) Reset() {
 	*x = UploadClaimWF5Response{}
-	mi := &file_pb_v1_oracle_proto_msgTypes[9]
+	mi := &file_pb_v1_oracle_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -655,7 +775,7 @@ func (x *UploadClaimWF5Response) String() string {
 func (*UploadClaimWF5Response) ProtoMessage() {}
 
 func (x *UploadClaimWF5Response) ProtoReflect() protoreflect.Message {
-	mi := &file_pb_v1_oracle_proto_msgTypes[9]
+	mi := &file_pb_v1_oracle_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -668,7 +788,7 @@ func (x *UploadClaimWF5Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UploadClaimWF5Response.ProtoReflect.Descriptor instead.
 func (*UploadClaimWF5Response) Descriptor() ([]byte, []int) {
-	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{9}
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *UploadClaimWF5Response) GetClaimId() string {
@@ -745,9 +865,22 @@ const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06result\"4\n" +
+	"\x06result\"N\n" +
+	"\bLineItem\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04rate\x18\x02 \x01(\x01R\x04rate\x12\x1a\n" +
+	"\bquantity\x18\x03 \x01(\x05R\bquantity\"\xb5\x02\n" +
 	"\x15UploadClaimWF4Request\x12\x1b\n" +
-	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\"\x89\x01\n" +
+	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12\x1f\n" +
+	"\vcustomer_id\x18\x02 \x01(\tR\n" +
+	"customerId\x12)\n" +
+	"\x10reference_number\x18\x03 \x01(\tR\x0freferenceNumber\x12\x19\n" +
+	"\bdue_date\x18\x04 \x01(\tR\adueDate\x12(\n" +
+	"\x10is_inclusive_tax\x18\x05 \x01(\bR\x0eisInclusiveTax\x12.\n" +
+	"\n" +
+	"line_items\x18\x06 \x03(\v2\x0f.pb.v1.LineItemR\tlineItems\x12\x19\n" +
+	"\bclaim_id\x18\a \x01(\tR\aclaimId\x12#\n" +
+	"\rcurrency_code\x18\b \x01(\tR\fcurrencyCode\"\x89\x01\n" +
 	"\x16UploadClaimWF4Response\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
@@ -774,7 +907,7 @@ func file_pb_v1_oracle_proto_rawDescGZIP() []byte {
 	return file_pb_v1_oracle_proto_rawDescData
 }
 
-var file_pb_v1_oracle_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_pb_v1_oracle_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_pb_v1_oracle_proto_goTypes = []any{
 	(*UploadClaimWF1Request)(nil),  // 0: pb.v1.UploadClaimWF1Request
 	(*UploadClaimWF1Response)(nil), // 1: pb.v1.UploadClaimWF1Response
@@ -782,23 +915,25 @@ var file_pb_v1_oracle_proto_goTypes = []any{
 	(*UploadClaimWF2Response)(nil), // 3: pb.v1.UploadClaimWF2Response
 	(*UploadClaimWF3Request)(nil),  // 4: pb.v1.UploadClaimWF3Request
 	(*UploadClaimWF3Response)(nil), // 5: pb.v1.UploadClaimWF3Response
-	(*UploadClaimWF4Request)(nil),  // 6: pb.v1.UploadClaimWF4Request
-	(*UploadClaimWF4Response)(nil), // 7: pb.v1.UploadClaimWF4Response
-	(*UploadClaimWF5Request)(nil),  // 8: pb.v1.UploadClaimWF5Request
-	(*UploadClaimWF5Response)(nil), // 9: pb.v1.UploadClaimWF5Response
-	(*v1.Exception)(nil),           // 10: common.v1.Exception
+	(*LineItem)(nil),               // 6: pb.v1.LineItem
+	(*UploadClaimWF4Request)(nil),  // 7: pb.v1.UploadClaimWF4Request
+	(*UploadClaimWF4Response)(nil), // 8: pb.v1.UploadClaimWF4Response
+	(*UploadClaimWF5Request)(nil),  // 9: pb.v1.UploadClaimWF5Request
+	(*UploadClaimWF5Response)(nil), // 10: pb.v1.UploadClaimWF5Response
+	(*v1.Exception)(nil),           // 11: common.v1.Exception
 }
 var file_pb_v1_oracle_proto_depIdxs = []int32{
-	10, // 0: pb.v1.UploadClaimWF1Response.exception:type_name -> common.v1.Exception
-	10, // 1: pb.v1.UploadClaimWF2Response.exception:type_name -> common.v1.Exception
-	10, // 2: pb.v1.UploadClaimWF3Response.exception:type_name -> common.v1.Exception
-	10, // 3: pb.v1.UploadClaimWF4Response.exception:type_name -> common.v1.Exception
-	10, // 4: pb.v1.UploadClaimWF5Response.exception:type_name -> common.v1.Exception
-	5,  // [5:5] is the sub-list for method output_type
-	5,  // [5:5] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	11, // 0: pb.v1.UploadClaimWF1Response.exception:type_name -> common.v1.Exception
+	11, // 1: pb.v1.UploadClaimWF2Response.exception:type_name -> common.v1.Exception
+	11, // 2: pb.v1.UploadClaimWF3Response.exception:type_name -> common.v1.Exception
+	6,  // 3: pb.v1.UploadClaimWF4Request.line_items:type_name -> pb.v1.LineItem
+	11, // 4: pb.v1.UploadClaimWF4Response.exception:type_name -> common.v1.Exception
+	11, // 5: pb.v1.UploadClaimWF5Response.exception:type_name -> common.v1.Exception
+	6,  // [6:6] is the sub-list for method output_type
+	6,  // [6:6] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_pb_v1_oracle_proto_init() }
@@ -815,10 +950,10 @@ func file_pb_v1_oracle_proto_init() {
 	file_pb_v1_oracle_proto_msgTypes[5].OneofWrappers = []any{
 		(*UploadClaimWF3Response_Exception)(nil),
 	}
-	file_pb_v1_oracle_proto_msgTypes[7].OneofWrappers = []any{
+	file_pb_v1_oracle_proto_msgTypes[8].OneofWrappers = []any{
 		(*UploadClaimWF4Response_Exception)(nil),
 	}
-	file_pb_v1_oracle_proto_msgTypes[9].OneofWrappers = []any{
+	file_pb_v1_oracle_proto_msgTypes[10].OneofWrappers = []any{
 		(*UploadClaimWF5Response_Exception)(nil),
 	}
 	type x struct{}
@@ -827,7 +962,7 @@ func file_pb_v1_oracle_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_v1_oracle_proto_rawDesc), len(file_pb_v1_oracle_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

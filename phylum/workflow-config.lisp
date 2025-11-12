@@ -48,7 +48,7 @@
 (set '*wf3-wf4-default-inputs*
      (sorted-map
        "zoho" (sorted-map
-                 "customer_id"      "1234567000001"
+                 "customer_id"      "7533684000000109011"
                  "reference_number" "CLAIM-8472"
                  "due_date"         "2025-11-17"
                  "is_inclusive_tax" true
@@ -113,7 +113,7 @@
          [invoice-amount (get entity "invoice_amount")] 
          [originator-name (or (get entity "originator_name") "Acme Insurance Ltd.")]
          [recipient-name  (or (get entity "recipient_name") "BlueRiver Underwriting Partners")]
-         [issue-date      (or (get entity "issue_date") (format-date (now) "%Y-%m-%d"))]
+         [issue-date      (or (get entity "issue_date")  "2025-11-12")]
          [chain-to-wf3    (normalize-bool (get entity "chain_to_wf3") *wf2-chain-enabled*)])
     (sorted-map
       "policy_id"        policy-id
@@ -127,10 +127,20 @@
       "chain_to_wf3"     chain-to-wf3)))
 
 (defun wf1-build-wf2-inputs (entity parsed)
-  "Construct WF2 inputs, preferring the configured defaults when provided."
-  (if (nil? *wf1-wf2-default-inputs*)
-      (wf1-derive-wf2-inputs entity parsed)
-      *wf1-wf2-default-inputs*))
+  "Construct WF2 inputs, merging defaults with derived values from entity."
+  (let* ([derived (wf1-derive-wf2-inputs entity parsed)]
+         [defaults (or *wf1-wf2-default-inputs* (sorted-map))])
+    ;; Merge defaults with derived, preferring derived values
+    (sorted-map
+      "policy_id"        (or (get derived "policy_id") (get defaults "policy_id"))
+      "gw_claim_id"      (or (get derived "gw_claim_id") (get defaults "gw_claim_id"))
+      "signer_email"     (or (get derived "signer_email") (get defaults "signer_email"))
+      "signer_name"      (or (get derived "signer_name") (get defaults "signer_name"))
+      "invoice_amount"   (or (get derived "invoice_amount") (get defaults "invoice_amount"))
+      "originator_name"  (or (get derived "originator_name") (get defaults "originator_name"))
+      "recipient_name"   (or (get derived "recipient_name") (get defaults "recipient_name"))
+      "issue_date"       (or (get derived "issue_date") (get defaults "issue_date"))
+      "chain_to_wf3"     (or (get derived "chain_to_wf3") (get defaults "chain_to_wf3")))))
 
 (defun wf3-should-chain? (entity)
   "Determine whether WF3 should hand off to WF4 for the given entity."
@@ -154,9 +164,9 @@
                                    "rate"     amount
                                    "quantity" 1)))]
          [zoho (sorted-map)]
-         [zoho (assoc zoho "customer_id"      (or (get zoho-base "customer_id") "1234567000001"))]
+         [zoho (assoc zoho "customer_id"      (or (get zoho-base "customer_id") "7533684000000109011"))]
          [zoho (assoc zoho "reference_number" (or (get zoho-base "reference_number") claim-id))]
-         [zoho (assoc zoho "due_date"         (or (get zoho-base "due_date") (format-date (now) "%Y-%m-%d")))]
+         [zoho (assoc zoho "due_date"         (or (get zoho-base "due_date")  "2025-11-12"))]
          [zoho (assoc zoho "is_inclusive_tax" (normalize-bool (get zoho-base "is_inclusive_tax") true))]
          [zoho (assoc zoho "currency_code"    (or (get zoho-base "currency_code") "GBP"))]
          [zoho (assoc zoho "line_items"       line-items)]
@@ -252,23 +262,19 @@
   (normalize-bool (get entity "chain_to_wf3") *wf2-chain-enabled*))
 
 (defun wf2-derive-wf3-inputs (entity parsed)
-  "Build a payload for WF3 using WF2 entity data as a fallback."
-  (let* ([claim-id (or (get entity "claim_id")
-                       (set-exception-business "missing claim_id for WF3 handoff"))]
+  "Build a payload for WF3 using WF2 entity data as a fallback. Returns nil for missing fields to allow defaults to be used in merge."
+  (let* ([claim-id (get entity "claim_id")]
          [invoice-amount (or (get entity "invoice_amount")
-                              (get entity "coverage_limit")
-                              (set-exception-business "missing invoice_amount or coverage_limit for WF3 handoff"))]
+                             (get entity "coverage_limit"))]
          [signer-name (or (get entity "signer_name")
-                          (get entity "handler")
-                          (set-exception-business "missing signer_name or handler for WF3 handoff"))]
-         [signer-email (or (get entity "signer_email")
-                           (set-exception-business "missing signer_email for WF3 handoff"))]
-         [originator-name (or (get entity "originator_name") "Acme Insurance Ltd.")]
-         [recipient-name (or (get entity "recipient_name") "BlueRiver Underwriting Partners")]
-         [issue-date (or (get entity "issue_date") (format-date (now) "%Y-%m-%d"))])
+                          (get entity "handler"))]
+         [signer-email (get entity "signer_email")]
+         [originator-name (get entity "originator_name")]
+         [recipient-name (get entity "recipient_name")]
+         [issue-date (get entity "issue_date")])
     (sorted-map
       "claim_id"        claim-id
-      "policy_id"       (or (get entity "policy_id") claim-id)
+      "policy_id"       (get entity "policy_id")
       "invoice_amount"  invoice-amount
       "signer_name"     signer-name
       "signer_email"    signer-email
@@ -277,10 +283,28 @@
       "issue_date"      issue-date)))
 
 (defun wf2-build-wf3-inputs (entity parsed)
-  "Construct WF3 inputs, preferring the configured defaults when provided."
-  (if (nil? *wf2-wf3-default-inputs*)
-      (wf2-derive-wf3-inputs entity parsed)
-      *wf2-wf3-default-inputs*))
+  "Construct WF3 inputs, merging defaults with derived values from entity."
+  (let* ([derived (wf2-derive-wf3-inputs entity parsed)]
+         [defaults (or *wf2-wf3-default-inputs* (sorted-map))]
+         [merged (sorted-map
+                   "claim_id"        (or (get derived "claim_id") (get defaults "claim_id"))
+                   "policy_id"       (or (get derived "policy_id") (get defaults "policy_id"))
+                   "invoice_amount"  (or (get derived "invoice_amount") (get defaults "invoice_amount"))
+                   "signer_name"     (or (get derived "signer_name") (get defaults "signer_name"))
+                   "signer_email"    (or (get derived "signer_email") (get defaults "signer_email"))
+                   "originator_name" (or (get derived "originator_name") (get defaults "originator_name"))
+                   "recipient_name"  (or (get derived "recipient_name") (get defaults "recipient_name"))
+                   "issue_date"      (or (get derived "issue_date") (get defaults "issue_date")))])
+    ;; Validate critical fields after merge
+    (when (nil? (get merged "claim_id"))
+      (set-exception-business "missing claim_id for WF3 handoff (not in entity or defaults)"))
+    (when (nil? (get merged "signer_name"))
+      (set-exception-business "missing signer_name for WF3 handoff (not in entity or defaults)"))
+    (when (nil? (get merged "signer_email"))
+      (set-exception-business "missing signer_email for WF3 handoff (not in entity or defaults)"))
+    (when (nil? (get merged "invoice_amount"))
+      (set-exception-business "missing invoice_amount for WF3 handoff (not in entity or defaults)"))
+    merged))
 
 (defun set-wf1-chain-enabled! (flag)
   "Update the global WF1 chaining toggle at runtime."

@@ -170,8 +170,25 @@ message UploadClaimWF3Response {
 // WORKFLOW 4
 // ------------------------------------------------------------
 
+// Line item for Zoho invoice
+message LineItem {
+  string name = 1;
+  double rate = 2;
+  int32 quantity = 3;
+}
+
 message UploadClaimWF4Request {
+  // Optional: defaults to "POL-8872" if not provided
   string policy_id = 1;
+  // Zoho invoice fields
+  string customer_id = 2; // Required: Zoho customer ID
+  string reference_number = 3; // Required: Claim reference number (used as claim_id if claim_id not provided)
+  string due_date = 4; // Required: Invoice due date (YYYY-MM-DD)
+  bool is_inclusive_tax = 5; // Required: Whether tax is inclusive
+  repeated LineItem line_items = 6; // Required: Invoice line items
+  // Optional overrides
+  string claim_id = 7; // Optional: Override claim_id (defaults to reference_number)
+  string currency_code = 8; // Optional: Currency code (defaults to "GBP")
 }
 
 message UploadClaimWF4Response {
