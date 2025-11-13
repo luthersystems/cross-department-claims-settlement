@@ -8,9 +8,9 @@
          [invoice-amount  (or (get req "invoice_amount")  (set-exception-business "missing invoice_amount"))]
          [signer-name     (or (get req "signer_name")     (set-exception-business "missing signer_name"))]
          [signer-email    (or (get req "signer_email")    (set-exception-business "missing signer_email"))]
-         [originator-name (or (get req "originator_name") "Acme Insurance Ltd.")]
-         [recipient-name  (or (get req "recipient_name")  "BlueRiver Underwriting Partners")]
-         [issue-date      (or (get req "issue_date")      "2025-11-12")]
+         [originator-name (or (get req "originator_name") *wf3-default-originator-name*)]
+         [recipient-name  (or (get req "recipient_name") *wf3-default-recipient-name*)]
+         [issue-date      (or (get req "issue_date") *wf3-default-issue-date*)]
          [chain-to-wf4    (normalize-bool (get req "chain_to_wf4") *wf3-chain-enabled*)])
     (sorted-map
       "claim_id"        claim-id

@@ -103,23 +103,7 @@
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun build-event (entity req action sys-name)
-  (cc:infof (sorted-map "event" (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req)) "event for {}" sys-name)
-  (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req))
+;; build-event moved to substr_generic_parser.lisp
 
     
 

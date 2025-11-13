@@ -70,8 +70,8 @@
       (sorted-map "guidewire_status" (get parsed "status"))]
      [create-events (entity parsed accessors)
       (vector (mk-mysql-check-policy-event entity ; create
-                (sorted-map "policy_id" "POL-8872"
-                            "claim_id"  "CLM-4567")))])
+                (sorted-map "policy_id" *wf2-default-policy-id*
+                            "claim_id"  *wf2-default-claim-id*)))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_MYSQL_VALIDATED"
     :parse           parse
@@ -100,10 +100,10 @@
     (mk-sharepoint-get-id-doc-event
       entity
       (sorted-map
-        "site_id"  "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245"
-        "drive_id" "b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8"
-        "item_id"  "01RAAXWAZH6LCSA5FLHRE2QJXBSIVDOGV4"
-        "filename" "id-verification.txt")))])
+        "site_id"  *wf2-default-sharepoint-site-id*
+        "drive_id" *wf2-default-sharepoint-drive-id*
+        "item_id"  *wf2-default-sharepoint-item-id*
+        "filename" *wf2-default-sharepoint-filename*)))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"
     :parse           parse

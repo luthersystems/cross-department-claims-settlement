@@ -60,7 +60,7 @@
              [sharepoint (or (get resp "sharepoint") (set-exception-business "missing sharepoint payload"))]
              [servicenow (or (get resp "servicenow") (set-exception-business "missing servicenow payload"))]
              [claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
-             [policy-id  (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
+             [policy-id  (or (get resp "policy_id") (get entity "policy_id") *wf4-default-policy-id*)]
              [chain-to-wf5 (normalize-bool (or (get resp "chain_to_wf5")
                                                (get entity "chain_to_wf5")) *wf4-chain-enabled*)])
         (when (nil? claim-id)

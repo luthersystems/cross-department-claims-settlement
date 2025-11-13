@@ -25,8 +25,11 @@
     "WF2_CLAIM_STATE_MYSQL_VALIDATED"       (wf2-claim-mysql-validated-state-handler)
     "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"     (wf2-claim-sp-docs-collected-state-handler)
     "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler)
-    "WF2_CLAIM_STATE_DONE"                  (wf2-claim-done-state-handler)
-  ))
+    "WF2_CLAIM_STATE_DONE"                  (wf2-claim-done-state-handler)))
+
+;; -----------------------------------------------------------------------------
+;; Register WF3
+;; -----------------------------------------------------------------------------
 
 (set 'state-spec-wf3
   (sorted-map
@@ -34,8 +37,11 @@
     "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"          (wf3-invoice-esig-created-state-handler)
     "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"             (wf3-invoice-sf-synced-state-handler)
     "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler)
-    "WF3_CLAIM_STATE_DONE"                          (wf3-claim-done-state-handler)
-  ))
+    "WF3_CLAIM_STATE_DONE"                          (wf3-claim-done-state-handler)))
+
+;; -----------------------------------------------------------------------------
+;; Register WF4
+;; -----------------------------------------------------------------------------
 
 (set 'state-spec-wf4
   (sorted-map
@@ -45,12 +51,36 @@
     "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)
     "WF4_CLAIM_STATE_DONE"                          (wf4-claim-done-state-handler)))
 
+;; -----------------------------------------------------------------------------
+;; Register WF5
+;; -----------------------------------------------------------------------------
+
 (set 'state-spec-wf5
   (sorted-map
     "WF5_CLAIM_STATE_INIT"              (wf5-claim-init-state-handler)
     "WF5_CLAIM_STATE_AWAITING_APPROVAL" (wf5-claim-awaiting-approval-handler)
     "WF5_CLAIM_STATE_SAP_PAID"          (wf5-claim-sap-paid-handler)
     "WF5_CLAIM_STATE_DONE"              (wf5-claim-done-state-handler)))
+
+;; Completion hook for WF1: optionally trigger WF2
+(set 'wf1-completion-hook
+     (lambda (entity-name entity state parsed)
+       (cc:infof (sorted-map "entity-name" entity-name
+                              "claim_id" (get entity "claim_id")
+                              "state" state)
+                 "WF1 flow complete")
+       (let* ([chain-enabled (wf1-should-chain? entity)])
+         (if (not chain-enabled)
+             (cc:infof (sorted-map "entity-name" entity-name
+                                    "claim_id" (get entity "claim_id"))
+                       "WF1 chaining disabled; skipping WF2 trigger")
+             (let* ([wf2-inputs (wf1-build-wf2-inputs entity parsed)]
+                    [result (invoke-workflow claim-manager-wf2 wf2-inputs)])
+               (cc:infof (sorted-map
+                           "wf1_claim_id" (get entity "claim_id")
+                           "wf2_claim_id" (get result "claim_id")
+                           "wf2_state" (get result "state"))
+                         "WF1 chained to WF2"))))))
 
 ;; Completion hook for WF2: decide whether to chain and trigger WF3 as needed.
 (set 'wf2-completion-hook
@@ -72,25 +102,6 @@
                            "wf3_state" (get result "state"))
                          "WF2 chained to WF3"))))))
 
-;; Completion hook for WF1: optionally trigger WF2
-(set 'wf1-completion-hook
-     (lambda (entity-name entity state parsed)
-       (cc:infof (sorted-map "entity-name" entity-name
-                              "claim_id" (get entity "claim_id")
-                              "state" state)
-                 "WF1 flow complete")
-       (let* ([chain-enabled (wf1-should-chain? entity)])
-         (if (not chain-enabled)
-             (cc:infof (sorted-map "entity-name" entity-name
-                                    "claim_id" (get entity "claim_id"))
-                       "WF1 chaining disabled; skipping WF2 trigger")
-             (let* ([wf2-inputs (wf1-build-wf2-inputs entity parsed)]
-                    [result (invoke-workflow claim-manager-wf2 wf2-inputs)])
-               (cc:infof (sorted-map
-                           "wf1_claim_id" (get entity "claim_id")
-                           "wf2_claim_id" (get result "claim_id")
-                           "wf2_state" (get result "state"))
-                         "WF1 chained to WF2"))))))
 
 (set 'wf3-completion-hook
      (lambda (entity-name entity state parsed)
@@ -223,7 +234,7 @@
         "claim_id" (get entity "claim_id"))
       "Zoho/ServiceNow workflow completed!")))
 
-;; Define WF4 manager last to absorb chained traffic from WF3
+;; Define WF5 manager to absorb chained traffic from WF4
 (set 'claim-manager-wf5
      (singleton (mk-entity-manager
                   "claim_wf5"
@@ -244,10 +255,3 @@
         "workflow" workflow-name
         "claim_id" (get entity "claim_id"))
       "SAP/NetSuite workflow completed!")))
-
-; AS IS: an event is raised for a state transition. The connetorhub routes the
-; event to the correct manager based on the event type. When we create the event
-; we register a request ID. The connectorhub includes this request ID in its
-; response When we receive the response, we look up the request ID. 
-
-;wondering whetehr we should "append to state machine" or have multiple state machines for each workflow

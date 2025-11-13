@@ -191,15 +191,7 @@
     :stage-durable   stage-durable
     :create-events   create-events)))
 
-(defun build-event (entity req action sys-name)
-  (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req))
+;; build-event moved to substr_generic_parser.lisp
 
 (defun mk-oracle-get-claim-event (entity policy-id) 
   (let* ([sql (format-string 
@@ -237,27 +229,10 @@
                     "last_name" (get claimant "last_name")
                     "birth_date" (get claimant "dob")
                     "address" (get claimant "address")
-                    "postal_code" "SW1A"
-                    "address_country_code" "GB"
+                    "postal_code" *wf1-default-postal-code*
+                    "address_country_code" *wf1-default-address-country-code*
                     "federal_id" (get claimant "national_id"))))])
     (build-event entity req "verify claimant" "EQUIFAX")))
-
-(defun parse-equifax-verify-event (entity claimant)
-  (let* ([req (sorted-map
-                "equifax"
-                (sorted-map
-                  "entity_screening_request"
-                  (sorted-map
-                    "entity_id" (get entity "claim_id")
-                    "first_name" (get claimant "first_name")
-                    "last_name" (get claimant "last_name")
-                    "birth_date" (get claimant "dob")
-                    "address" (get claimant "address")
-                    "postal_code" "SW1A"
-                    "address_country_code" "GB"
-                    "federal_id" (get claimant "national_id"))))])
-    (build-event entity req "verify claimant" "EQUIFAX")))
-
 
 (defun mk-teams-start-thread-event (entity title content)
   (let* ([req (mk-connector-req

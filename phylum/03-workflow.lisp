@@ -7,9 +7,9 @@
              [amount          (or (get resp "invoice_amount") (set-exception-business "missing invoice_amount"))]
              [signer-name     (or (get resp "signer_name") (set-exception-business "missing signer_name"))]
              [signer-email    (or (get resp "signer_email") (set-exception-business "missing signer_email"))]
-             [originator-name (or (get resp "originator_name") "Acme Insurance Ltd.")]
-             [recipient-name  (or (get resp "recipient_name") "BlueRiver Underwriting Partners")]
-             [issue-date      (or (get resp "issue_date")  "2025-11-12")]
+             [originator-name (or (get resp "originator_name") *wf3-default-originator-name*)]
+             [recipient-name  (or (get resp "recipient_name") *wf3-default-recipient-name*)]
+             [issue-date      (or (get resp "issue_date") *wf3-default-issue-date*)]
              [policy-id       (or (get resp "policy_id") (get entity "policy_id"))]
              [chain-to-wf4    (normalize-bool (or (get resp "chain_to_wf4")
                                                   (get entity "chain_to_wf4"))
@@ -88,23 +88,7 @@
       :stage-durable stage-durable 
       :create-events create-events)))
 
-(defun build-event (entity req action sys-name)
-  (cc:infof (sorted-map "event" (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req)) "event for {}" sys-name)
-  (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req))
+;; build-event moved to substr_generic_parser.lisp
 
 (defun mk-email-body (signer-name claim-id sf-url)
   (string:join
@@ -126,7 +110,7 @@
   (let* (
          [sf-id   (get args "sf_record_id")]
          [sf-url  (if sf-id
-                      (format-string "{}/{}" *SF_BASE_URL* sf-id)
+                      (format-string "{}/{}" *wf3-default-sf-base-url* sf-id)
                       "")]
          [claim-id    (get entity "claim_id")]
          [signer-name (get entity "signer_name")]
@@ -151,7 +135,7 @@
                  "\n")]
 
          ;; Construct connector request
-         [req (mk-email-req "jack.clarke@luthersystems.com" subject body)])
+         [req (mk-email-req *wf3-default-email-to* subject body)])
     (build-event entity req "dispatch invoice email" "EMAIL")))
 
 
