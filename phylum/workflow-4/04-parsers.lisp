@@ -33,7 +33,7 @@
 (defun wf4-mk-sharepoint-get-id-doc-event (entity args)
   (let* ([req (mk-connector-req
                 (sorted-map
-                  "kind" "KIND_SHAREPOINT"
+                  "kind" "KIND_MICROSOFT_SHAREPOINT"
                   "operation" "get_document_content"
                   "args" args))])
     (build-event entity req "get sharepoint doc" "SHAREPOINT")))

@@ -15,7 +15,7 @@
                                          "name"     "Inter-Entity Settlement"
                                          "rate"     1250.0
                                          "quantity" 1)))
-(set '*wf4-default-due-date* "2025-11-12")
+(set '*wf4-default-due-date* "2025-11-15")
 
 ;; SharePoint defaults
 (set '*wf4-default-sharepoint-site-id* "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245")
