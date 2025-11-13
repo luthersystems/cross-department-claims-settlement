@@ -9,7 +9,6 @@
 ;; -----------------------------------------------------------------------------
 ;; WF1 → WF2 chaining (Oracle/Equifax -> Guidewire/MySQL)
 ;; -----------------------------------------------------------------------------
-(set '*wf1-chain-enabled* true)
 
 ;; Chaining defaults: fallback values when WF1 chains to WF2
 ;; References workflow constants where appropriate to avoid duplication
@@ -27,7 +26,6 @@
 ;; -----------------------------------------------------------------------------
 ;; WF2 → WF3 chaining (Guidewire/MySQL/SP -> Invoice/Email)
 ;; -----------------------------------------------------------------------------
-(set '*wf2-chain-enabled* true)
 
 ;; Optional default payload for invoking WF3 when chaining is enabled.
 ;; Set to () if you prefer to derive values dynamically from the WF2 entity.
@@ -46,7 +44,6 @@
 ;; -----------------------------------------------------------------------------
 ;; WF3 → WF4 chaining (Invoice/Email -> Zoho/SharePoint/ServiceNow)
 ;; -----------------------------------------------------------------------------
-(set '*wf3-chain-enabled* true)
 
 ;; Chaining defaults: fallback values when WF3 chains to WF4
 ;; References workflow constants where appropriate to avoid duplication
@@ -95,10 +92,7 @@
          (:else (if (nil? default-value) false default-value)))))
     (:else (if (nil? default-value) false default-value))))
 
-(defun wf1-should-chain? (entity)
-  "Determine whether WF1 should hand off to WF2 for the given entity."
-  ;; Chaining is controlled solely by the global flag, not entity state
-  *wf1-chain-enabled*)
+;; Removed: wf1-should-chain? - chaining is now controlled entirely by hook registration
 
 (defun wf1-derive-wf2-inputs (entity parsed)
   "Build a payload for WF2 using WF1 entity data as a fallback."
@@ -140,10 +134,7 @@
       "recipient_name"   (or (get derived "recipient_name") (get defaults "recipient_name"))
       "issue_date"       (or (get derived "issue_date") (get defaults "issue_date")))))
 
-(defun wf3-should-chain? (entity)
-  "Determine whether WF3 should hand off to WF4 for the given entity."
-  ;; Chaining is controlled solely by the global flag, not entity state
-  *wf3-chain-enabled*)
+;; Removed: wf3-should-chain? - chaining is now controlled entirely by hook registration
 
 (defun wf3-derive-wf4-inputs (entity parsed)
   "Build a payload for WF4 using WF3 entity data as a fallback."
@@ -204,7 +195,6 @@
 ;; -----------------------------------------------------------------------------
 ;; WF4 → WF5 chaining (Zoho/SharePoint/ServiceNow -> SAP/NetSuite)
 ;; -----------------------------------------------------------------------------
-(set '*wf4-chain-enabled* true)
 
 ;; Chaining defaults: fallback values when WF4 chains to WF5
 ;; References workflow constants where appropriate to avoid duplication
@@ -228,10 +218,7 @@
                     "currency"   *wf5-default-sap-currency*
                     "memo"       "Inter-entity settlement reconciliation")))
 
-(defun wf4-should-chain? (entity)
-  "Determine whether WF4 should hand off to WF5 for the given entity."
-  ;; Chaining is controlled solely by the global flag, not entity state
-  *wf4-chain-enabled*)
+;; Removed: wf4-should-chain? - chaining is now controlled entirely by hook registration
 
 (defun wf4-derive-wf5-inputs (entity parsed)
   (let* ([defaults (or *wf4-wf5-default-inputs* (sorted-map))]
@@ -253,10 +240,7 @@
 (defun wf4-build-wf5-inputs (entity parsed)
   (wf4-derive-wf5-inputs entity parsed))
 
-(defun wf2-should-chain? (entity)
-  "Determine whether WF2 should hand off to WF3 for the given entity."
-  ;; Chaining is controlled solely by the global flag, not entity state
-  *wf2-chain-enabled*)
+;; Removed: wf2-should-chain? - chaining is now controlled entirely by hook registration
 
 (defun wf2-derive-wf3-inputs (entity parsed)
   "Build a payload for WF3 using WF2 entity data as a fallback. Returns nil for missing fields to allow defaults to be used in merge."
@@ -303,18 +287,4 @@
       (set-exception-business "missing invoice_amount for WF3 handoff (not in entity or defaults)"))
     merged))
 
-(defun set-wf1-chain-enabled! (flag)
-  "Update the global WF1 chaining toggle at runtime."
-  (set '*wf1-chain-enabled* (normalize-bool flag *wf1-chain-enabled*)))
-
-(defun set-wf4-chain-enabled! (flag)
-  "Update the global WF4 chaining toggle at runtime."
-  (set '*wf4-chain-enabled* (normalize-bool flag *wf4-chain-enabled*)))
-
-(defun set-wf3-chain-enabled! (flag)
-  "Update the global WF3 chaining toggle at runtime."
-  (set '*wf3-chain-enabled* (normalize-bool flag *wf3-chain-enabled*)))
-
-(defun set-wf2-chain-enabled! (flag)
-  "Update the global WF2 chaining toggle at runtime."
-  (set '*wf2-chain-enabled* (normalize-bool flag *wf2-chain-enabled*)))
+;; Removed: set-wf*-chain-enabled! functions - chaining is now controlled entirely by hook registration

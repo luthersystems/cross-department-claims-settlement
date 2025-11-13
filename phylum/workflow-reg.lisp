@@ -62,41 +62,31 @@
     "WF5_CLAIM_STATE_SAP_PAID"          (wf5-claim-sap-paid-handler)
     "WF5_CLAIM_STATE_DONE"              (wf5-claim-done-state-handler)))
 
-;; Completion hook for WF1: optionally trigger WF2
+;; Completion hook for WF1: trigger WF2
 (set 'wf1-completion-hook
      (lambda (entity-name entity state parsed)
-       (let* ([chain-enabled (wf1-should-chain? entity)])
-         (if (not chain-enabled)
-             (cc:infof (sorted-map "entity-name" entity-name
-                                    "claim_id" (get entity "claim_id"))
-                       "WF1 chaining disabled; skipping WF2 trigger")
-             (let* ([wf2-inputs (wf1-build-wf2-inputs entity parsed)]
-                    [result (invoke-workflow claim-manager-wf2 wf2-inputs)])
-               (cc:infof (sorted-map
-                           "wf1_claim_id" (get entity "claim_id")
-                           "wf2_claim_id" (get result "claim_id")
-                           "wf2_state" (get result "state"))
-                         "WF1 chained to WF2"))))))
+       (let* ([wf2-inputs (wf1-build-wf2-inputs entity parsed)]
+              [result (invoke-workflow claim-manager-wf2 wf2-inputs)])
+         (cc:infof (sorted-map
+                     "wf1_claim_id" (get entity "claim_id")
+                     "wf2_claim_id" (get result "claim_id")
+                     "wf2_state" (get result "state"))
+                   "WF1 chained to WF2"))))
 
-;; Completion hook for WF2: decide whether to chain and trigger WF3 as needed.
+;; Completion hook for WF2: trigger WF3
 (set 'wf2-completion-hook
      (lambda (entity-name entity state parsed)
        (cc:infof (sorted-map "entity-name" entity-name
                               "claim_id" (get entity "claim_id")
                               "state" state)
                  "WF2 flow complete")
-       (let* ([chain-enabled (wf2-should-chain? entity)])
-         (if (not chain-enabled)
-             (cc:infof (sorted-map "entity-name" entity-name
-                                    "claim_id" (get entity "claim_id"))
-                       "WF2 chaining disabled; skipping WF3 trigger")
-             (let* ([wf3-inputs (wf2-build-wf3-inputs entity parsed)]
-                    [result (invoke-workflow claim-manager-wf3 wf3-inputs)])
-               (cc:infof (sorted-map
-                           "wf2_claim_id" (get entity "claim_id")
-                           "wf3_claim_id" (get result "claim_id")
-                           "wf3_state" (get result "state"))
-                         "WF2 chained to WF3"))))))
+       (let* ([wf3-inputs (wf2-build-wf3-inputs entity parsed)]
+              [result (invoke-workflow claim-manager-wf3 wf3-inputs)])
+         (cc:infof (sorted-map
+                     "wf2_claim_id" (get entity "claim_id")
+                     "wf3_claim_id" (get result "claim_id")
+                     "wf3_state" (get result "state"))
+                   "WF2 chained to WF3"))))
 
 
 (set 'wf3-completion-hook
@@ -105,18 +95,13 @@
                               "claim_id" (get entity "claim_id")
                               "state" state)
                  "WF3 flow complete")
-       (let* ([chain-enabled (wf3-should-chain? entity)])
-         (if (not chain-enabled)
-             (cc:infof (sorted-map "entity-name" entity-name
-                                    "claim_id" (get entity "claim_id"))
-                       "WF3 chaining disabled; skipping WF4 trigger")
-             (let* ([wf4-inputs (wf3-build-wf4-inputs entity parsed)]
-                    [result (invoke-workflow claim-manager-wf4 wf4-inputs)])
-               (cc:infof (sorted-map
-                           "wf3_claim_id" (get entity "claim_id")
-                           "wf4_claim_id" (get result "claim_id")
-                           "wf4_state" (get result "state"))
-                         "WF3 chained to WF4"))))))
+       (let* ([wf4-inputs (wf3-build-wf4-inputs entity parsed)]
+              [result (invoke-workflow claim-manager-wf4 wf4-inputs)])
+         (cc:infof (sorted-map
+                     "wf3_claim_id" (get entity "claim_id")
+                     "wf4_claim_id" (get result "claim_id")
+                     "wf4_state" (get result "state"))
+                   "WF3 chained to WF4"))))
 
 (set 'wf4-completion-hook
      (lambda (entity-name entity state parsed)
@@ -124,18 +109,13 @@
                               "claim_id" (get entity "claim_id")
                               "state" state)
                  "WF4 flow complete")
-       (let* ([chain-enabled (wf4-should-chain? entity)])
-         (if (not chain-enabled)
-             (cc:infof (sorted-map "entity-name" entity-name
-                                    "claim_id" (get entity "claim_id"))
-                       "WF4 chaining disabled; skipping WF5 trigger")
-             (let* ([wf5-inputs (wf4-build-wf5-inputs entity parsed)]
-                    [result (invoke-workflow claim-manager-wf5 wf5-inputs)])
-               (cc:infof (sorted-map
-                           "wf4_claim_id" (get entity "claim_id")
-                           "wf5_claim_id" (get result "claim_id")
-                           "wf5_state" (get result "state"))
-                         "WF4 chained to WF5"))))))
+       (let* ([wf5-inputs (wf4-build-wf5-inputs entity parsed)]
+              [result (invoke-workflow claim-manager-wf5 wf5-inputs)])
+         (cc:infof (sorted-map
+                     "wf4_claim_id" (get entity "claim_id")
+                     "wf5_claim_id" (get result "claim_id")
+                     "wf5_state" (get result "state"))
+                   "WF4 chained to WF5"))))
 
 (set 'wf5-completion-hook
      (lambda (entity-name entity state parsed)
