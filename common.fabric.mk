@@ -25,10 +25,45 @@ NETWORK_BUILDER_TARGET ?= docker-pull/${NETWORK_BUILDER_IMAGE}\:${NETWORK_BUILDE
 NETWORK_BUILDER=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION} --chown "${DOCKER_CHOWN_USER}"
 
 SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
-CONNECTORHUB_IMAGE ?= connectorhub-local
+CONNECTORHUB_IMAGE ?= luthersystems/connectorhub-local
+
+# CONNECTORHUB_REPO is the path to the ConnectorHub repository for local builds.
+# Default assumes it's a sibling directory to the project root.
+# When PROJECT_REL_DIR=.. (running from fabric/), this resolves to ../../connectorhub
+# Override if your ConnectorHub repo is elsewhere:
+#   make CONNECTORHUB_REPO=/path/to/connectorhub build-connectorhub-local
+CONNECTORHUB_REPO ?= ${PROJECT_REL_DIR}/../connectorhub
 
 SHIROCLIENT_TARGET ?= docker-pull/${SHIROCLIENT_IMAGE}\:${SHIROCLIENT_VERSION}
-CONNECTORHUB_TARGET ?= docker-pull/${CONNECTORHUB_IMAGE}\:${CONNECTORHUB_VERSION}
+
+# CONNECTORHUB_TARGET controls how the ConnectorHub image is obtained.
+# By default, it tries to pull from Docker Hub, then falls back to building locally.
+# 
+# Usage Options:
+#
+# 1. Use pushed image from Docker Hub (default, automatic):
+#    make up
+#    # Automatically pulls luthersystems/connectorhub-local:${CONNECTORHUB_VERSION}
+#    # If not found, automatically builds from ${CONNECTORHUB_REPO}
+#
+# 2. Force local build (skip Docker Hub pull):
+#    make build-connectorhub-local
+#    make up
+#    # Builds from source, then uses the locally built image
+#
+# 3. Use a different image/tag:
+#    make CONNECTORHUB_IMAGE=myregistry/connectorhub-local CONNECTORHUB_VERSION=v1.2.3 up
+#    # Uses your custom image and version
+#
+# 4. Use a different local repo path:
+#    make CONNECTORHUB_REPO=/custom/path/to/connectorhub build-connectorhub-local
+#    # Builds from a custom location
+#
+# When to use local vs pushed:
+# - Pushed: Use for stable releases, CI/CD, or when you don't have the source
+# - Local: Use when developing ConnectorHub changes, testing unreleased features,
+#          or when you need to modify ConnectorHub behavior
+CONNECTORHUB_TARGET ?= docker-pull-connectorhub
 
 SHIROCLIENT_FABRIC_CONFIG_BASENAME=shiroclient
 SHIROCLIENT_FABRIC_CONFIG_FAST_BASENAME=shiroclient_fast
@@ -69,7 +104,7 @@ default: images
 	@
 
 .PHONY: images
-images: ${FABRIC_IMAGE_TARGETS} ${SHIROCLIENT_TARGET} ${NETWORK_BUILDER_TARGET}
+images: ${FABRIC_IMAGE_TARGETS} ${SHIROCLIENT_TARGET} ${NETWORK_BUILDER_TARGET} ${CONNECTORHUB_TARGET}
 	@
 
 .PHONY: clean-chaincodes
@@ -227,8 +262,152 @@ start-gw-%: ${SHIROCLIENT_TARGET} build/volume/msp build/volume/enroll_user
 			--chaincode.version ${CC_VERSION}_${ccname} \
 			gateway ${filter_args}
 
+# docker-pull-connectorhub: Attempts to pull ConnectorHub image from Docker Hub.
+# If the image doesn't exist locally or on Docker Hub, automatically falls back
+# to building from source using build-connectorhub-local.
+#
+# This is the default behavior - you typically don't need to call this directly.
+# It's automatically invoked when you run targets that need ConnectorHub.
+.PHONY: docker-pull-connectorhub
+docker-pull-connectorhub:
+	@echo "📥 Pulling connectorhub-local from Docker Hub..."
+	@docker image inspect ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} >/dev/null 2>&1 || \
+		(docker pull ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} || \
+		 (echo "⚠️  Image not found on Docker Hub, building from source..." && \
+		  $(MAKE) build-connectorhub-local))
+
+# build-connectorhub-local: Builds ConnectorHub image from source.
+# Requires the ConnectorHub repository to be available at ${CONNECTORHUB_REPO}.
+#
+# Usage:
+#   # Build with default repo path (../connectorhub relative to project root)
+#   make build-connectorhub-local
+#
+#   # Build with custom repo path
+#   make CONNECTORHUB_REPO=/path/to/connectorhub build-connectorhub-local
+#
+#   # Build with custom image name/version
+#   make CONNECTORHUB_IMAGE=myregistry/connectorhub-local CONNECTORHUB_VERSION=dev build-connectorhub-local
+#
+# The build uses Dockerfile.local in the ConnectorHub repository root.
+# If the image already exists locally, this target will skip the build.
+.PHONY: build-connectorhub-local
+build-connectorhub-local:
+	@connectorhub_repo="$(abspath ${CONNECTORHUB_REPO})"; \
+	if [ ! -d "$$connectorhub_repo" ]; then \
+		echo "❌ ConnectorHub repository not found at $$connectorhub_repo"; \
+		echo "💡 Expected location: $$connectorhub_repo"; \
+		echo "💡 Please clone it: git clone https://github.com/luthersystems/connectorhub.git $$connectorhub_repo"; \
+		echo "💡 Or override the path: make CONNECTORHUB_REPO=/path/to/connectorhub build-connectorhub-local"; \
+		exit 1; \
+	fi
+	@connectorhub_repo="$(abspath ${CONNECTORHUB_REPO})"; \
+	echo "🔨 Building connectorhub-local from $$connectorhub_repo..."; \
+	docker image inspect ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} >/dev/null 2>&1 || \
+		(cd "$$connectorhub_repo" && docker build -f Dockerfile.local -t ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} .)
+	@echo "✅ connectorhub-local image is ready"
+
 .PHONY: connectorhub-up
 connectorhub-up: ${START_CONNECTORHUBS}
+
+# Test a specific connector (e.g., make test-connector c=SHAREPOINT)
+.PHONY: test-connector
+test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
+	@if [ -z "$(c)" ]; then \
+		echo "❌ Error: Please specify a connector name with c=CONNECTOR_NAME"; \
+		echo "Example: make test-connector c=SHAREPOINT"; \
+		exit 1; \
+	fi
+	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	env_file_flag=""; \
+	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
+	if [ -f "$$env_file" ]; then \
+		env_file_flag="--env-file $$env_file"; \
+		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
+			mock_all_flag=""; \
+		fi; \
+	fi; \
+	${DOCKER_RUN} --rm -t \
+		-v "${CURDIR}:/tmp/fabric:ro" \
+		-v "${PROJECT_ABS_DIR}:/tmp/project:ro" \
+		-v "$(abspath build/volume/checkpoint):/tmp/checkpoint:rw" \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v /tmp:/tmp \
+		-w "/tmp/fabric" \
+		${CONNECTORHUB_ENV_VARS} \
+		$$env_file_flag \
+		$$mock_all_flag \
+		--network ${FABRIC_DOCKER_NETWORK} \
+		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
+			test -v \
+			--config-file /tmp/fabric/connectorhub.yaml \
+			--keep-containers \
+			--mcp-init-timeout 120 \
+			$(c)
+
+# Test a specific connector with a custom tool call and request
+# Usage: make test-request c=TEAMS r='{"generic":{"kind":"KIND_MICROSOFT_TEAMS","operation":"start_thread","arguments":{"title":"Test","content":"Test content"}}}'
+# Note: The request must be wrapped in {"generic": {...}} with "kind", "operation", and "arguments" fields.
+# Examples:
+#   Teams: make test-request c=TEAMS r='{"generic":{"kind":"KIND_MICROSOFT_TEAMS","operation":"start_thread","arguments":{"title":"Test","content":"Content"}}}'
+#   Salesforce: make test-request c=SALESFORCE r='{"generic":{"kind":"KIND_SALESFORCE","operation":"create_record","arguments":{"object_name":"Task","data":{...}}}}'
+.PHONY: test-request
+test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
+	@if [ -z "$(c)" ]; then \
+		echo "❌ Error: Please specify a connector name with c=CONNECTOR_NAME"; \
+		echo "Example: make test-request c=TEAMS r='{\"generic\":{\"kind\":\"KIND_MICROSOFT_TEAMS\",\"operation\":\"start_thread\",\"arguments\":{...}}}'"; \
+		exit 1; \
+	fi
+	@if [ -z "$(r)" ]; then \
+		echo "❌ Error: Please specify a request with r=REQUEST_JSON"; \
+		echo "Example: make test-request c=TEAMS r='{\"generic\":{\"kind\":\"KIND_MICROSOFT_TEAMS\",\"operation\":\"start_thread\",\"arguments\":{...}}}'"; \
+		exit 1; \
+	fi
+	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	env_file_flag=""; \
+	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
+	if [ -f "$$env_file" ]; then \
+		env_file_flag="--env-file $$env_file"; \
+		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
+			mock_all_flag=""; \
+		fi; \
+	fi; \
+	${DOCKER_RUN} --rm -t \
+		-v "${CURDIR}:/tmp/fabric:ro" \
+		-v "${PROJECT_ABS_DIR}:/tmp/project:ro" \
+		-v "$(abspath build/volume/checkpoint):/tmp/checkpoint:rw" \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v /tmp:/tmp \
+		-w "/tmp/fabric" \
+		${CONNECTORHUB_ENV_VARS} \
+		$$env_file_flag \
+		$$mock_all_flag \
+		--network ${FABRIC_DOCKER_NETWORK} \
+		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
+			test-request -v \
+			--config-file /tmp/fabric/connectorhub.yaml \
+			--keep-containers \
+			--request '$(r)' \
+			$(c)
+
+# Default connector mock mode setting (can be overridden via .env file or environment)
+# Set to "true" to enable mock mode for all connectors, "false" to use real connectors
+MOCK_ALL ?= true
+
+# ConnectorHub environment variables with defaults
+# Note: MOCK_ALL is conditionally set in the start-ch-% target:
+# - If .env file exists and specifies MOCK_ALL, only --env-file is used (no -e flag)
+# - If .env file exists but doesn't specify MOCK_ALL, -e MOCK_ALL=${MOCK_ALL} is added before --env-file
+# - If .env file doesn't exist, -e MOCK_ALL=${MOCK_ALL} is used
+# This ensures .env file can override when specified, but Make default is used otherwise
+# LOG_LEVEL can be set to "debug" to enable detailed logging for all connectors (MCP and non-MCP)
+# MCP_FULL_LOG can be set to "true" to enable full request/response logging for MCP connectors
+# CH_LOG_FULL can be set to "true" to enable full request/response logging for all connectors (including non-MCP like GoCardless)
+CONNECTORHUB_ENV_VARS = \
+	-e CH_KEEP_CONTAINERS=true \
+	$(if $(LOG_LEVEL),-e LOG_LEVEL=$(LOG_LEVEL)) \
+	$(if $(MCP_FULL_LOG),-e MCP_FULL_LOG=$(MCP_FULL_LOG)) \
+	$(if $(CH_LOG_FULL),-e CH_LOG_FULL=$(CH_LOG_FULL))
 
 start-ch-%: parts=$(subst ., ,$*)
 start-ch-%: idx=$(word 1,${parts})
@@ -237,13 +416,26 @@ start-ch-%: ccname=$(word 3,${parts}) # TODO
 start-ch-%: port=$$(( 9091 + ${idx} ))
 start-gw-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
+	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	env_file_flag=""; \
+	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
+	if [ -f "$$env_file" ]; then \
+		env_file_flag="--env-file $$env_file"; \
+		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
+			mock_all_flag=""; \
+		fi; \
+	fi; \
 	${DOCKER_RUN} -d --name ${name} \
 		-v "${CURDIR}:/tmp/fabric:ro" \
+		-v "${PROJECT_ABS_DIR}:/tmp/project:ro" \
 		-v "$(abspath build/volume/checkpoint):/tmp/checkpoint:rw" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
   		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
 		-p "8090:8090" \
+		${CONNECTORHUB_ENV_VARS} \
+		$$env_file_flag \
+		$$mock_all_flag \
 		${port_fw} \
 		--network ${FABRIC_DOCKER_NETWORK} \
 		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
@@ -251,9 +443,8 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 			--config-file /tmp/fabric/connectorhub.yaml \
 			--checkpoint-file /tmp/checkpoint/checkpoint.txt
 		
-		@echo "⌛ Waiting for ${name} to start..."
+	@echo "⌛ Waiting for ${name} to start..."
 	@sleep 3
-
 	@if ! docker ps | grep -q "${name}"; then \
 		echo "❌ ConnectorHub ${name} exited unexpectedly!"; \
 		echo "🔍 Showing last 50 log lines:"; \

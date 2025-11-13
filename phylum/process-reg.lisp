@@ -65,18 +65,19 @@
       (sorted-map
          "CUSTOM_VALIDATION_STATE" (custom-validation-state-handler))
        state-spec-wf3
-       state-spec-wf4
+       state-spec-wf4  ;; workflow-4-edit (includes WAITING_FOR_SIGNATURE and CONTRACT_SIGNED states)
        state-spec-wf5
        ;; Custom states (inserted between workflows or within workflows)
   
        ;; Overrides for unified process chaining
        ;; Note: You can route through custom states by changing next-state
        ;; Example: WF2 → CUSTOM_VALIDATION_STATE → WF3
+       ;; WF4 uses workflow-4-edit which starts with CONTRACT_SIGNED state
        (sorted-map
          "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler "WF2_CLAIM_STATE_INIT")
          "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler "CUSTOM_VALIDATION_STATE")
          "CUSTOM_VALIDATION_STATE"                 (custom-validation-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
-         "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler "WF4_CLAIM_STATE_INIT")
+         "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE")
          "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED" (wf4-servicenow-incident-created-state-handler "WF5_CLAIM_STATE_INIT"))))
 
 ;; Unified claim manager for the entire process

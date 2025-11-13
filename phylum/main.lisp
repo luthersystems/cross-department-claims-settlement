@@ -52,12 +52,12 @@
 (load-file "workflow-3/03-routes.lisp")
 (load-file "workflow-3/03-reg.lisp")         ; Register WF3 manager
 
-;; Load workflow-4 files
-(load-file "workflow-4/04-constants.lisp")
-(load-file "workflow-4/04-parsers.lisp")     ; Parsing & event creation
-(load-file "workflow-4/04-workflow.lisp")
-(load-file "workflow-4/04-routes.lisp")
-(load-file "workflow-4/04-reg.lisp")         ; Register WF4 manager
+;; Load workflow-4 files (workflow-4-edit replaces workflow-4)
+(load-file "workflow-4-edit/04-constants.lisp")
+(load-file "workflow-4-edit/04-parsers.lisp")     ; Parsing & event creation
+(load-file "workflow-4-edit/04-workflow.lisp")
+(load-file "workflow-4-edit/04-routes.lisp")
+(load-file "workflow-4-edit/04-reg.lisp")         ; Register WF4 manager (workflow-4-edit)
 
 ;; Load workflow-5 files
 (load-file "workflow-5/05-constants.lisp")
