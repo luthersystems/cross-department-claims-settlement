@@ -36,7 +36,6 @@
     ([parse (resp entity) (parse-esignature-create-contract resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (cc:infof (sorted-map "parsed" parsed) "here is parsed esig resp") 
       (sorted-map
         "esign_contract_id"    (get parsed "contract_id")
         "esign_sign_page_url"  (get parsed "sign_page_url")

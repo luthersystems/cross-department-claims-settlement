@@ -1,6 +1,6 @@
 (in-package 'sandbox)
 
-(use-package 'connector)
+
 
 ;; Build input parameters for WF5 from a request map.
 ;; Provides sensible defaults so chaining from WF4 can reuse this helper.
@@ -27,10 +27,8 @@
       "sap"         sap)))
 
 (defendpoint "upload_claim_wf5" (req)
-  (cc:infof (sorted-map "req" req) "upload_claim_wf5 called")
   (let* ([inputs (build-wf5-inputs req)]
          [result (invoke-workflow claim-manager-wf5 inputs)])
-    (cc:infof (sorted-map "result" result) "upload_claim_wf5 completed")
     (route-success (sorted-map "claim_id" (get result "claim_id")))))
 
 (defendpoint "update_payment_status_handler" (req)

@@ -47,16 +47,19 @@
 ;; 'entity' is the entity that completed
 (export 'notify-workflow-completion)
 (defun notify-workflow-completion (workflow-name entity)
+  (cc:infof
+    (sorted-map
+      "workflow" workflow-name
+      "claim_id" (get entity "claim_id")
+      "state" (get entity "state"))
+    (format-string "{} workflow completed - invoking completion hooks" workflow-name))
   (let* ([listener (get workflow-completion-listeners workflow-name)])
     (when listener
-      (listener workflow-name entity))
-    ;; Also log a simple message
-    (cc:infof
-      (sorted-map
-        "workflow" workflow-name
-        "claim_id" (get entity "claim_id")
-        "state" (get entity "state"))
-      (format-string "{} workflow completed!" workflow-name))))
+      (cc:infof (sorted-map
+                  "workflow" workflow-name
+                  "claim_id" (get entity "claim_id"))
+                "Invoking completion listener")
+      (listener workflow-name entity))))
 
 ;; Notify workflow completion by entity-name.
 ;; This is a convenience function that determines the workflow name from entity-name.
@@ -92,17 +95,13 @@
 ;;   ;; Continue existing entity workflow
 ;;   (invoke-workflow claim-manager-wf2 (sorted-map "new_data" "value") "existing-claim-id")
 (defun invoke-workflow (manager inputs &optional entity-id)
-  (cc:infof (sorted-map "inputs" inputs "entity-id" entity-id) "invoke-workflow called")
   (let* ([entity-id (or entity-id
                         (let* ([new-entity (new-connector-object manager)])
-                          (cc:infof (sorted-map "new-entity" new-entity) "created new entity")
                           (get new-entity "claim_id")))])
-    (cc:infof (sorted-map "entity-id" entity-id) "triggering workflow")
     ;; Trigger the workflow with the input parameters
     ;; trigger-connector-object returns the updated entity from do-transition
     (let* ([updated-entity (trigger-connector-object manager entity-id inputs)]
            [current-state (get updated-entity "state")])
-      (cc:infof (sorted-map "entity-id" entity-id "state" current-state) "workflow triggered")
       (sorted-map
         "claim_id" entity-id
         "state"    current-state))))

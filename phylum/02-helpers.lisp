@@ -9,7 +9,6 @@
     (build-event entity req "get claim" "OUTBOUNDGW")))
 
 (defun parse-guidewire-claim (resp)
-  (cc:infof (sorted-map "resp" resp) "guidewire claim resp")
   (if (nil? resp)
       (set-exception-business "missing Guidewire claim response")
       (sorted-map
@@ -33,11 +32,9 @@
 
 (defun parse-mysql-policy (resp)
   "Parse MySQL MCP response for policy status and coverage."
-  (cc:infof (sorted-map "resp" resp) "resp in parse-mysql-policy")
   (let* ([row (if (and (vector? resp) (> (length resp) 0))
                   (first resp)
                   (set-exception-business "MySQL returned no rows"))])
-    (cc:infof (sorted-map "row" row) "row in parse-mysql-policy")
     (sorted-map
       "policy_id"      (get row "POLICY_ID")
       "status"         (get row "STATUS")
@@ -122,12 +119,6 @@
          [text     (string-join decoded-lines "\n")]
          [claim-id (get entity "claim_id")]
          [signer   (get entity "signer_name")])
-
-    (cc:infof (sorted-map "parsed" parsed) "parse1" )
-          (cc:infof (sorted-map "ctype" ctype) "parse2" )
-                (cc:infof (sorted-map "lines" lines) "parse3" )
-                      (cc:infof (sorted-map "decoded-lines" decoded-lines) "parse4" )
-                      (cc:infof (sorted-map "text" text) "parse5" )
     (when (not (= ctype "text"))
       (set-exception-business (format-string "unexpected content type: {}" ctype)))
 

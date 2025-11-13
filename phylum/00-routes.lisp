@@ -17,10 +17,8 @@
       "issue_date"         (get req "issue_date"))))
 
 (defendpoint "invoke_process" (req)
-  (cc:infof (sorted-map "req" req) "invoke_process called")
   (let* ([inputs (build-process-inputs req)]
          [result (invoke-workflow claim-manager inputs)])
-    (cc:infof (sorted-map "result" result) "invoke_process completed")
     (route-success (sorted-map "claim_id" (get result "claim_id")
                                "state" (get result "state")))))
 

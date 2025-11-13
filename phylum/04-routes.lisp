@@ -1,6 +1,6 @@
 (in-package 'sandbox)
 
-(use-package 'connector)
+
 
 ;; Note: Constants moved to 04-constants.lisp
 
@@ -93,8 +93,6 @@
       "servicenow" servicenow)))
 
 (defendpoint "upload_claim_wf4" (req)
-  (cc:infof (sorted-map "req" req) "upload_claim_wf4 called")
   (let* ([inputs (build-wf4-inputs req)]
          [result (invoke-workflow claim-manager-wf4 inputs)])
-    (cc:infof (sorted-map "result" result) "upload_claim_wf4 completed")
     (route-success (sorted-map "claim_id" (get result "claim_id")))))

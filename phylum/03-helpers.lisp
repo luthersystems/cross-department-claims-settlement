@@ -39,9 +39,6 @@
 
 ;; Salesforce: create invoice record
 (defun mk-salesforce-create-invoice-event (entity args)
-  (cc:infof (sorted-map "entity" entity) "passed entity")
-
-  (cc:infof (sorted-map "args" args) "passed args")
   (let* ([m *wf3-default-sf-fields-map*]
          [data (sorted-map
                  (get m "name")           (format-string "Inter-Entity Invoice {}" (get entity "claim_id"))
@@ -96,10 +93,6 @@
         [contract (and data (get data "contract"))]
         [signers (and contract (get contract "signers"))]
         [first-s (and (vector? signers) (> (length signers) 0) (first signers))])
-
-    (cc:infof (sorted-map "outer-data" outer-data) "parsed outer-data")
-    (cc:infof (sorted-map "data" data) "parsed data data")
-    (cc:infof (sorted-map "contract" contract) "parsed contract")
     ;; extract useful data for later workflow steps
     (sorted-map
       "contract_id"   (and contract (get contract "id"))
@@ -108,7 +101,6 @@
 
 ;; Salesforce: parse create_record → {sf_record_id}
 (defun parse-salesforce-create-record (resp)
-  (cc:infof (sorted-map "generic" (parse-generic-resp resp)) "generic salesforce resp parsed")
   (let* ([decoded (parse-generic-resp resp)]
          [id      (get decoded "id")])
     (if id

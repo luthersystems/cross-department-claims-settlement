@@ -17,8 +17,6 @@
       "issue_date"         (get req "issue_date"))))
 
 (defendpoint "upload_claim_wf1" (req)
-  (cc:infof (sorted-map "req" req) "upload_claim_wf1 called")
   (let* ([inputs (build-wf1-inputs req)]
          [result (invoke-workflow claim-manager-wf1 inputs)])
-    (cc:infof (sorted-map "result" result) "upload_claim_wf1 completed")
     (route-success (sorted-map "claim_id" (get result "claim_id")))))

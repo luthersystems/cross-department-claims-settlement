@@ -61,7 +61,6 @@
     ([parse (resp entity) (parse-guidewire-claim (parse-generic-resp resp))] ; create
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (cc:infof (sorted-map "status" (get parsed "status")) "guidewire parsed status in durable")
       (sorted-map "guidewire_status" (get parsed "status"))]
      [create-events (entity parsed accessors)
       (vector (mk-mysql-check-policy-event entity ; create
@@ -82,7 +81,6 @@
 (defun wf2-claim-mysql-validated-state-handler ()
   (labels
     ([parse (resp entity) 
-      (cc:infof (sorted-map "resp" resp) "parse mysql resp")
         (parse-mysql-policy (parse-generic-resp resp))
       ] ; create
      [stage-ephemeral (entity parsed accessors) ()]
