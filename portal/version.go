@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/luthersystems/sandbox/portal/version"
+	"github.com/luthersystems/cdcs/portal/version"
 )
 
 type versionCmd struct {

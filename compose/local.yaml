@@ -1,14 +1,14 @@
 # Configuration for a local fabric network.
 services:
-  sandbox_oracle:
+  cdcs_oracle:
     extends:
       file: common.yaml
-      service: sandbox_oracle
+      service: cdcs_oracle
     ports:
     - "8080:8080" # expose this for testing purposes
     - "9600:9600" # expose this for testing purposes
     environment:
-    - SANDBOX_ORACLE_EMULATE_CC=false
+    - CDCS_ORACLE_EMULATE_CC=false
     networks:
     - byfn
 networks:

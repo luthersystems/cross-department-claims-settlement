@@ -1,8 +1,8 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 ; 
 
 ;; -----------------------------------------------------------------------------
-;; Sandbox Entity State Machine Framework
+;; CDCS Entity State Machine Framework
 ;; -----------------------------------------------------------------------------
 ;;
 ;; Core runtime + ephemeral storage layer for declarative state machines.
@@ -17,9 +17,9 @@
 ;;   → purge ephemerals scheduled for the state we just entered
 ;;
 ;; Ephemeral storage in SideDB:
-;;   sandbox:<entity>:ephem:bucket:<entityId>:<dropState>  ; value buckets (map key→value)
-;;   sandbox:<entity>:ephem:router:<entityId>:<key>        ; router key → dropState
-;;   sandbox:<entity>:ephem:index:<entityId>:<dropState>   ; list of keys for drop-state
+;;   cdcs:<entity>:ephem:bucket:<entityId>:<dropState>  ; value buckets (map key→value)
+;;   cdcs:<entity>:ephem:router:<entityId>:<key>        ; router key → dropState
+;;   cdcs:<entity>:ephem:index:<entityId>:<dropState>   ; list of keys for drop-state
 ;;
 ;; Each ephemeral intent is a map:
 ;;   { :key <string> :value <any> :drop-state <string-STATE> }
@@ -52,9 +52,9 @@
     (labels
       ([name () entity-name]
 
-       ;; Key in PDC: "sandbox:<entity-name>:<entity-id>"
+       ;; Key in PDC: "cdcs:<entity-name>:<entity-id>"
        [mk-storage-key (entity-id)
-         (join-index-cols "sandbox" entity-name entity-id)]
+         (join-index-cols "cdcs" entity-name entity-id)]
 
        ;; persistence (PDC)
        [storage-put (entity-doc)

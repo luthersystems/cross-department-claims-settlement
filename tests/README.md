@@ -8,7 +8,7 @@ exercises a documents API should live under `documents/`.
 
 ## Running End-To-End Tests
 
-For e2e testing, you can launch the sandbox oracle from the project's root
+For e2e testing, you can launch the cdcs oracle from the project's root
 directory. See the [README](../README.md) for additional details, but for this
 purpose we will assume the application is running with in-memory mode enabled.
 
@@ -17,7 +17,7 @@ purpose we will assume the application is running with in-memory mode enabled.
 ```
 
 The file `Docker.postman_environment.json` configures the tests to exercise the
-local sandbox oracle container. An application that is also deployed in a
+local cdcs oracle container. An application that is also deployed in a
 public cloud like AWS may have additional Postman environment files configured
 to run tests against live environments.
 

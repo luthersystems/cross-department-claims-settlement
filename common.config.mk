@@ -7,7 +7,7 @@
 
 # PROJECT and VERSION are attached to docker images and phylum deployment
 # artifacts created during the build process.
-PROJECT=sandbox
+PROJECT=cdcs
 VERSION=0.1.0-SNAPSHOT
 SERVICE_DIR=portal
 

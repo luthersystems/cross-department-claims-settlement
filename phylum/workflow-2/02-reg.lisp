@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
 ;; WF2 State Specification & Manager Registration

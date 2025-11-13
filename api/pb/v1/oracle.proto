@@ -7,7 +7,7 @@ package pb.v1;
 
 import "common/v1/exception.proto";
 
-option go_package = "github.com/luthersystems/sandbox/api/pb/v1";
+option go_package = "github.com/luthersystems/cdcs/api/pb/v1";
 
 // // Represents a nationality using an enum for structured validation.
 // enum Nationality {

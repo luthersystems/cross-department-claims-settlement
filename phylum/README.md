@@ -194,10 +194,10 @@ You can insert custom states anywhere in the process chain:
 
 Entities are stored in SideDB with the key pattern:
 ```
-sandbox:<entity-name>:<entity-id>
+cdcs:<entity-name>:<entity-id>
 ```
 
-Example: `sandbox:claim:550e8400-e29b-41d4-a716-446655440000`
+Example: `cdcs:claim:550e8400-e29b-41d4-a716-446655440000`
 
 ### Entity Fields
 
@@ -209,9 +209,9 @@ Example: `sandbox:claim:550e8400-e29b-41d4-a716-446655440000`
 ### Ephemeral Storage
 
 Ephemeral data is stored with automatic cleanup:
-- **Bucket**: `sandbox:<entity>:ephem:bucket:<entityId>:<dropState>`
-- **Router**: `sandbox:<entity>:ephem:router:<entityId>:<key>`
-- **Index**: `sandbox:<entity>:ephem:index:<entityId>:<dropState>`
+- **Bucket**: `cdcs:<entity>:ephem:bucket:<entityId>:<dropState>`
+- **Router**: `cdcs:<entity>:ephem:router:<entityId>:<key>`
+- **Index**: `cdcs:<entity>:ephem:index:<entityId>:<dropState>`
 
 Data is automatically purged when the entity enters the `drop-state`.
 

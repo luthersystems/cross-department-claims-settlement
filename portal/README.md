@@ -65,7 +65,7 @@ In production, the oracle communicates with the distributed network via the
 authenticated request routing, state management, and traceability.
 
 By default, the CLI runs in real mode. To run in-memory (no real nodes), use
-`--emulate-cc` or set `SANDBOX_ORACLE_EMULATE_CC=true`.
+`--emulate-cc` or set `CDCS_ORACLE_EMULATE_CC=true`.
 
 This emulated mode loads the `phylum` directory locally and executes the Common
 Operations Script (COS) in process without starting an actual network.

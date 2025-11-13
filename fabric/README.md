@@ -121,7 +121,7 @@ user-id: User1
 org-domain: org1.luther.systems
 peer-endpoint: peer0.org1.luther.systems:7051
 channel-name: luther
-chaincode-id: sandbox
+chaincode-id: cdcs
 connectors:
   - name: POSTGRES_CLAIMS_DB
     mock: true

@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; Build input parameters for WF1 from a request map
 ;; Allows routes or other orchestrators to kick off WF1 consistently.

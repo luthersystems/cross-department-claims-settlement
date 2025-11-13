@@ -1099,8 +1099,8 @@ const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
-	"\x06resultBy\n" +
-	"\tcom.pb.v1B\vOracleProtoP\x01Z*github.com/luthersystems/sandbox/api/pb/v1\xa2\x02\x03PXX\xaa\x02\x05Pb.V1\xca\x02\x05Pb\\V1\xe2\x02\x11Pb\\V1\\GPBMetadata\xea\x02\x06Pb::V1b\x06proto3"
+	"\x06resultBv\n" +
+	"\tcom.pb.v1B\vOracleProtoP\x01Z'github.com/luthersystems/cdcs/api/pb/v1\xa2\x02\x03PXX\xaa\x02\x05Pb.V1\xca\x02\x05Pb\\V1\xe2\x02\x11Pb\\V1\\GPBMetadata\xea\x02\x06Pb::V1b\x06proto3"
 
 var (
 	file_pb_v1_oracle_proto_rawDescOnce sync.Once

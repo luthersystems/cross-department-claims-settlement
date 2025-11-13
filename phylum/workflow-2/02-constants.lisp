@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
 ;; Constants for Workflow 2 (Guidewire/MySQL/SharePoint)

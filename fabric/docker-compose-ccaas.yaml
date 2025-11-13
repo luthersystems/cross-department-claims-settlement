@@ -1,8 +1,8 @@
 version: '3.7'
 services:
-  sandbox-peer0:
+  cdcs-peer0:
     image: luthersystems/substrate:$CHAINCODE_VERSION
-    command: ["$CCID_SANDBOX"]
+    command: ["$CCID_CDCS"]
     ports:
       - "9080:8080"
     networks:

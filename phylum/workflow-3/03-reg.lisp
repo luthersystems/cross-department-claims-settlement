@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
 ;; WF3 State Specification & Manager Registration

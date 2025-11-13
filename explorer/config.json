@@ -1,7 +1,7 @@
 {
 	"network-configs": {
-		"sandbox-test-network": {
-			"name": "Sandbox Test Network",
+		"cdcs-test-network": {
+			"name": "Cdcs Test Network",
 			"profile": "./connection-profile/test-network.json"
 		}
 	},

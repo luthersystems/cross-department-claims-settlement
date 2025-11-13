@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
 ;; Unified Process Registration: All workflows combined (WF1 → WF2 → WF3 → WF4 → WF5)

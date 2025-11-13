@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; Build input parameters for WF2 from a request map
 ;; This can be called from routes or from other workflows

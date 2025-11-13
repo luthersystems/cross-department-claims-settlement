@@ -12,7 +12,7 @@ package srv
 
 import (
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options"
-	v1 "github.com/luthersystems/sandbox/api/pb/v1"
+	v1 "github.com/luthersystems/cdcs/api/pb/v1"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
@@ -31,21 +31,21 @@ var File_srvpb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_srvpb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
-	"\x15srvpb/v1/oracle.proto\x12\bsrvpb.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x12pb/v1/oracle.proto\x1a.protoc-gen-openapiv2/options/annotations.proto2\x9d\x06\n" +
-	"\x0eSandboxService\x12\x80\x01\n" +
-	"\x0eUploadClaimWF1\x12\x1c.pb.v1.UploadClaimWF1Request\x1a\x1d.pb.v1.UploadClaimWF1Response\"1\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF1\x12\x80\x01\n" +
-	"\x0eUploadClaimWF2\x12\x1c.pb.v1.UploadClaimWF2Request\x1a\x1d.pb.v1.UploadClaimWF2Response\"1\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF2\x12\x80\x01\n" +
-	"\x0eUploadClaimWF3\x12\x1c.pb.v1.UploadClaimWF3Request\x1a\x1d.pb.v1.UploadClaimWF3Response\"1\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF3\x12\x80\x01\n" +
-	"\x0eUploadClaimWF4\x12\x1c.pb.v1.UploadClaimWF4Request\x1a\x1d.pb.v1.UploadClaimWF4Response\"1\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF4\x12\x80\x01\n" +
-	"\x0eUploadClaimWF5\x12\x1c.pb.v1.UploadClaimWF5Request\x1a\x1d.pb.v1.UploadClaimWF5Response\"1\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF5\x12|\n" +
-	"\rInvokeProcess\x12\x1b.pb.v1.InvokeProcessRequest\x1a\x1c.pb.v1.InvokeProcessResponse\"0\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/sandbox/InvokeProcessB\xaa\x05\x92A\xa0\x04\x12\x12\n" +
-	"\vSandbox API2\x031.0*\x01\x022\x10application/json:\x10application/jsonRS\n" +
+	"\x15srvpb/v1/oracle.proto\x12\bsrvpb.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x12pb/v1/oracle.proto\x1a.protoc-gen-openapiv2/options/annotations.proto2\x83\x06\n" +
+	"\vCdcsService\x12}\n" +
+	"\x0eUploadClaimWF1\x12\x1c.pb.v1.UploadClaimWF1Request\x1a\x1d.pb.v1.UploadClaimWF1Response\".\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF1\x12}\n" +
+	"\x0eUploadClaimWF2\x12\x1c.pb.v1.UploadClaimWF2Request\x1a\x1d.pb.v1.UploadClaimWF2Response\".\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF2\x12}\n" +
+	"\x0eUploadClaimWF3\x12\x1c.pb.v1.UploadClaimWF3Request\x1a\x1d.pb.v1.UploadClaimWF3Response\".\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF3\x12}\n" +
+	"\x0eUploadClaimWF4\x12\x1c.pb.v1.UploadClaimWF4Request\x1a\x1d.pb.v1.UploadClaimWF4Response\".\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF4\x12}\n" +
+	"\x0eUploadClaimWF5\x12\x1c.pb.v1.UploadClaimWF5Request\x1a\x1d.pb.v1.UploadClaimWF5Response\".\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF5\x12y\n" +
+	"\rInvokeProcess\x12\x1b.pb.v1.InvokeProcessRequest\x1a\x1c.pb.v1.InvokeProcessResponse\"-\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/cdcs/InvokeProcessB\xa4\x05\x92A\x9d\x04\x12\x0f\n" +
+	"\bCdcs API2\x031.0*\x01\x022\x10application/json:\x10application/jsonRS\n" +
 	"\x03400\x12L\n" +
 	"(Bad request determined by business logic\x12 \n" +
 	"\x1e\x1a\x1c.common.v1.ExceptionResponseR?\n" +
@@ -69,7 +69,7 @@ const file_srvpb_v1_oracle_proto_rawDesc = "" +
 	"\x1e\x1a\x1c.common.v1.ExceptionResponseZ\x1e\n" +
 	"\x1c\n" +
 	"\tX-API-KEY\x12\x0f\b\x02\x1a\tX-API-KEY \x02\n" +
-	"\fcom.srvpb.v1B\vOracleProtoP\x01Z(github.com/luthersystems/sandbox/api/srv\xa2\x02\x03SXX\xaa\x02\bSrvpb.V1\xca\x02\bSrvpb\\V1\xe2\x02\x14Srvpb\\V1\\GPBMetadata\xea\x02\tSrvpb::V1b\x06proto3"
+	"\fcom.srvpb.v1B\vOracleProtoP\x01Z%github.com/luthersystems/cdcs/api/srv\xa2\x02\x03SXX\xaa\x02\bSrvpb.V1\xca\x02\bSrvpb\\V1\xe2\x02\x14Srvpb\\V1\\GPBMetadata\xea\x02\tSrvpb::V1b\x06proto3"
 
 var file_srvpb_v1_oracle_proto_goTypes = []any{
 	(*v1.UploadClaimWF1Request)(nil),  // 0: pb.v1.UploadClaimWF1Request
@@ -86,18 +86,18 @@ var file_srvpb_v1_oracle_proto_goTypes = []any{
 	(*v1.InvokeProcessResponse)(nil),  // 11: pb.v1.InvokeProcessResponse
 }
 var file_srvpb_v1_oracle_proto_depIdxs = []int32{
-	0,  // 0: srvpb.v1.SandboxService.UploadClaimWF1:input_type -> pb.v1.UploadClaimWF1Request
-	1,  // 1: srvpb.v1.SandboxService.UploadClaimWF2:input_type -> pb.v1.UploadClaimWF2Request
-	2,  // 2: srvpb.v1.SandboxService.UploadClaimWF3:input_type -> pb.v1.UploadClaimWF3Request
-	3,  // 3: srvpb.v1.SandboxService.UploadClaimWF4:input_type -> pb.v1.UploadClaimWF4Request
-	4,  // 4: srvpb.v1.SandboxService.UploadClaimWF5:input_type -> pb.v1.UploadClaimWF5Request
-	5,  // 5: srvpb.v1.SandboxService.InvokeProcess:input_type -> pb.v1.InvokeProcessRequest
-	6,  // 6: srvpb.v1.SandboxService.UploadClaimWF1:output_type -> pb.v1.UploadClaimWF1Response
-	7,  // 7: srvpb.v1.SandboxService.UploadClaimWF2:output_type -> pb.v1.UploadClaimWF2Response
-	8,  // 8: srvpb.v1.SandboxService.UploadClaimWF3:output_type -> pb.v1.UploadClaimWF3Response
-	9,  // 9: srvpb.v1.SandboxService.UploadClaimWF4:output_type -> pb.v1.UploadClaimWF4Response
-	10, // 10: srvpb.v1.SandboxService.UploadClaimWF5:output_type -> pb.v1.UploadClaimWF5Response
-	11, // 11: srvpb.v1.SandboxService.InvokeProcess:output_type -> pb.v1.InvokeProcessResponse
+	0,  // 0: srvpb.v1.CdcsService.UploadClaimWF1:input_type -> pb.v1.UploadClaimWF1Request
+	1,  // 1: srvpb.v1.CdcsService.UploadClaimWF2:input_type -> pb.v1.UploadClaimWF2Request
+	2,  // 2: srvpb.v1.CdcsService.UploadClaimWF3:input_type -> pb.v1.UploadClaimWF3Request
+	3,  // 3: srvpb.v1.CdcsService.UploadClaimWF4:input_type -> pb.v1.UploadClaimWF4Request
+	4,  // 4: srvpb.v1.CdcsService.UploadClaimWF5:input_type -> pb.v1.UploadClaimWF5Request
+	5,  // 5: srvpb.v1.CdcsService.InvokeProcess:input_type -> pb.v1.InvokeProcessRequest
+	6,  // 6: srvpb.v1.CdcsService.UploadClaimWF1:output_type -> pb.v1.UploadClaimWF1Response
+	7,  // 7: srvpb.v1.CdcsService.UploadClaimWF2:output_type -> pb.v1.UploadClaimWF2Response
+	8,  // 8: srvpb.v1.CdcsService.UploadClaimWF3:output_type -> pb.v1.UploadClaimWF3Response
+	9,  // 9: srvpb.v1.CdcsService.UploadClaimWF4:output_type -> pb.v1.UploadClaimWF4Response
+	10, // 10: srvpb.v1.CdcsService.UploadClaimWF5:output_type -> pb.v1.UploadClaimWF5Response
+	11, // 11: srvpb.v1.CdcsService.InvokeProcess:output_type -> pb.v1.InvokeProcessResponse
 	6,  // [6:12] is the sub-list for method output_type
 	0,  // [0:6] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name

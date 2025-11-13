@@ -79,11 +79,11 @@
 							],
 							"path": [
 								"v1",
-								"sandbox",
+								"cdcs",
 								"claims"
 							],
 							"protocol": "{{SCHEME}}",
-							"raw": "{{SCHEME}}://{{SERVER}}/v1/sandbox/claims"
+							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/claims"
 						}
 					}
 				},
@@ -132,12 +132,12 @@
 							],
 							"path": [
 								"v1",
-								"sandbox",
+								"cdcs",
 								"claim",
 								"{{CLAIM_ID}}"
 							],
 							"protocol": "{{SCHEME}}",
-							"raw": "{{SCHEME}}://{{SERVER}}/v1/sandbox/claim/{{CLAIM_ID}}"
+							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/claim/{{CLAIM_ID}}"
 						}
 					}
 				},
@@ -191,18 +191,18 @@
 							],
 							"path": [
 								"v1",
-								"sandbox",
+								"cdcs",
 								"claim",
 								"{{CLAIM_ID}}",
 								"claimant"
 							],
 							"protocol": "{{SCHEME}}",
-							"raw": "{{SCHEME}}://{{SERVER}}/v1/sandbox/claim/{{CLAIM_ID}}/claimant"
+							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/claim/{{CLAIM_ID}}/claimant"
 						}
 					}
 				}
 			],
-			"name": "Sandbox Example: Claim Management"
+			"name": "Cross Department Claims Settlement Example: Claim Management"
 		}
 	]
 }

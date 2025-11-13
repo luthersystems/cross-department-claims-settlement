@@ -1,6 +1,6 @@
-# Contributing to sandbox
+# Contributing to Cross Department Claims Settlement (cdcs)
 
-sandbox is an open source project welcome to contributions from the community.
+Cross Department Claims Settlement is an open source project welcome to contributions from the community.
 
 Please file issues on GitHub if you believe there is a bug or if documentation
 is unclear.
