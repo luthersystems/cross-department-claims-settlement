@@ -65,10 +65,6 @@
 ;; Completion hook for WF1: optionally trigger WF2
 (set 'wf1-completion-hook
      (lambda (entity-name entity state parsed)
-       (cc:infof (sorted-map "entity-name" entity-name
-                              "claim_id" (get entity "claim_id")
-                              "state" state)
-                 "WF1 flow complete")
        (let* ([chain-enabled (wf1-should-chain? entity)])
          (if (not chain-enabled)
              (cc:infof (sorted-map "entity-name" entity-name

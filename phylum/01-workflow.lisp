@@ -18,13 +18,7 @@
              [invoice-amount (or (get entity "invoice_amount") (get resp "invoice_amount"))]
              [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
              [recipient-name  (or (get entity "recipient_name")  (get resp "recipient_name"))]
-             [issue-date      (or (get entity "issue_date")      (get resp "issue_date"))]
-             [chain-to-wf2 (normalize-bool (or (get resp "chain_to_wf2")
-                                               (get entity "chain_to_wf2"))
-                                           *wf1-chain-enabled*)]
-             [chain-to-wf3 (normalize-bool (or (get resp "chain_to_wf3")
-                                               (get entity "chain_to_wf3"))
-                                           *wf2-chain-enabled*)])
+             [issue-date      (or (get entity "issue_date")      (get resp "issue_date"))])
         (sorted-map
           "policy_id"          policy-id
           "gw_claim_id"        gw-claim-id
@@ -33,9 +27,7 @@
           "invoice_amount"     invoice-amount
           "originator_name"    originator-name
           "recipient_name"     recipient-name
-          "issue_date"         issue-date
-          "chain_to_wf2"       chain-to-wf2
-          "chain_to_wf3"       chain-to-wf3))]
+          "issue_date"         issue-date))]
 
      [stage-ephemeral (entity parsed accessors)   
      (vector
@@ -52,9 +44,7 @@
         "invoice_amount"   (get parsed "invoice_amount")
         "originator_name"  (get parsed "originator_name")
         "recipient_name"   (get parsed "recipient_name")
-        "issue_date"       (get parsed "issue_date")
-        "chain_to_wf2"     (get parsed "chain_to_wf2")
-        "chain_to_wf3"     (get parsed "chain_to_wf3"))]
+        "issue_date"       (get parsed "issue_date"))]
     
     [create-events (entity parsed accessors)
       (vector

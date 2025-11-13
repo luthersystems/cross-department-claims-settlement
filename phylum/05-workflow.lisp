@@ -50,15 +50,13 @@
         (sorted-map
           "claim_id"  claim-id
           "policy_id" policy-id
-          "sap"       sap
-          "chain_to_wf5" (normalize-bool (get resp "chain_to_wf5") true)))]
+          "sap"       sap))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
         "claim_id"  (get parsed "claim_id")
         "policy_id" (get parsed "policy_id")
-        "sap"       (get parsed "sap")
-        "chain_to_wf5" (get parsed "chain_to_wf5"))]
+        "sap"       (get parsed "sap"))]
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler

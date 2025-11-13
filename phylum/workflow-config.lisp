@@ -20,10 +20,9 @@
        "signer_email"     "approver@example.com"
        "signer_name"      "Workflow Approver"
        "invoice_amount"   "25000.00"
-       "originator_name"  *wf3-default-originator-name*  ; Reuse from WF3 constants
-       "recipient_name"   *wf3-default-recipient-name*   ; Reuse from WF3 constants
-       "issue_date"       *wf3-default-issue-date*       ; Reuse from WF3 constants
-       "chain_to_wf3"     true))
+      "originator_name"  *wf3-default-originator-name*  ; Reuse from WF3 constants
+      "recipient_name"   *wf3-default-recipient-name*   ; Reuse from WF3 constants
+      "issue_date"       *wf3-default-issue-date*))     ; Reuse from WF3 constants
 
 ;; -----------------------------------------------------------------------------
 ;; WF2 → WF3 chaining (Guidewire/MySQL/SP -> Invoice/Email)
@@ -72,9 +71,7 @@
                       "category"         *wf4-default-servicenow-category*
                       "impact"           *wf4-default-servicenow-impact*
                       "urgency"          *wf4-default-servicenow-urgency*
-                      "assignment_group" *wf4-default-servicenow-assignment-group*)
-       "chain_to_wf4" true
-       "chain_to_wf5" true))
+                      "assignment_group" *wf4-default-servicenow-assignment-group*)))
 
 (defun normalize-bool (value &optional default-value)
   "Best-effort boolean coercion with sensible defaults."
@@ -100,7 +97,8 @@
 
 (defun wf1-should-chain? (entity)
   "Determine whether WF1 should hand off to WF2 for the given entity."
-  (normalize-bool (get entity "chain_to_wf2") *wf1-chain-enabled*))
+  ;; Chaining is controlled solely by the global flag, not entity state
+  *wf1-chain-enabled*)
 
 (defun wf1-derive-wf2-inputs (entity parsed)
   "Build a payload for WF2 using WF1 entity data as a fallback."
@@ -116,8 +114,7 @@
          [invoice-amount (get entity "invoice_amount")] 
          [originator-name (or (get entity "originator_name") "Acme Insurance Ltd.")]
          [recipient-name  (or (get entity "recipient_name") "BlueRiver Underwriting Partners")]
-         [issue-date      (or (get entity "issue_date")  "2025-11-12")]
-         [chain-to-wf3    (normalize-bool (get entity "chain_to_wf3") *wf2-chain-enabled*)])
+         [issue-date      (or (get entity "issue_date")  "2025-11-12")])
     (sorted-map
       "policy_id"        policy-id
       "gw_claim_id"      gw-claim-id
@@ -126,8 +123,7 @@
       "invoice_amount"   invoice-amount
       "originator_name"  originator-name
       "recipient_name"   recipient-name
-      "issue_date"       issue-date
-      "chain_to_wf3"     chain-to-wf3)))
+      "issue_date"       issue-date)))
 
 (defun wf1-build-wf2-inputs (entity parsed)
   "Construct WF2 inputs, merging defaults with derived values from entity."
@@ -142,12 +138,12 @@
       "invoice_amount"   (or (get derived "invoice_amount") (get defaults "invoice_amount"))
       "originator_name"  (or (get derived "originator_name") (get defaults "originator_name"))
       "recipient_name"   (or (get derived "recipient_name") (get defaults "recipient_name"))
-      "issue_date"       (or (get derived "issue_date") (get defaults "issue_date"))
-      "chain_to_wf3"     (or (get derived "chain_to_wf3") (get defaults "chain_to_wf3")))))
+      "issue_date"       (or (get derived "issue_date") (get defaults "issue_date")))))
 
 (defun wf3-should-chain? (entity)
   "Determine whether WF3 should hand off to WF4 for the given entity."
-  (normalize-bool (get entity "chain_to_wf4") *wf3-chain-enabled*))
+  ;; Chaining is controlled solely by the global flag, not entity state
+  *wf3-chain-enabled*)
 
 (defun wf3-derive-wf4-inputs (entity parsed)
   "Build a payload for WF4 using WF3 entity data as a fallback."
@@ -160,7 +156,6 @@
          [zoho-base       (or (get defaults "zoho") (sorted-map))]
          [sharepoint-base (or (get defaults "sharepoint") (sorted-map))]
          [servicenow-base (or (get defaults "servicenow") (sorted-map))]
-         [chain-to-wf5    (normalize-bool (or (get defaults "chain_to_wf5") (get entity "chain_to_wf5")) true)]
          [line-items (or (get zoho-base "line_items")
                          (vector (sorted-map
                                    "name"     "Inter-Entity Settlement"
@@ -194,16 +189,13 @@
          [servicenow (assoc servicenow "assignment_group" (or (get servicenow-base "assignment_group") *wf4-default-servicenow-assignment-group*))]
          [servicenow (if (get servicenow-base "caller_id")
                          (assoc servicenow "caller_id" (get servicenow-base "caller_id"))
-                         servicenow)]
-         [chain-flag (normalize-bool (get defaults "chain_to_wf4") true)])
+                         servicenow)])
     (sorted-map
       "claim_id"    claim-id
       "policy_id"   (or (get entity "policy_id") *wf4-default-policy-id*)
       "zoho"        zoho
       "sharepoint"  sharepoint
-      "servicenow"  servicenow
-      "chain_to_wf4" chain-flag
-      "chain_to_wf5" chain-to-wf5)))
+      "servicenow"  servicenow)))
 
 (defun wf3-build-wf4-inputs (entity parsed)
   "Construct WF4 inputs, preferring configured defaults when provided."
@@ -234,11 +226,12 @@
                     "invoice_id" "INV-10001"
                     "amount"     *wf5-default-sap-amount*
                     "currency"   *wf5-default-sap-currency*
-                    "memo"       "Inter-entity settlement reconciliation")
-       "chain_to_wf5" true))
+                    "memo"       "Inter-entity settlement reconciliation")))
 
 (defun wf4-should-chain? (entity)
-  (normalize-bool (get entity "chain_to_wf5") *wf4-chain-enabled*))
+  "Determine whether WF4 should hand off to WF5 for the given entity."
+  ;; Chaining is controlled solely by the global flag, not entity state
+  *wf4-chain-enabled*)
 
 (defun wf4-derive-wf5-inputs (entity parsed)
   (let* ([defaults (or *wf4-wf5-default-inputs* (sorted-map))]
@@ -250,21 +243,20 @@
          [netsuite (or (get entity "netsuite") (get defaults "netsuite") (sorted-map))]
          [sap (assoc sap "invoice_id" (or (get sap "invoice_id") (get entity "zoho_invoice_id") "INV-10001"))]
          [netsuite (assoc netsuite "invoice_id" (or (get netsuite "invoice_id") (get entity "zoho_invoice_id") "INV-10001"))]
-         [netsuite (assoc netsuite "amount" (or (get netsuite "amount") (get entity "zoho_invoice_total") 2500.00))]
-         [chain-flag (normalize-bool (or (get entity "chain_to_wf5") (get defaults "chain_to_wf5")) *wf4-chain-enabled*)])
+         [netsuite (assoc netsuite "amount" (or (get netsuite "amount") (get entity "zoho_invoice_total") 2500.00))])
     (sorted-map
       "claim_id"    claim-id
       "policy_id"   policy-id
       "sap"         sap
-      "netsuite"    netsuite
-      "chain_to_wf5" chain-flag)))
+      "netsuite"    netsuite)))
 
 (defun wf4-build-wf5-inputs (entity parsed)
   (wf4-derive-wf5-inputs entity parsed))
 
 (defun wf2-should-chain? (entity)
   "Determine whether WF2 should hand off to WF3 for the given entity."
-  (normalize-bool (get entity "chain_to_wf3") *wf2-chain-enabled*))
+  ;; Chaining is controlled solely by the global flag, not entity state
+  *wf2-chain-enabled*)
 
 (defun wf2-derive-wf3-inputs (entity parsed)
   "Build a payload for WF3 using WF2 entity data as a fallback. Returns nil for missing fields to allow defaults to be used in merge."

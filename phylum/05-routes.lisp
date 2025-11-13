@@ -20,13 +20,11 @@
                 "currency"       (or (get sap-overrides "currency") *wf5-default-sap-currency*)
                 "payment_method" (or (get sap-overrides "payment_method") *wf5-default-sap-payment-method*)
                 "payment_date"   (or (get sap-overrides "payment_date") *wf5-default-sap-payment-date*)
-                "status"         (or (get sap-overrides "status") *wf5-default-sap-status*))]
-         [chain-to-wf5 (normalize-bool (get req "chain_to_wf5") true)])
+                "status"         (or (get sap-overrides "status") *wf5-default-sap-status*))])
     (sorted-map
       "claim_id"    claim-id
       "policy_id"   policy-id
-      "sap"         sap
-      "chain_to_wf5" chain-to-wf5)))
+      "sap"         sap)))
 
 (defendpoint "upload_claim_wf5" (req)
   (cc:infof (sorted-map "req" req) "upload_claim_wf5 called")

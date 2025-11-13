@@ -17,8 +17,6 @@
                        (get zoho-raw "reference_number")
                        (set-exception-business "missing claim_id or reference_number"))]
          [policy-id (or (get req "policy_id") *wf4-default-policy-id*)]
-         [chain-to-wf5 (normalize-bool (or (get req "chain_to_wf5")
-                                           (get sharepoint-raw "chain_to_wf5")) *wf4-chain-enabled*)]
          ;; Zoho fields - prioritize direct request fields, then zoho nested, then defaults
          [customer-id      (or (get req "customer_id")
                                (get zoho-raw "customer_id")
@@ -92,8 +90,7 @@
       "policy_id"  policy-id
       "zoho"       zoho
       "sharepoint" sharepoint
-      "servicenow" servicenow
-      "chain_to_wf5" chain-to-wf5)))
+      "servicenow" servicenow)))
 
 (defendpoint "upload_claim_wf4" (req)
   (cc:infof (sorted-map "req" req) "upload_claim_wf4 called")

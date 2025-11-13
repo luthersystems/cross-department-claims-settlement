@@ -4,11 +4,7 @@
 ;; Allows routes or other orchestrators to kick off WF1 consistently.
 (defun build-wf1-inputs (req)
   (let* ([policy-id (or (get req "policy_id")
-                        (set-exception-business "missing policy_id"))]
-         [chain-param (get req "chain_to_wf2")]
-         [chain-wf3-param (get req "chain_to_wf3")]
-         [chain-to-wf2 (normalize-bool chain-param *wf1-chain-enabled*)]
-         [chain-to-wf3 (normalize-bool chain-wf3-param *wf2-chain-enabled*)])
+                        (set-exception-business "missing policy_id"))])
     (sorted-map
       "policy_id"          policy-id
       "guidewire_claim_id" (get req "guidewire_claim_id")
@@ -18,9 +14,7 @@
       "invoice_amount"     (get req "invoice_amount")
       "originator_name"    (get req "originator_name")
       "recipient_name"     (get req "recipient_name")
-      "issue_date"         (get req "issue_date")
-      "chain_to_wf2"       chain-to-wf2
-      "chain_to_wf3"       chain-to-wf3)))
+      "issue_date"         (get req "issue_date"))))
 
 (defendpoint "upload_claim_wf1" (req)
   (cc:infof (sorted-map "req" req) "upload_claim_wf1 called")

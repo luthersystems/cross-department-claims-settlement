@@ -14,10 +14,7 @@
              [signer-name (or (get entity "signer_name") (get resp "signer_name"))]
              [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
              [recipient-name (or (get entity "recipient_name") (get resp "recipient_name"))]
-             [issue-date (or (get entity "issue_date") (get resp "issue_date"))]
-             [chain-flag (normalize-bool (or (get resp "chain_to_wf3")
-                                             (get entity "chain_to_wf3"))
-                                         *wf2-chain-enabled*)])
+             [issue-date (or (get entity "issue_date") (get resp "issue_date"))])
         (sorted-map
           "guidewire_claim_id"  guidewire-claim-id
           "gw_claim_id"         guidewire-claim-id
@@ -28,8 +25,7 @@
           "signer_name"         signer-name
           "originator_name"     originator-name
           "recipient_name"      recipient-name
-          "issue_date"          issue-date
-          "chain_to_wf3"        chain-flag))]
+          "issue_date"          issue-date))]
 
      [stage-ephemeral (entity parsed accessors) ()]
 
@@ -44,8 +40,7 @@
         "signer_name"         (get parsed "signer_name")
         "originator_name"     (get parsed "originator_name")
         "recipient_name"      (get parsed "recipient_name")
-        "issue_date"          (get parsed "issue_date")
-        "chain_to_wf3"        (get parsed "chain_to_wf3"))]
+        "issue_date"          (get parsed "issue_date"))]
 
      [create-events (entity parsed accessors)
       (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id")))])
