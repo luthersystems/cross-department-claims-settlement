@@ -90,7 +90,7 @@
         "coverage_limit" (get parsed "coverage_limit"))]
      [create-events (entity parsed accessors)
   (vector
-    (mk-sharepoint-get-id-doc-event
+        (wf2-mk-sharepoint-get-id-doc-event
       entity
       (sorted-map
         "site_id"  *wf2-default-sharepoint-site-id*
@@ -112,7 +112,7 @@
 
 (defun wf2-claim-sp-docs-collected-state-handler ()
   (labels
-    ([parse (resp entity) (parse-sharepoint-docs resp)] ; create
+    ([parse (resp entity) (wf2-parse-sharepoint-docs resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (sorted-map "sp_docs" (get parsed "documents"))]
      [create-events (entity parsed accessors)

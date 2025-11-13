@@ -1,5 +1,10 @@
-;;; guidewire
+(in-package 'sandbox)
 
+;; -----------------------------------------------------------------------------
+;; Parsers and Event Creators for Workflow 2 (Guidewire → MySQL → SharePoint)
+;; -----------------------------------------------------------------------------
+
+;; Guidewire
 (defun mk-guidewire-get-claim-event (entity claim-id)
   (let* ([req (mk-connector-req
                 (sorted-map
@@ -41,7 +46,7 @@
       "coverage_limit" (get row "COVERAGE_LIMIT"))))
 
 ;; sharepoint
-(defun mk-sharepoint-get-id-doc-event (entity args)
+(defun wf2-mk-sharepoint-get-id-doc-event (entity args)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind"      "KIND_MICROSOFT_SHAREPOINT"
@@ -54,7 +59,7 @@
     (build-event entity req "get id-verification content" "SHAREPOINT")))
 
 
-(defun parse-sharepoint-docs (resp)
+(defun wf2-parse-sharepoint-docs (resp)
   (let* ([docs (get resp "documents")])
     (sorted-map
       "documents"

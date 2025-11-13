@@ -1,4 +1,8 @@
-;; Note: Constants moved to 03-constants.lisp
+(in-package 'sandbox)
+
+;; -----------------------------------------------------------------------------
+;; Parsers and Event Creators for Workflow 3 (Invoice → eSignature → Salesforce → Email)
+;; -----------------------------------------------------------------------------
 
 ;; eSignature: create contract from template
 (defun mk-esignature-create-contract-event (entity)

@@ -1,56 +1,7 @@
 (in-package 'sandbox)
 
 ;; -----------------------------------------------------------------------------
-;; Helper functions for Workflow 4 (Zoho → SharePoint → ServiceNow)
-;; -----------------------------------------------------------------------------
-
-(defun mk-zoho-create-invoice-event (entity payload)
-  (let* ([req (mk-connector-req
-                (sorted-map
-                  "kind" "KIND_ZOHO_BOOKS"
-                  "operation" "create_invoice"
-                  "args" (sorted-map "json_data" payload)))])
-    (build-event entity req "create invoice" "ZOHO")))
-
-(defun parse-zoho-create-invoice (resp)
-  (let* ([parsed (parse-generic-resp resp)]
-         [invoice (or (get parsed "invoice")
-                      (set-exception-business "Zoho response missing invoice"))])
-    (cc:infof (sorted-map "parsed" parsed "invoice" invoice) "parsing Zoho invoice response")
-    (sorted-map
-      "invoice_id"      (get invoice "invoice_id")
-      "invoice_number"  (get invoice "invoice_number")
-      "customer_id"     (get invoice "customer_id")
-      "customer_name"   (get invoice "customer_name")
-      "status"          (get invoice "status")
-      "date"            (get invoice "date")
-      "due_date"        (get invoice "due_date")
-      "reference_number"(get invoice "reference_number")
-      "total"           (get invoice "total")
-      "balance"         (get invoice "balance")
-      "url"             (or (get invoice "url") (get invoice "invoice_url"))
-      "line_items"      (get invoice "line_items"))))
-
-(defun mk-servicenow-create-incident-event (entity payload)
-  (let* ([req (mk-connector-req
-                (sorted-map
-                  "kind" "KIND_SERVICENOW"
-                  "operation" "create_incident"
-                  "args" payload))])
-    (build-event entity req "create incident" "SERVICENOW")))
-
-(defun parse-servicenow-create-incident (resp)
-  (let* ([parsed (parse-generic-resp resp)]
-         [result (or (get parsed "result") parsed)])
-    (sorted-map
-      "incident_id"     (or (get result "incident_id") (get result "sys_id"))
-      "incident_number" (or (get result "incident_number") (get result "number"))
-      "state"           (get result "state")
-      "short_description" (get result "short_description")
-      "url"             (get result "link"))))
-
-;; -----------------------------------------------------------------------------
-;; State handlers
+;; State handlers for Workflow 4 (Zoho → SharePoint → ServiceNow)
 ;; -----------------------------------------------------------------------------
 
 (defun wf4-claim-init-state-handler ()
@@ -127,7 +78,7 @@
         "zoho_customer_id"     (get parsed "customer_id")
         "zoho_customer_name"   (get parsed "customer_name"))]
      [create-events (entity parsed accessors)
-      (vector (mk-sharepoint-get-id-doc-event entity (get entity "sharepoint")))])
+      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity "sharepoint")))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
       :parse           parse
@@ -138,7 +89,7 @@
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
     ([parse (resp entity)
-      (let* ([documents (parse-sharepoint-docs resp)])
+      (let* ([documents (wf4-parse-sharepoint-docs resp)])
         (assoc documents "retrieved_at" "2025-11-11"))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
