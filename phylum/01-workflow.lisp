@@ -148,7 +148,7 @@
                 (get validation "reason"))))))])
 
     (mk-state-handler
-      :next            "WF1_CLAIM_STATE_DONE"
+      :next            "WF1_CLAIM_TEAMS_THREAD_CREATED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
@@ -159,7 +159,7 @@
 ;; Validate identity 
 ;; ===================
 
-(defun wf1-claim-done-state-handler (&optional next-state)
+(defun wf1-teams-thread-created-state-handler (&optional next-state)
   (labels
     ;; parse generic response (also checks for errors)
     ([parse (resp entity) (parse-generic-resp resp)]
@@ -181,6 +181,20 @@
     :stage-durable   stage-durable
     :create-events   create-events
     :immediate-next  (if next-state true false))))
+
+(defun wf1-claim-done-state-handler (&optional next-state)
+  (labels
+    ([parse (resp entity) (parse-generic-resp resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-durable (entity parsed accessors) ()]
+     [create-events (entity parsed accessors) ()])
+    (mk-state-handler
+      :next            (or next-state "WF1_CLAIM_STATE_DONE")
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events
+      :immediate-next  (if next-state true false))))
 
 ;; build-event moved to substr_generic_parser.lisp
 

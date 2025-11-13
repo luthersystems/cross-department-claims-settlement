@@ -12,6 +12,7 @@
     "WF1_CLAIM_STATE_NEW"                      (wf1-claim-init-state-handler)
     "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED" (wf1-claim-oracle-details-retrieved-state-handler)
     "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"         (wf1-claim-equifax-verified-state-handler)
+    "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler)
     "WF1_CLAIM_STATE_DONE"                     (wf1-claim-done-state-handler)))
 
 ;; -----------------------------------------------------------------------------
@@ -136,26 +137,23 @@
        "WF1_CLAIM_STATE_NEW"                      (wf1-claim-init-state-handler)
        "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED" (wf1-claim-oracle-details-retrieved-state-handler)
        "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"         (wf1-claim-equifax-verified-state-handler)
-       "WF1_CLAIM_STATE_DONE"                     (wf1-claim-done-state-handler "WF2_CLAIM_STATE_INIT")
+       "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler "WF2_CLAIM_STATE_INIT")
        ;; WF2 states
        "WF2_CLAIM_STATE_INIT"                  (wf2-claim-init-state-handler)
        "WF2_CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED" (wf2-claim-guidewire-snapshotted-state-handler)
        "WF2_CLAIM_STATE_MYSQL_VALIDATED"       (wf2-claim-mysql-validated-state-handler)
        "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"     (wf2-claim-sp-docs-collected-state-handler)
-       "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler "WF2_CLAIM_STATE_DONE")
-       "WF2_CLAIM_STATE_DONE"                  (wf2-claim-done-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
+       "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
        ;; WF3 states
        "WF3_CLAIM_STATE_INVOICE_INIT"                  (wf3-invoice-init-state-handler)
        "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"          (wf3-invoice-esig-created-state-handler)
        "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"             (wf3-invoice-sf-synced-state-handler)
-       "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler)
-       "WF3_CLAIM_STATE_DONE"                          (wf3-claim-done-state-handler "WF4_CLAIM_STATE_INIT")
+       "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler "WF4_CLAIM_STATE_INIT")
        ;; WF4 states
        "WF4_CLAIM_STATE_INIT"                          (wf4-claim-init-state-handler)
        "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"          (wf4-zoho-invoice-created-state-handler)
        "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"      (wf4-sharepoint-doc-retrieved-state-handler)
-       "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)
-       "WF4_CLAIM_STATE_DONE"                          (wf4-claim-done-state-handler "WF5_CLAIM_STATE_INIT")
+       "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler "WF5_CLAIM_STATE_INIT")
        ;; WF5 states
        "WF5_CLAIM_STATE_INIT"              (wf5-claim-init-state-handler)
        "WF5_CLAIM_STATE_AWAITING_APPROVAL" (wf5-claim-awaiting-approval-handler)

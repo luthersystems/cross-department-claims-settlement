@@ -67,18 +67,20 @@
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable :create-events create-events)))
 
-;; 4) EMAIL_DISPATCHED → DONE
-(defun wf3-invoice-email-dispatched-state-handler ()
+;; 4) EMAIL_DISPATCHED → DONE (or WF4_INIT if chained)
+(defun wf3-invoice-email-dispatched-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-smtp-send resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (sorted-map "email_dispatched" true)]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next "WF3_CLAIM_STATE_DONE"
+      :next (or next-state "WF3_CLAIM_STATE_DONE")
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable 
-      :create-events create-events)))
+      :create-events create-events
+      :immediate-next (if next-state true false))))
+
 
 ;; build-event moved to substr_generic_parser.lisp
 

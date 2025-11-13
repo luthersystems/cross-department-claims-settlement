@@ -56,11 +56,35 @@
 (defun wf4-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
-      (let* ([zoho       (or (get resp "zoho") (set-exception-business "missing zoho payload"))]
-             [sharepoint (or (get resp "sharepoint") (set-exception-business "missing sharepoint payload"))]
-             [servicenow (or (get resp "servicenow") (set-exception-business "missing servicenow payload"))]
-             [claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
-             [policy-id  (or (get resp "policy_id") (get entity "policy_id") *wf4-default-policy-id*)])
+      (let* ([claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
+             [policy-id  (or (get resp "policy_id") (get entity "policy_id") *wf4-default-policy-id*)]
+             ;; Hardcode defaults for now
+             [zoho       (or (get resp "zoho")
+                            (get entity "zoho")
+                            (sorted-map
+                              "customer_id"      *wf4-default-customer-id*
+                              "reference_number" (or claim-id "WF4-CLAIM-001")
+                              "due_date"         *wf4-default-due-date*
+                              "is_inclusive_tax" *wf4-default-is-inclusive-tax*
+                              "currency_code"    *wf4-default-currency-code*
+                              "line_items"       *wf4-default-line-items*))]
+             [sharepoint (or (get resp "sharepoint")
+                            (get entity "sharepoint")
+                            (sorted-map
+                              "site_id"  *wf4-default-sharepoint-site-id*
+                              "drive_id" *wf4-default-sharepoint-drive-id*
+                              "item_id"  *wf4-default-sharepoint-item-id*
+                              "filename" *wf4-default-sharepoint-filename*))]
+             [servicenow (or (get resp "servicenow")
+                            (get entity "servicenow")
+                            (sorted-map
+                              "short_description" (format-string "Create incident for claim {}" (or claim-id "WF4-CLAIM-001"))
+                              "description"      *wf4-default-servicenow-description*
+                              "priority"         *wf4-default-servicenow-priority*
+                              "category"         *wf4-default-servicenow-category*
+                              "impact"           *wf4-default-servicenow-impact*
+                              "urgency"          *wf4-default-servicenow-urgency*
+                              "assignment_group" *wf4-default-servicenow-assignment-group*))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
@@ -126,7 +150,7 @@
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun wf4-servicenow-incident-created-state-handler ()
+(defun wf4-servicenow-incident-created-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-servicenow-create-incident resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -139,11 +163,12 @@
         "servicenow_short_description" (get parsed "short_description"))]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_DONE"
+      :next            (or next-state "WF4_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false))))
 
 (defun wf4-claim-done-state-handler (&optional next-state)
   (labels
