@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 
 ;; Build input parameters for WF3 from a request map

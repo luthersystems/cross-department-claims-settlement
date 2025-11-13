@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	pb "github.com/luthersystems/sandbox/api/pb/v1"
+	pb "github.com/luthersystems/cdcs/api/pb/v1"
 	"github.com/luthersystems/shiroclient-sdk-go/shiroclient"
 	"github.com/luthersystems/shiroclient-sdk-go/shiroclient/private"
 	"github.com/luthersystems/svc/oracle"

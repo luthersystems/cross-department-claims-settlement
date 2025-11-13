@@ -6,12 +6,12 @@
 ;; while main.lisp is loading because there is no transaction context until the
 ;; endpoint handler fires.
 ;; ----------------------------------------------------------------------------
-(in-package 'sandbox)
+(in-package 'cdcs)
 (use-package 'router)
 (use-package 'utils)
 
 ;; service-name can be used to identify the service in health checks and longs.
-(set 'service-name "sandbox")
+(set 'service-name "cdcs")
 
 ;; Set during build process to reflect current version and build ID.
 ;; Used in health check endpoint for visibility.

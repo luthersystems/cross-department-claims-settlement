@@ -1,4 +1,4 @@
-module github.com/luthersystems/sandbox
+module github.com/luthersystems/cdcs
 
 go 1.24
 

@@ -15,7 +15,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
-	v1_0 "github.com/luthersystems/sandbox/api/pb/v1"
+	v1_0 "github.com/luthersystems/cdcs/api/pb/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
@@ -32,7 +32,7 @@ var _ = runtime.String
 var _ = utilities.NewDoubleArray
 var _ = metadata.Join
 
-func request_SandboxService_UploadClaimWF1_0(ctx context.Context, marshaler runtime.Marshaler, client SandboxServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CdcsService_UploadClaimWF1_0(ctx context.Context, marshaler runtime.Marshaler, client CdcsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF1Request
 	var metadata runtime.ServerMetadata
 
@@ -45,7 +45,7 @@ func request_SandboxService_UploadClaimWF1_0(ctx context.Context, marshaler runt
 
 }
 
-func local_request_SandboxService_UploadClaimWF1_0(ctx context.Context, marshaler runtime.Marshaler, server SandboxServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CdcsService_UploadClaimWF1_0(ctx context.Context, marshaler runtime.Marshaler, server CdcsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF1Request
 	var metadata runtime.ServerMetadata
 
@@ -58,7 +58,7 @@ func local_request_SandboxService_UploadClaimWF1_0(ctx context.Context, marshale
 
 }
 
-func request_SandboxService_UploadClaimWF2_0(ctx context.Context, marshaler runtime.Marshaler, client SandboxServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CdcsService_UploadClaimWF2_0(ctx context.Context, marshaler runtime.Marshaler, client CdcsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF2Request
 	var metadata runtime.ServerMetadata
 
@@ -71,7 +71,7 @@ func request_SandboxService_UploadClaimWF2_0(ctx context.Context, marshaler runt
 
 }
 
-func local_request_SandboxService_UploadClaimWF2_0(ctx context.Context, marshaler runtime.Marshaler, server SandboxServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CdcsService_UploadClaimWF2_0(ctx context.Context, marshaler runtime.Marshaler, server CdcsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF2Request
 	var metadata runtime.ServerMetadata
 
@@ -84,7 +84,7 @@ func local_request_SandboxService_UploadClaimWF2_0(ctx context.Context, marshale
 
 }
 
-func request_SandboxService_UploadClaimWF3_0(ctx context.Context, marshaler runtime.Marshaler, client SandboxServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CdcsService_UploadClaimWF3_0(ctx context.Context, marshaler runtime.Marshaler, client CdcsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF3Request
 	var metadata runtime.ServerMetadata
 
@@ -97,7 +97,7 @@ func request_SandboxService_UploadClaimWF3_0(ctx context.Context, marshaler runt
 
 }
 
-func local_request_SandboxService_UploadClaimWF3_0(ctx context.Context, marshaler runtime.Marshaler, server SandboxServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CdcsService_UploadClaimWF3_0(ctx context.Context, marshaler runtime.Marshaler, server CdcsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF3Request
 	var metadata runtime.ServerMetadata
 
@@ -110,7 +110,7 @@ func local_request_SandboxService_UploadClaimWF3_0(ctx context.Context, marshale
 
 }
 
-func request_SandboxService_UploadClaimWF4_0(ctx context.Context, marshaler runtime.Marshaler, client SandboxServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CdcsService_UploadClaimWF4_0(ctx context.Context, marshaler runtime.Marshaler, client CdcsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF4Request
 	var metadata runtime.ServerMetadata
 
@@ -123,7 +123,7 @@ func request_SandboxService_UploadClaimWF4_0(ctx context.Context, marshaler runt
 
 }
 
-func local_request_SandboxService_UploadClaimWF4_0(ctx context.Context, marshaler runtime.Marshaler, server SandboxServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CdcsService_UploadClaimWF4_0(ctx context.Context, marshaler runtime.Marshaler, server CdcsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF4Request
 	var metadata runtime.ServerMetadata
 
@@ -136,7 +136,7 @@ func local_request_SandboxService_UploadClaimWF4_0(ctx context.Context, marshale
 
 }
 
-func request_SandboxService_UploadClaimWF5_0(ctx context.Context, marshaler runtime.Marshaler, client SandboxServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CdcsService_UploadClaimWF5_0(ctx context.Context, marshaler runtime.Marshaler, client CdcsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF5Request
 	var metadata runtime.ServerMetadata
 
@@ -149,7 +149,7 @@ func request_SandboxService_UploadClaimWF5_0(ctx context.Context, marshaler runt
 
 }
 
-func local_request_SandboxService_UploadClaimWF5_0(ctx context.Context, marshaler runtime.Marshaler, server SandboxServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CdcsService_UploadClaimWF5_0(ctx context.Context, marshaler runtime.Marshaler, server CdcsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.UploadClaimWF5Request
 	var metadata runtime.ServerMetadata
 
@@ -162,7 +162,7 @@ func local_request_SandboxService_UploadClaimWF5_0(ctx context.Context, marshale
 
 }
 
-func request_SandboxService_InvokeProcess_0(ctx context.Context, marshaler runtime.Marshaler, client SandboxServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func request_CdcsService_InvokeProcess_0(ctx context.Context, marshaler runtime.Marshaler, client CdcsServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.InvokeProcessRequest
 	var metadata runtime.ServerMetadata
 
@@ -175,7 +175,7 @@ func request_SandboxService_InvokeProcess_0(ctx context.Context, marshaler runti
 
 }
 
-func local_request_SandboxService_InvokeProcess_0(ctx context.Context, marshaler runtime.Marshaler, server SandboxServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+func local_request_CdcsService_InvokeProcess_0(ctx context.Context, marshaler runtime.Marshaler, server CdcsServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq v1_0.InvokeProcessRequest
 	var metadata runtime.ServerMetadata
 
@@ -188,13 +188,13 @@ func local_request_SandboxService_InvokeProcess_0(ctx context.Context, marshaler
 
 }
 
-// RegisterSandboxServiceHandlerServer registers the http handlers for service SandboxService to "mux".
-// UnaryRPC     :call SandboxServiceServer directly.
+// RegisterCdcsServiceHandlerServer registers the http handlers for service CdcsService to "mux".
+// UnaryRPC     :call CdcsServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
-// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterSandboxServiceHandlerFromEndpoint instead.
-func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server SandboxServiceServer) error {
+// Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterCdcsServiceHandlerFromEndpoint instead.
+func RegisterCdcsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server CdcsServiceServer) error {
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF1_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF1_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -202,12 +202,12 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF1", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF1"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF1", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF1"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SandboxService_UploadClaimWF1_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CdcsService_UploadClaimWF1_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -215,11 +215,11 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF1_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF1_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF2_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF2_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -227,12 +227,12 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF2", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF2"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF2", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF2"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SandboxService_UploadClaimWF2_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CdcsService_UploadClaimWF2_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -240,11 +240,11 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF2_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF2_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF3_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF3_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -252,12 +252,12 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF3", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF3"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF3", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF3"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SandboxService_UploadClaimWF3_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CdcsService_UploadClaimWF3_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -265,11 +265,11 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF3_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF3_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF4_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF4_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -277,12 +277,12 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF4", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF4"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF4", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF4"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SandboxService_UploadClaimWF4_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CdcsService_UploadClaimWF4_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -290,11 +290,11 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF4_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF4_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF5_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF5_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -302,12 +302,12 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF5", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF5"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF5", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF5"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SandboxService_UploadClaimWF5_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CdcsService_UploadClaimWF5_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -315,11 +315,11 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF5_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF5_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_InvokeProcess_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_InvokeProcess_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
@@ -327,12 +327,12 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.SandboxService/InvokeProcess", runtime.WithHTTPPathPattern("/v1/sandbox/InvokeProcess"))
+		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/srvpb.v1.CdcsService/InvokeProcess", runtime.WithHTTPPathPattern("/v1/cdcs/InvokeProcess"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := local_request_SandboxService_InvokeProcess_0(annotatedContext, inboundMarshaler, server, req, pathParams)
+		resp, md, err := local_request_CdcsService_InvokeProcess_0(annotatedContext, inboundMarshaler, server, req, pathParams)
 		md.HeaderMD, md.TrailerMD = metadata.Join(md.HeaderMD, stream.Header()), metadata.Join(md.TrailerMD, stream.Trailer())
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
@@ -340,16 +340,16 @@ func RegisterSandboxServiceHandlerServer(ctx context.Context, mux *runtime.Serve
 			return
 		}
 
-		forward_SandboxService_InvokeProcess_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_InvokeProcess_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
 	return nil
 }
 
-// RegisterSandboxServiceHandlerFromEndpoint is same as RegisterSandboxServiceHandler but
+// RegisterCdcsServiceHandlerFromEndpoint is same as RegisterCdcsServiceHandler but
 // automatically dials to "endpoint" and closes the connection when "ctx" gets done.
-func RegisterSandboxServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
+func RegisterCdcsServiceHandlerFromEndpoint(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) (err error) {
 	conn, err := grpc.NewClient(endpoint, opts...)
 	if err != nil {
 		return err
@@ -369,151 +369,151 @@ func RegisterSandboxServiceHandlerFromEndpoint(ctx context.Context, mux *runtime
 		}()
 	}()
 
-	return RegisterSandboxServiceHandler(ctx, mux, conn)
+	return RegisterCdcsServiceHandler(ctx, mux, conn)
 }
 
-// RegisterSandboxServiceHandler registers the http handlers for service SandboxService to "mux".
+// RegisterCdcsServiceHandler registers the http handlers for service CdcsService to "mux".
 // The handlers forward requests to the grpc endpoint over "conn".
-func RegisterSandboxServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
-	return RegisterSandboxServiceHandlerClient(ctx, mux, NewSandboxServiceClient(conn))
+func RegisterCdcsServiceHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.ClientConn) error {
+	return RegisterCdcsServiceHandlerClient(ctx, mux, NewCdcsServiceClient(conn))
 }
 
-// RegisterSandboxServiceHandlerClient registers the http handlers for service SandboxService
-// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "SandboxServiceClient".
-// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "SandboxServiceClient"
+// RegisterCdcsServiceHandlerClient registers the http handlers for service CdcsService
+// to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "CdcsServiceClient".
+// Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "CdcsServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "SandboxServiceClient" to call the correct interceptors.
-func RegisterSandboxServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client SandboxServiceClient) error {
+// "CdcsServiceClient" to call the correct interceptors.
+func RegisterCdcsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client CdcsServiceClient) error {
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF1_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF1_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF1", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF1"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF1", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF1"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SandboxService_UploadClaimWF1_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CdcsService_UploadClaimWF1_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF1_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF1_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF2_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF2_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF2", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF2"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF2", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF2"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SandboxService_UploadClaimWF2_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CdcsService_UploadClaimWF2_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF2_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF2_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF3_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF3_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF3", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF3"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF3", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF3"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SandboxService_UploadClaimWF3_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CdcsService_UploadClaimWF3_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF3_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF3_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF4_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF4_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF4", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF4"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF4", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF4"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SandboxService_UploadClaimWF4_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CdcsService_UploadClaimWF4_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF4_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF4_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_UploadClaimWF5_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_UploadClaimWF5_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.SandboxService/UploadClaimWF5", runtime.WithHTTPPathPattern("/v1/sandbox/UploadClaimWF5"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.CdcsService/UploadClaimWF5", runtime.WithHTTPPathPattern("/v1/cdcs/UploadClaimWF5"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SandboxService_UploadClaimWF5_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CdcsService_UploadClaimWF5_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SandboxService_UploadClaimWF5_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_UploadClaimWF5_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
-	mux.Handle("POST", pattern_SandboxService_InvokeProcess_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle("POST", pattern_CdcsService_InvokeProcess_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
 		var err error
 		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.SandboxService/InvokeProcess", runtime.WithHTTPPathPattern("/v1/sandbox/InvokeProcess"))
+		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/srvpb.v1.CdcsService/InvokeProcess", runtime.WithHTTPPathPattern("/v1/cdcs/InvokeProcess"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
 		}
-		resp, md, err := request_SandboxService_InvokeProcess_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		resp, md, err := request_CdcsService_InvokeProcess_0(annotatedContext, inboundMarshaler, client, req, pathParams)
 		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
 		if err != nil {
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
 
-		forward_SandboxService_InvokeProcess_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+		forward_CdcsService_InvokeProcess_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 
 	})
 
@@ -521,29 +521,29 @@ func RegisterSandboxServiceHandlerClient(ctx context.Context, mux *runtime.Serve
 }
 
 var (
-	pattern_SandboxService_UploadClaimWF1_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "sandbox", "UploadClaimWF1"}, ""))
+	pattern_CdcsService_UploadClaimWF1_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cdcs", "UploadClaimWF1"}, ""))
 
-	pattern_SandboxService_UploadClaimWF2_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "sandbox", "UploadClaimWF2"}, ""))
+	pattern_CdcsService_UploadClaimWF2_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cdcs", "UploadClaimWF2"}, ""))
 
-	pattern_SandboxService_UploadClaimWF3_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "sandbox", "UploadClaimWF3"}, ""))
+	pattern_CdcsService_UploadClaimWF3_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cdcs", "UploadClaimWF3"}, ""))
 
-	pattern_SandboxService_UploadClaimWF4_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "sandbox", "UploadClaimWF4"}, ""))
+	pattern_CdcsService_UploadClaimWF4_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cdcs", "UploadClaimWF4"}, ""))
 
-	pattern_SandboxService_UploadClaimWF5_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "sandbox", "UploadClaimWF5"}, ""))
+	pattern_CdcsService_UploadClaimWF5_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cdcs", "UploadClaimWF5"}, ""))
 
-	pattern_SandboxService_InvokeProcess_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "sandbox", "InvokeProcess"}, ""))
+	pattern_CdcsService_InvokeProcess_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "cdcs", "InvokeProcess"}, ""))
 )
 
 var (
-	forward_SandboxService_UploadClaimWF1_0 = runtime.ForwardResponseMessage
+	forward_CdcsService_UploadClaimWF1_0 = runtime.ForwardResponseMessage
 
-	forward_SandboxService_UploadClaimWF2_0 = runtime.ForwardResponseMessage
+	forward_CdcsService_UploadClaimWF2_0 = runtime.ForwardResponseMessage
 
-	forward_SandboxService_UploadClaimWF3_0 = runtime.ForwardResponseMessage
+	forward_CdcsService_UploadClaimWF3_0 = runtime.ForwardResponseMessage
 
-	forward_SandboxService_UploadClaimWF4_0 = runtime.ForwardResponseMessage
+	forward_CdcsService_UploadClaimWF4_0 = runtime.ForwardResponseMessage
 
-	forward_SandboxService_UploadClaimWF5_0 = runtime.ForwardResponseMessage
+	forward_CdcsService_UploadClaimWF5_0 = runtime.ForwardResponseMessage
 
-	forward_SandboxService_InvokeProcess_0 = runtime.ForwardResponseMessage
+	forward_CdcsService_InvokeProcess_0 = runtime.ForwardResponseMessage
 )

@@ -1,15 +1,15 @@
 # Configuration for an "in-memory" mode fabric network.
 services:
-  sandbox_oracle:
+  cdcs_oracle:
     user: "${DOCKER_UID}:${DOCKER_GID}"
     extends:
       file: common.yaml
-      service: sandbox_oracle
+      service: cdcs_oracle
     ports:
     - "8080:8080" # expose this for testing purposes
     - "9600:9600" # expose this for testing purposes
     environment:
-    - SANDBOX_ORACLE_EMULATE_CC=true
+    - CDCS_ORACLE_EMULATE_CC=true
     - TMPDIR=/tmp
     - SUBSTRATEHCP_FILE=/tmp/plugin
     volumes:

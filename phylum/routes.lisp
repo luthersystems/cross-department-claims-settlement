@@ -10,7 +10,7 @@
 ;; Readonly GET endpoints are protected against state updates via 
 ;; `cc:force-no-commit-tx`.
 ;; ----------------------------------------------------------------------------
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ; 
 
@@ -31,7 +31,7 @@
 (defmacro defendpoint (name args &rest exprs)
   (quasiquote
     (router:defendpoint (unquote name) (unquote args)
-                        (sandbox:wrap-endpoint 
+                        (cdcs:wrap-endpoint 
                           (lambda () (unquote-splicing exprs))))))
 
 ;; defendpoint-get defines a readonly endpoint, transactions of which are not
@@ -42,7 +42,7 @@
 ;; This exposes an endpoint that is the equivalent of an HTTP GET.
 (defmacro defendpoint-get (name args &rest exprs)
   (quasiquote
-    (sandbox:defendpoint (unquote name) (unquote args)
+    (cdcs:defendpoint (unquote name) (unquote args)
                          (cc:force-no-commit-tx) ; get route cannot update
                          (unquote-splicing exprs))))
 

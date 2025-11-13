@@ -1,5 +1,5 @@
 {
-	"name": "sandbox-test-network",
+	"name": "cdcs-test-network",
 	"version": "1.0.0",
 	"client": {
 		"tlsEnable": false,

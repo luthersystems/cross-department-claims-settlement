@@ -1,9 +1,9 @@
 PROJECT_REL_DIR=..
 
-PHYLA_CCAAS=sandbox
+PHYLA_CCAAS=cdcs
 
-GATEWAYS=1.shiroclient_gw_sandbox.sandbox
-CONNECTORHUBS=1.connectorhub_sandbox.sandbox
+GATEWAYS=1.shiroclient_gw_cdcs.cdcs
+CONNECTORHUBS=1.connectorhub_cdcs.cdcs
 
 GENERATE_OPTS=--org-count 1 --peer-count 1
 

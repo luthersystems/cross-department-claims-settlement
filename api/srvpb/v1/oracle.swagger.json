@@ -1,12 +1,12 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Sandbox API",
+    "title": "Cdcs API",
     "version": "1.0"
   },
   "tags": [
     {
-      "name": "SandboxService"
+      "name": "CdcsService"
     }
   ],
   "schemes": [
@@ -19,9 +19,9 @@
     "application/json"
   ],
   "paths": {
-    "/v1/sandbox/InvokeProcess": {
+    "/v1/cdcs/InvokeProcess": {
       "post": {
-        "operationId": "SandboxService_InvokeProcess",
+        "operationId": "CdcsService_InvokeProcess",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -94,9 +94,9 @@
         ]
       }
     },
-    "/v1/sandbox/UploadClaimWF1": {
+    "/v1/cdcs/UploadClaimWF1": {
       "post": {
-        "operationId": "SandboxService_UploadClaimWF1",
+        "operationId": "CdcsService_UploadClaimWF1",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -169,9 +169,9 @@
         ]
       }
     },
-    "/v1/sandbox/UploadClaimWF2": {
+    "/v1/cdcs/UploadClaimWF2": {
       "post": {
-        "operationId": "SandboxService_UploadClaimWF2",
+        "operationId": "CdcsService_UploadClaimWF2",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -244,9 +244,9 @@
         ]
       }
     },
-    "/v1/sandbox/UploadClaimWF3": {
+    "/v1/cdcs/UploadClaimWF3": {
       "post": {
-        "operationId": "SandboxService_UploadClaimWF3",
+        "operationId": "CdcsService_UploadClaimWF3",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -319,9 +319,9 @@
         ]
       }
     },
-    "/v1/sandbox/UploadClaimWF4": {
+    "/v1/cdcs/UploadClaimWF4": {
       "post": {
-        "operationId": "SandboxService_UploadClaimWF4",
+        "operationId": "CdcsService_UploadClaimWF4",
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -394,9 +394,9 @@
         ]
       }
     },
-    "/v1/sandbox/UploadClaimWF5": {
+    "/v1/cdcs/UploadClaimWF5": {
       "post": {
-        "operationId": "SandboxService_UploadClaimWF5",
+        "operationId": "CdcsService_UploadClaimWF5",
         "responses": {
           "200": {
             "description": "A successful response.",

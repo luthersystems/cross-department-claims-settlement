@@ -1,9 +1,9 @@
 # Common network configuration that is imported into all other compose
 # configurations.
 services:
-  sandbox_oracle:
-    image: sandbox/oracle
-    container_name: sandbox_oracle
+  cdcs_oracle:
+    image: cdcs/oracle
+    container_name: cdcs_oracle
     expose:
       - "8080"
     environment:
@@ -13,11 +13,11 @@ services:
       #- AWS_SECURITY_TOKEN
       #- AWS_SESSION_TOKEN
       #- AWS_REGION
-      - SANDBOX_ORACLE_VERBOSE=true
-      - SANDBOX_ORACLE_PHYLUM_VERSION=${PHYLUM_VERSION-}
+      - CDCS_ORACLE_VERBOSE=true
+      - CDCS_ORACLE_PHYLUM_VERSION=${PHYLUM_VERSION-}
       # Forward OTLP configuration from environment, if configured.
       # e.g. "http://grafana:4317"
-      - SANDBOX_ORACLE_OTLP_ENDPOINT
+      - CDCS_ORACLE_OTLP_ENDPOINT
     command: ["start"]
     volumes:
       - ${PROJECT_DIR:-..}/phylum:/opt/phylum:ro

@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-CMD=$(make --no-print-directory call_cmd-sandbox)
+CMD=$(make --no-print-directory call_cmd-cdcs)
 
 stderr_log=$(mktemp)
 output_log=$(mktemp) # Temporary file to capture command output

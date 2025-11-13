@@ -11,10 +11,10 @@ import "google/api/annotations.proto";
 import "pb/v1/oracle.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
-option go_package = "github.com/luthersystems/sandbox/api/srv";
+option go_package = "github.com/luthersystems/cdcs/api/srv";
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
-    title: "Sandbox API"
+    title: "Cdcs API"
     version: "1.0"
     description: ""
   }
@@ -96,41 +96,41 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   }
 };
 
-// // REST-JSON API Docs for sandbox.
-// service SandboxService {
+// // REST-JSON API Docs for cdcs.
+// service CdcsService {
 //   // Check the health of the service. This is used by load balancers to check service health.
 //   rpc GetHealthCheck(healthcheck.v1.GetHealthCheckRequest) returns (healthcheck.v1.GetHealthCheckResponse) {
-//     option (google.api.http) = {get: "/v1/sandbox/health_check"};
+//     option (google.api.http) = {get: "/v1/cdcs/health_check"};
 //     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
 //   }
 //   // Create claim initiates the creation of the claim.
 //   rpc CreateClaim(pb.v1.CreateClaimRequest) returns (pb.v1.CreateClaimResponse) {
-//     option (google.api.http) = {post: "/v1/sandbox/claims"};
+//     option (google.api.http) = {post: "/v1/cdcs/claims"};
 //     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
 //   }
 //   // Add claimant updates claim details.
 //   rpc AddClaimant(pb.v1.AddClaimantRequest) returns (pb.v1.AddClaimantResponse) {
 //     option (google.api.http) = {
-//       post: "/v1/sandbox/claim/{claim_id}/claimant"
+//       post: "/v1/cdcs/claim/{claim_id}/claimant"
 //       body: "*"
 //     };
 //     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
 //   }
 //   // Retrieve claim details.
 //   rpc GetClaim(pb.v1.GetClaimRequest) returns (pb.v1.GetClaimResponse) {
-//     option (google.api.http) = {get: "/v1/sandbox/claim/{claim_id}"};
+//     option (google.api.http) = {get: "/v1/cdcs/claim/{claim_id}"};
 //     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
 //   }
 // }
 
-service SandboxService {
+service CdcsService {
   // ------------------------------------------------------------
   // WORKFLOW 1
   // ------------------------------------------------------------
 
   rpc UploadClaimWF1(pb.v1.UploadClaimWF1Request) returns (pb.v1.UploadClaimWF1Response) {
     option (google.api.http) = {
-      post: "/v1/sandbox/UploadClaimWF1"
+      post: "/v1/cdcs/UploadClaimWF1"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
@@ -142,7 +142,7 @@ service SandboxService {
 
   rpc UploadClaimWF2(pb.v1.UploadClaimWF2Request) returns (pb.v1.UploadClaimWF2Response) {
     option (google.api.http) = {
-      post: "/v1/sandbox/UploadClaimWF2"
+      post: "/v1/cdcs/UploadClaimWF2"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
@@ -154,7 +154,7 @@ service SandboxService {
 
   rpc UploadClaimWF3(pb.v1.UploadClaimWF3Request) returns (pb.v1.UploadClaimWF3Response) {
     option (google.api.http) = {
-      post: "/v1/sandbox/UploadClaimWF3"
+      post: "/v1/cdcs/UploadClaimWF3"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
@@ -166,7 +166,7 @@ service SandboxService {
 
   rpc UploadClaimWF4(pb.v1.UploadClaimWF4Request) returns (pb.v1.UploadClaimWF4Response) {
     option (google.api.http) = {
-      post: "/v1/sandbox/UploadClaimWF4"
+      post: "/v1/cdcs/UploadClaimWF4"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
@@ -178,7 +178,7 @@ service SandboxService {
 
   rpc UploadClaimWF5(pb.v1.UploadClaimWF5Request) returns (pb.v1.UploadClaimWF5Response) {
     option (google.api.http) = {
-      post: "/v1/sandbox/UploadClaimWF5"
+      post: "/v1/cdcs/UploadClaimWF5"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
@@ -190,7 +190,7 @@ service SandboxService {
 
   rpc InvokeProcess(pb.v1.InvokeProcessRequest) returns (pb.v1.InvokeProcessResponse) {
     option (google.api.http) = {
-      post: "/v1/sandbox/InvokeProcess"
+      post: "/v1/cdcs/InvokeProcess"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};

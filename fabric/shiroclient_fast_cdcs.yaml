@@ -1,7 +1,7 @@
 phylum:
   version: latest
 chaincode:
-  id: sandbox
+  id: cdcs
 channel:
   id: luther
   min-endorsers: 0

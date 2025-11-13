@@ -1,4 +1,4 @@
-(in-package 'sandbox)
+(in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
 ;; Unified Process Registration: All workflows combined (WF1 → WF2 → WF3 → WF4 → WF5)
@@ -62,7 +62,7 @@
        ;; Base workflow specs (merged in order)
        state-spec-wf1
        state-spec-wf2
-        (sorted-map
+      (sorted-map
          "CUSTOM_VALIDATION_STATE" (custom-validation-state-handler))
        state-spec-wf3
        state-spec-wf4

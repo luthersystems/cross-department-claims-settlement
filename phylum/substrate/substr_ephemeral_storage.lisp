@@ -1,4 +1,4 @@
-(in-package 'sandbox) 
+(in-package 'cdcs) 
 
 ;; ---------- helpers for safe prefix handling ----------
 (defun _prefix-range (prefix)
@@ -6,20 +6,20 @@
   (vector prefix (format-string "{}\uffff" prefix)))
 
 (defun ephem-index-key (entity-name entity-id drop-state)
-  (join-index-cols "sandbox" entity-name "ephem" "index" entity-id drop-state))
+  (join-index-cols "cdcs" entity-name "ephem" "index" entity-id drop-state))
 
 ;; ---------- Ephemeral bucket/router keys ----------
 (defun ephem-bucket-key (entity-name entity-id drop-state)
-  ;; sandbox:<entity>:ephem:bucket:<entityId>:<dropState>
-  (join-index-cols "sandbox" entity-name "ephem" "bucket" entity-id drop-state))
+  ;; cdcs:<entity>:ephem:bucket:<entityId>:<dropState>
+  (join-index-cols "cdcs" entity-name "ephem" "bucket" entity-id drop-state))
 
 (defun ephem-router-key (entity-name entity-id ekey)
-  ;; sandbox:<entity>:ephem:router:<entityId>:<eKey>
-  (join-index-cols "sandbox" entity-name "ephem" "router" entity-id ekey))
+  ;; cdcs:<entity>:ephem:router:<entityId>:<eKey>
+  (join-index-cols "cdcs" entity-name "ephem" "router" entity-id ekey))
 
 (defun ephem-router-prefix (entity-name entity-id)
   ;; prefix for scanning all router entries for an entity
-  (join-index-cols "sandbox" entity-name "ephem" "router" entity-id))
+  (join-index-cols "cdcs" entity-name "ephem" "router" entity-id))
 
 ;; Read by key: router -> bucket -> value
 (defun ephem-get (entity-name entity-id ekey)

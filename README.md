@@ -1,9 +1,9 @@
-# Luther Application Starter Kit (sandbox)
+# Luther Application Starter Kit (cdcs)
 
 This repository contains a working starter kit for developers to modify and
 specialize to their specific use case.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/luthersystems/sandbox?quickstart=1)
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/luthersystems/cdcs?quickstart=1)
 
 ## Local Setup
 
@@ -129,7 +129,7 @@ sudo pip3 install docker-compose
 Make sure your [user has permissions](https://docs.docker.com/engine/install/linux-postinstall/)
 to run docker.
 
-See [this](https://dev.luthersystemsapp.com/ubuntu20_04-sandbox-install.sh)
+See [this](https://dev.luthersystemsapp.com/ubuntu20_04-cdcs-install.sh)
 script for the exact steps to install the dependencies on a fresh Ubuntu 20.04
 instance.
 
@@ -138,7 +138,7 @@ instance.
 Clone this repo:
 
 ```bash
-git clone https://github.com/luthersystems/sandbox.git
+git clone https://github.com/luthersystems/cross-department-claims-settlement.git
 ```
 
 Run `make` to build all the services:
@@ -156,7 +156,7 @@ serves a [JSON API](api/srvpb/v1/oracle.swagger.json) that provides endpoints to
 2. add a claimant to the claim
 3. retrieve claim details
 
-> To simplify the sandbox, we have omitted authentication which we handle
+> To simplify the cross-department-claims-settlement repo , we have omitted authentication which we handle
 > using [lutherauth](https://docs.luthersystems.com/luther/application/modules/lutherauth).
 > Authorization is implemented at the application layer over tokens issued by
 > lutherauth.
@@ -210,17 +210,17 @@ Overview of the directory structure:
 
 The API is defined using protobuf objects and service definitions under the
 `api/` directory. Learn more about how the API is defined and the data model
-definitions by reading the sandbox API's [documentation](api/).
+definitions by reading the cdcs API's [documentation](api/).
 
 The application API is served by the "oracle", which interfaces with the Luther
 platform. Learn more about the design of the oracle and how to extend its
-functionality by reading the sandbox oracle's
+functionality by reading the cdcs oracle's
 [documentation](portal/).
 
 The oracle interacts with the core business logic that is defined by the
 "phylum", [elps](https://github.com/luthersystems/elps) code that defines an
 application's business rules. Learn more about writing phyla by reading the
-sandbox phylum's [documentation](phylum/).
+cdcs phylum's [documentation](phylum/).
 
 ### Testing Modifications
 
@@ -317,7 +317,7 @@ reading the test output and comparing that with the application logs which are
 found by running the following command:
 
 ```bash
-docker logs sandbox_oracle
+docker logs cdcs_oracle
 ```
 
 As with running the real platform, the oracle docker container and the in-memory
@@ -348,7 +348,7 @@ to the configured endpoint.
 You can test tracing locally by setting the following env variables:
 
 ```bash
-export SANDBOX_ORACLE_OTLP_ENDPOINT=http://tempo:4317
+export CDCS_ORACLE_OTLP_ENDPOINT=http://tempo:4317
 export SHIROCLIENT_GATEWAY_OTLP_TRACER_ENDPOINT=http://tempo:4317
 export CHAINCODE_OTLP_TRACER_ENDPOINT=http://tempo:4317
 ```
@@ -387,7 +387,7 @@ Custom span names are also supported as follows:
 ### Run Distributed Systems Explorer
 
 To examine a graphical UI for the transactions and blocks and look at
-the details of the work the sandbox network has done, build the
+the details of the work the cdcs network has done, build the
 Explorer. With the full network running, run:
 
 ```bash
