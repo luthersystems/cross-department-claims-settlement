@@ -99,17 +99,18 @@
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun wf5-claim-done-state-handler ()
+(defun wf5-claim-done-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (if (nil? resp) (sorted-map) (parse-generic-resp resp))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) ()]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_DONE"
+      :next            (or next-state "WF5_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (when next-state true))))
 
 ;; build-event moved to substr_generic_parser.lisp

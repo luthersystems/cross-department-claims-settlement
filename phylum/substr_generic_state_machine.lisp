@@ -194,32 +194,63 @@
     (assoc! durable-entity "state" next-state)
 
     ;; Call completion hook if we've reached the final state
-    (when (and entity-id final-state (equal? next-state final-state))
-      (when completion-hook
-        (completion-hook entity-name durable-entity next-state parsed))
-      ;; Also call the global completion notification system
-      (notify-workflow-completion-by-entity-name entity-name durable-entity))
+    ;; Also call hook for intermediate DONE states in unified process (entity-name == "claim")
+    (when entity-id
+      (cond
+        ;; Final state reached
+        ((and final-state (equal? next-state final-state))
+         (when completion-hook
+           (completion-hook entity-name durable-entity next-state parsed))
+         ;; Also call the global completion notification system
+         (notify-workflow-completion-by-entity-name entity-name durable-entity))
+        ;; Intermediate DONE state in unified process (check if entity-name is "claim" and state ends with "_DONE")
+        ((and completion-hook
+              (equal? entity-name "claim")
+              (or (equal? next-state "WF1_CLAIM_STATE_DONE")
+                  (equal? next-state "WF2_CLAIM_STATE_DONE")
+                  (equal? next-state "WF3_CLAIM_STATE_DONE")
+                  (equal? next-state "WF4_CLAIM_STATE_DONE"))
+              (not (equal? next-state final-state)))
+         (completion-hook entity-name durable-entity next-state parsed))))
 
     ;; purge ephemerals scheduled for the state we just entered
     (when entity-id
       (ephem-purge-for-state! entity-name entity-id next-state))
 
-    ;; return transition payload
-
-    (sorted-map
-      "put"    durable-entity
-      "events" (if (vector? events) events (vector)))))
+    ;; Check if we should immediately process the next state
+    ;; This happens when :immediate-next is true and no events were emitted
+    (let* ([immediate-next (spec-immediate-next spec)]
+           [events-vector (if (vector? events) events (vector))]
+           [no-events (equal? (length events-vector) 0)])
+      (if (and immediate-next no-events (not (equal? next-state "STATE_UNKNOWN")))
+        ;; Recursively process the next state with empty response
+        ;; This allows seamless transitions without waiting for connectorhub callbacks
+        (let* ([_ (cc:infof (sorted-map
+                              "entity-id" entity-id
+                              "from-state" state
+                              "to-state" next-state)
+                            "Immediate transition: processing next state synchronously")]
+               [next-transition (run-state-step entity-name entity-key durable-entity (sorted-map) states final-state completion-hook)])
+          ;; Return the next transition's result (which may itself trigger another immediate transition)
+          (sorted-map
+            "put"    (get next-transition "put")
+            "events" (get next-transition "events")))
+        ;; Normal return: transition payload
+        (sorted-map
+          "put"    durable-entity
+          "events" events-vector)))))
 
 
 ;; ---------------- Spec builder + defaults + accessors ----------------
 
-(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events)
+(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events immediate-next)
   (sorted-map
     :next            (or next "STATE_UNKNOWN")
     :parse           (or parse _noop-parse)
     :stage-durable   (or stage-durable _noop-stage-durable)
     :stage-ephemeral (or stage-ephemeral _noop-stage-ephemeral)
-    :create-events   (or create-events _noop-create-events)))
+    :create-events   (or create-events _noop-create-events)
+    :immediate-next  (or immediate-next false)))
 
 ;; safe defaults
 (defun _noop-parse (resp entity) resp)
@@ -243,4 +274,5 @@
 (defun spec-parse (spec)             (or (get spec :parse) _noop-parse))
 (defun spec-stage-ephemeral (spec)   (or (get spec :stage-ephemeral) _noop-stage-ephemeral))
 (defun spec-stage-durable (spec)     (or (get spec :stage-durable) _noop-stage-durable))
+(defun spec-immediate-next (spec)    (or (get spec :immediate-next) false))
 (defun spec-create-events (spec)     (or (get spec :create-events) _noop-create-events))

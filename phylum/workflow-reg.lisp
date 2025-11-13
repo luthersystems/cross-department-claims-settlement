@@ -124,6 +124,95 @@
                               "state" state)
                  "WF5 flow complete")))
 
+;; -----------------------------------------------------------------------------
+;; Unified Process Manager: All workflows combined
+;; -----------------------------------------------------------------------------
+
+;; Combined state spec for the entire process (WF1 → WF2 → WF3 → WF4 → WF5)
+;; Done handlers transition to next workflow's init state in unified process
+(set 'state-spec-claim
+     (sorted-map
+       ;; WF1 states
+       "WF1_CLAIM_STATE_NEW"                      (wf1-claim-init-state-handler)
+       "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED" (wf1-claim-oracle-details-retrieved-state-handler)
+       "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"         (wf1-claim-equifax-verified-state-handler)
+       "WF1_CLAIM_STATE_DONE"                     (wf1-claim-done-state-handler "WF2_CLAIM_STATE_INIT")
+       ;; WF2 states
+       "WF2_CLAIM_STATE_INIT"                  (wf2-claim-init-state-handler)
+       "WF2_CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED" (wf2-claim-guidewire-snapshotted-state-handler)
+       "WF2_CLAIM_STATE_MYSQL_VALIDATED"       (wf2-claim-mysql-validated-state-handler)
+       "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"     (wf2-claim-sp-docs-collected-state-handler)
+       "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler)
+       "WF2_CLAIM_STATE_DONE"                  (wf2-claim-done-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
+       ;; WF3 states
+       "WF3_CLAIM_STATE_INVOICE_INIT"                  (wf3-invoice-init-state-handler)
+       "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"          (wf3-invoice-esig-created-state-handler)
+       "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"             (wf3-invoice-sf-synced-state-handler)
+       "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler)
+       "WF3_CLAIM_STATE_DONE"                          (wf3-claim-done-state-handler "WF4_CLAIM_STATE_INIT")
+       ;; WF4 states
+       "WF4_CLAIM_STATE_INIT"                          (wf4-claim-init-state-handler)
+       "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"          (wf4-zoho-invoice-created-state-handler)
+       "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"      (wf4-sharepoint-doc-retrieved-state-handler)
+       "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)
+       "WF4_CLAIM_STATE_DONE"                          (wf4-claim-done-state-handler "WF5_CLAIM_STATE_INIT")
+       ;; WF5 states
+       "WF5_CLAIM_STATE_INIT"              (wf5-claim-init-state-handler)
+       "WF5_CLAIM_STATE_AWAITING_APPROVAL" (wf5-claim-awaiting-approval-handler)
+       "WF5_CLAIM_STATE_SAP_PAID"          (wf5-claim-sap-paid-handler)
+       "WF5_CLAIM_STATE_DONE"              (wf5-claim-done-state-handler)))
+
+;; Completion hook for unified process: logs completion of workflow stages
+;; State transitions are handled directly by handlers (via :next parameter)
+;; This hook is called for logging/monitoring purposes
+(set 'claim-process-completion-hook
+     (lambda (entity-name entity state parsed)
+       ;; Guard: only process for unified "claim" entity
+       (when (equal? entity-name "claim")
+         (let* ([claim-id (get entity "claim_id")]
+                [current-state (get entity "state")])
+           (cond
+             ;; WF1 complete
+             ((equal? state "WF1_CLAIM_STATE_DONE")
+              (cc:infof (sorted-map "claim_id" claim-id "state" current-state)
+                        "WF1 complete, transitioning to WF2"))
+             ;; WF2 complete
+             ((equal? state "WF2_CLAIM_STATE_DONE")
+              (cc:infof (sorted-map "claim_id" claim-id "state" current-state)
+                        "WF2 complete, transitioning to WF3"))
+             ;; WF3 complete
+             ((equal? state "WF3_CLAIM_STATE_DONE")
+              (cc:infof (sorted-map "claim_id" claim-id "state" current-state)
+                        "WF3 complete, transitioning to WF4"))
+             ;; WF4 complete
+             ((equal? state "WF4_CLAIM_STATE_DONE")
+              (cc:infof (sorted-map "claim_id" claim-id "state" current-state)
+                        "WF4 complete, transitioning to WF5"))
+             ;; WF5 complete → entire process finished
+             ((equal? state "WF5_CLAIM_STATE_DONE")
+              (cc:infof (sorted-map "claim_id" claim-id "state" current-state)
+                        "Complete claim process finished (WF1 → WF2 → WF3 → WF4 → WF5)"))
+             (:else
+              (cc:infof (sorted-map "claim_id" claim-id "state" current-state)
+                        "Unified process reached state: {}" state)))))))
+
+;; Unified claim manager for the entire process
+;; State transitions between workflows are handled by done handlers (via :next parameter)
+;; Completion hook is called for logging/monitoring when reaching DONE states
+(set 'claim-manager
+     (singleton (mk-entity-manager
+                 "claim"                    ;; entity kind
+                 "claim_id"                 ;; primary key field
+                 "WF1_CLAIM_STATE_NEW"      ;; initial state (start with WF1)
+                 state-spec-claim
+                 "WF5_CLAIM_STATE_DONE"     ;; final state (end with WF5)
+                 claim-process-completion-hook)))
+
+(register-connector-factory claim-manager)
+
+;; Register workflow for easy invocation
+(register-workflow "process" claim-manager)
+
 ;; Define WF3 manager first so it's available when WF2/F1 completion hooks reference it
 (set 'claim-manager-wf3
      (singleton (mk-entity-manager

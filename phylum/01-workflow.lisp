@@ -159,7 +159,7 @@
 ;; Validate identity 
 ;; ===================
 
-(defun wf1-claim-done-state-handler ()
+(defun wf1-claim-done-state-handler (&optional next-state)
   (labels
     ;; parse generic response (also checks for errors)
     ([parse (resp entity) (parse-generic-resp resp)]
@@ -175,11 +175,12 @@
      [create-events (entity parsed accessors) ()])
 
   (mk-state-handler
-    :next            "WF1_CLAIM_STATE_DONE"
+    :next            (or next-state "WF1_CLAIM_STATE_DONE")
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
-    :create-events   create-events)))
+    :create-events   create-events
+    :immediate-next  (when next-state true))))
 
 ;; build-event moved to substr_generic_parser.lisp
 

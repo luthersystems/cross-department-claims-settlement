@@ -35,6 +35,7 @@
 (load-file "workflow-config.lisp")      ; Shared workflow chaining config & helpers (references constants)
 (load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
 (load-file "01-workflow.lisp")
+(load-file "00-routes.lisp")          ; Unified process endpoint (load before individual workflow routes)
 (load-file "01-routes.lisp")
 (load-file "02-routes.lisp")
 (load-file "02-workflow.lisp")
