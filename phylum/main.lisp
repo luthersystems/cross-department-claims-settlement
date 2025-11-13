@@ -27,13 +27,13 @@
 (load-file "substr_generic_state_machine.lisp")
 (load-file "substr_ephemeral_storage.lisp")
 (load-file "substr_generic_parser.lisp")
-(load-file "workflow-config.lisp")      ; Shared workflow chaining config & helpers
-(load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
-(load-file "01-constants.lisp")        ; Load constants before workflows and routes
+(load-file "01-constants.lisp")        ; Load constants before workflow-config (which references them)
 (load-file "02-constants.lisp")
 (load-file "03-constants.lisp")
 (load-file "04-constants.lisp")
 (load-file "05-constants.lisp")
+(load-file "workflow-config.lisp")      ; Shared workflow chaining config & helpers (references constants)
+(load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
 (load-file "01-workflow.lisp")
 (load-file "01-routes.lisp")
 (load-file "02-routes.lisp")

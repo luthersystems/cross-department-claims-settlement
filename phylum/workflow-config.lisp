@@ -11,6 +11,8 @@
 ;; -----------------------------------------------------------------------------
 (set '*wf1-chain-enabled* true)
 
+;; Chaining defaults: fallback values when WF1 chains to WF2
+;; References workflow constants where appropriate to avoid duplication
 (set '*wf1-wf2-default-inputs*
      (sorted-map
        "policy_id"        "POL-1001"
@@ -18,9 +20,9 @@
        "signer_email"     "approver@example.com"
        "signer_name"      "Workflow Approver"
        "invoice_amount"   "25000.00"
-       "originator_name"  "Acme Insurance Ltd."
-       "recipient_name"   "BlueRiver Underwriting Partners"
-       "issue_date"       "2025-11-05"
+       "originator_name"  *wf3-default-originator-name*  ; Reuse from WF3 constants
+       "recipient_name"   *wf3-default-recipient-name*   ; Reuse from WF3 constants
+       "issue_date"       *wf3-default-issue-date*       ; Reuse from WF3 constants
        "chain_to_wf3"     true))
 
 ;; -----------------------------------------------------------------------------
@@ -30,46 +32,47 @@
 
 ;; Optional default payload for invoking WF3 when chaining is enabled.
 ;; Set to () if you prefer to derive values dynamically from the WF2 entity.
+;; Chaining defaults: fallback values when WF2 chains to WF3
+;; References workflow constants where appropriate to avoid duplication
 (set '*wf2-wf3-default-inputs*
      (sorted-map
        "claim_id"        "CLM-4567"
        "invoice_amount"  "20000.00"
        "signer_name"     "Jack Clarke"
-       "signer_email"    "jack.clarke@luthersystems.com"
-       "originator_name" "Acme Insurance Ltd."
-       "recipient_name"  "BlueRiver Underwriting Partners"
-       "issue_date"      "2025-11-05"))
+       "signer_email"    *wf3-default-email-to*          ; Reuse from WF3 constants
+       "originator_name" *wf3-default-originator-name*    ; Reuse from WF3 constants
+       "recipient_name"  *wf3-default-recipient-name*     ; Reuse from WF3 constants
+       "issue_date"      *wf3-default-issue-date*))       ; Reuse from WF3 constants
 
 ;; -----------------------------------------------------------------------------
 ;; WF3 → WF4 chaining (Invoice/Email -> Zoho/SharePoint/ServiceNow)
 ;; -----------------------------------------------------------------------------
 (set '*wf3-chain-enabled* true)
 
+;; Chaining defaults: fallback values when WF3 chains to WF4
+;; References workflow constants where appropriate to avoid duplication
 (set '*wf3-wf4-default-inputs*
      (sorted-map
        "zoho" (sorted-map
-                 "customer_id"      "7533684000000109011"
+                 "customer_id"      *wf4-default-customer-id*
                  "reference_number" "CLAIM-8472"
-                 "due_date"         "2025-11-17"
-                 "is_inclusive_tax" true
-                 "currency_code"    "GBP"
-                 "line_items"       (vector (sorted-map
-                                             "name"     "Inter-Entity Settlement"
-                                             "rate"     1250.0
-                                             "quantity" 1)))
+                 "due_date"         *wf4-default-due-date*
+                 "is_inclusive_tax" *wf4-default-is-inclusive-tax*
+                 "currency_code"    *wf4-default-currency-code*
+                 "line_items"       *wf4-default-line-items*)
        "sharepoint" (sorted-map
-                      "site_id"  "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245"
-                      "drive_id" "b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8"
-                      "item_id"  "01RAAXWAZH6LCSA5FLHRE2QJXBSIVDOGV4"
-                      "filename" "id-verification.txt")
+                      "site_id"  *wf4-default-sharepoint-site-id*
+                      "drive_id" *wf4-default-sharepoint-drive-id*
+                      "item_id"  *wf4-default-sharepoint-item-id*
+                      "filename" *wf4-default-sharepoint-filename*)
        "servicenow" (sorted-map
                       "short_description" "Create ServiceNow incident for settlement invoice"
-                      "description"      "Auto-generated incident for inter-entity settlement review"
-                      "priority"         "3"
-                      "category"         "Finance"
-                      "impact"           "2"
-                      "urgency"          "2"
-                      "assignment_group" "Finance Ops")
+                      "description"      *wf4-default-servicenow-description*
+                      "priority"         *wf4-default-servicenow-priority*
+                      "category"         *wf4-default-servicenow-category*
+                      "impact"           *wf4-default-servicenow-impact*
+                      "urgency"          *wf4-default-servicenow-urgency*
+                      "assignment_group" *wf4-default-servicenow-assignment-group*)
        "chain_to_wf4" true
        "chain_to_wf5" true))
 
@@ -164,38 +167,38 @@
                                    "rate"     amount
                                    "quantity" 1)))]
          [zoho (sorted-map)]
-         [zoho (assoc zoho "customer_id"      (or (get zoho-base "customer_id") "7533684000000109011"))]
+         [zoho (assoc zoho "customer_id"      (or (get zoho-base "customer_id") *wf4-default-customer-id*))]
          [zoho (assoc zoho "reference_number" (or (get zoho-base "reference_number") claim-id))]
-         [zoho (assoc zoho "due_date"         (or (get zoho-base "due_date")  "2025-11-12"))]
-         [zoho (assoc zoho "is_inclusive_tax" (normalize-bool (get zoho-base "is_inclusive_tax") true))]
-         [zoho (assoc zoho "currency_code"    (or (get zoho-base "currency_code") "GBP"))]
+         [zoho (assoc zoho "due_date"         (or (get zoho-base "due_date") *wf4-default-due-date*))]
+         [zoho (assoc zoho "is_inclusive_tax" (normalize-bool (get zoho-base "is_inclusive_tax") *wf4-default-is-inclusive-tax*))]
+         [zoho (assoc zoho "currency_code"    (or (get zoho-base "currency_code") *wf4-default-currency-code*))]
          [zoho (assoc zoho "line_items"       line-items)]
          [sharepoint (sorted-map)]
          [sharepoint (assoc sharepoint "site_id" (or (get sharepoint-base "site_id")
-                                                    "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245"))]
+                                                    *wf4-default-sharepoint-site-id*))]
          [sharepoint (assoc sharepoint "drive_id" (or (get sharepoint-base "drive_id")
-                                                     "b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8"))]
+                                                     *wf4-default-sharepoint-drive-id*))]
          [sharepoint (assoc sharepoint "item_id" (or (get sharepoint-base "item_id")
-                                                    "01RAAXWAZH6LCSA5FLHRE2QJXBSIVDOGV4"))]
+                                                    *wf4-default-sharepoint-item-id*))]
          [sharepoint (assoc sharepoint "filename" (or (get sharepoint-base "filename")
-                                                     "id-verification.txt"))]
+                                                     *wf4-default-sharepoint-filename*))]
          [servicenow (sorted-map)]
          [servicenow (assoc servicenow "short_description" (or (get servicenow-base "short_description")
                                                                (format-string "Create incident for claim {}" claim-id)))]
          [servicenow (assoc servicenow "description"      (or (get servicenow-base "description")
-                                                               (format-string "Invoice {} requires review" claim-id)))]
-         [servicenow (assoc servicenow "priority"         (or (get servicenow-base "priority") "3"))]
-         [servicenow (assoc servicenow "category"         (or (get servicenow-base "category") "Finance"))]
-         [servicenow (assoc servicenow "impact"           (or (get servicenow-base "impact") "2"))]
-         [servicenow (assoc servicenow "urgency"          (or (get servicenow-base "urgency") "2"))]
-         [servicenow (assoc servicenow "assignment_group" (or (get servicenow-base "assignment_group") "Finance Ops"))]
+                                                               *wf4-default-servicenow-description*))]
+         [servicenow (assoc servicenow "priority"         (or (get servicenow-base "priority") *wf4-default-servicenow-priority*))]
+         [servicenow (assoc servicenow "category"         (or (get servicenow-base "category") *wf4-default-servicenow-category*))]
+         [servicenow (assoc servicenow "impact"           (or (get servicenow-base "impact") *wf4-default-servicenow-impact*))]
+         [servicenow (assoc servicenow "urgency"          (or (get servicenow-base "urgency") *wf4-default-servicenow-urgency*))]
+         [servicenow (assoc servicenow "assignment_group" (or (get servicenow-base "assignment_group") *wf4-default-servicenow-assignment-group*))]
          [servicenow (if (get servicenow-base "caller_id")
                          (assoc servicenow "caller_id" (get servicenow-base "caller_id"))
                          servicenow)]
          [chain-flag (normalize-bool (get defaults "chain_to_wf4") true)])
     (sorted-map
       "claim_id"    claim-id
-      "policy_id"   (or (get entity "policy_id") "POL-8872")
+      "policy_id"   (or (get entity "policy_id") *wf4-default-policy-id*)
       "zoho"        zoho
       "sharepoint"  sharepoint
       "servicenow"  servicenow
@@ -211,24 +214,26 @@
 ;; -----------------------------------------------------------------------------
 (set '*wf4-chain-enabled* true)
 
+;; Chaining defaults: fallback values when WF4 chains to WF5
+;; References workflow constants where appropriate to avoid duplication
 (set '*wf4-wf5-default-inputs*
      (sorted-map
        "claim_id" "CLM-4567"
-       "policy_id" "POL-8872"
+       "policy_id" *wf4-default-policy-id*  ; Reuse from WF4 constants
        "sap" (sorted-map
-                "payment_id"     "PAYM-1001"
-                "invoice_id"     "INV-10001"
+                "payment_id"     "PAYM-1001"  ; Different from WF5 default (chaining-specific)
+                "invoice_id"     "INV-10001"  ; Different from WF5 default (chaining-specific)
                 "reference"      "Batch-Nov-02"
-                "vendor_id"      "VEND-001"
-                "amount"         2500.00
-                "currency"       "USD"
-                "payment_method" "EFT"
+                "vendor_id"      *wf5-default-sap-vendor-id*
+                "amount"         *wf5-default-sap-amount*
+                "currency"       *wf5-default-sap-currency*
+                "payment_method" *wf5-default-sap-payment-method*
                 "payment_date"   "2025-11-07"
-                "status"         "PENDING")
+                "status"         *wf5-default-sap-status*)
        "netsuite" (sorted-map
                     "invoice_id" "INV-10001"
-                    "amount"     2500.00
-                    "currency"   "USD"
+                    "amount"     *wf5-default-sap-amount*
+                    "currency"   *wf5-default-sap-currency*
                     "memo"       "Inter-entity settlement reconciliation")
        "chain_to_wf5" true))
 
