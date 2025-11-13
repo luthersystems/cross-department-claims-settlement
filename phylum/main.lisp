@@ -67,6 +67,9 @@
 (load-file "workflow-5/05-reg.lisp")         ; Register WF5 manager
 
 ;; Load unified process registration (requires all workflow specs to be loaded)
-(load-file "00-routes.lisp")          ; Unified process endpoint
+(load-file "process-routes.lisp")          ; Unified process endpoint
 (load-file "process-reg.lisp")        ; Register unified process manager
+
+;; Note: Test files (*_test.lisp) are automatically discovered and loaded by the test runner
+;; They should NOT be loaded here to avoid duplicate test registration
 

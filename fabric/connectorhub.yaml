@@ -1,0 +1,528 @@
+msp-id: Org1MSP
+user-id: User1
+org-domain: org1.luther.systems
+crypto-config-root-path: ./crypto-config
+peer-name: peer0
+peer-endpoint: "peer0.org1.luther.systems:7051"
+channel-name: luther
+chaincode-id: cdcs
+inbound-http-listen-addr: ":8090"
+docker-runtime: true
+docker-network: "byfn"
+connectors:
+  #### WF1 CONNECTORS ####
+  - name: "ORACLE"
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          # if you want unmocked ops to fall through to real calls, set this true
+          passthrough_unmocked: false
+          mock_responses:
+            ORACLE:
+              execute_query:
+                __default__:
+                  response: |
+                    {
+                      "rows": [
+                        {
+                          "CLAIM_ID": "CLM-4567",
+                          "POLICY_ID": "POL-8872",
+                          "AMOUNT": 2500.00,
+                          "STATUS": "UnderReview",
+                          "CLAIMANT_FIRST_NAME": "John",
+                          "CLAIMANT_LAST_NAME": "Doe",
+                          "CLAIMANT_DOB": "1980-05-15",
+                          "CLAIMANT_ADDRESS": "123 Main Street, London, SW1A 1AA",
+                          "CLAIMANT_NATIONAL_ID": "AB123456C"
+                        }
+                      ]
+                    }
+    oracle_readonly:
+      connection_string: ""
+      user: ""
+      password: ""
+
+  - name: EQUIFAX
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          # if you want unmocked ops to fall through to real calls, set this true
+          passthrough_unmocked: false
+          mock_responses:
+            EQUIFAX:
+              entity_screening:
+                __default__:
+                  response: |
+                    {
+                      "equifax": {
+                        "entity_screening_response": {
+                          "entity_id": "CLM-4567",
+                          "status": "Pass",
+                          "comment": "No matches found in screening databases",
+                          "hit_value_emb": 0,
+                          "hit_value_pep": 0,
+                          "pstatus_det": "Clear",
+                          "list_matches": []
+                        }
+                      }
+                    }
+    equifax:
+      host: "api.sandbox.equifax.com"
+      client_id: ""
+      client_secret: ""
+      member_number: ""
+      security_code: ""
+      customer_code: ""
+      auth_scope: "https://api.equifax.com/business/amlc/v1/entity-screenings"
+      access_token: ""
+
+  # 3 Teams
+  - name: TEAMS
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            TEAMS:
+              send_message:
+                __default__:
+                  response: |
+                    {
+                      "message_id": "msg-12345",
+                      "status": "sent",
+                      "timestamp": "2025-11-12T17:00:00Z"
+                    }
+              start_thread:
+                __default__:
+                  response: |
+                    {
+                      "thread_id": "thread-12345",
+                      "status": "created",
+                      "timestamp": "2025-11-12T17:00:00Z"
+                    }
+    microsoft_teams:
+      app_id: ""
+      app_password: ""
+      tenant_id: ""
+      team_id: ""
+      channel_id: ""
+
+  #### WF2 CONNECTORS ####
+  - name: OUTBOUNDGW
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          mock_responses:
+            OUTBOUNDGW:
+              getClaimDetails:
+                __default__:
+                  response: |
+                    {
+                      "claim_id": "CLM-4567",
+                      "status": "UnderReview",
+                      "policy_id": "POL-8872",
+                      "handler": "ajones"
+                    }
+              updateClaimApproval:
+                __default__:
+                  response: |
+                    {
+                      "claim_id": "CLM-4567",
+                      "approval": "ApprovedForSettlement",
+                      "updated_at": "2025-11-04T12:30:00Z"
+                    }
+    outbound_rest:
+      api_name: "GuidewireClaimCenter"
+      base_url: "https://api.guidewire.example.com"
+      auth_type: "none"
+      openapi_spec: |
+        openapi: 3.0.0
+        info:
+          title: Guidewire ClaimCenter API
+          version: "1.0.0"
+        servers:
+          - url: https://api.guidewire.example.com
+        paths:
+          /claims/{claim_id}:
+            get:
+              operationId: getClaimDetails
+              summary: Retrieve claim details
+              parameters:
+                - name: claim_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              responses:
+                "200":
+                  description: Claim details retrieved successfully
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          claim_id:
+                            type: string
+                          status:
+                            type: string
+                            enum: [Open, UnderReview, Approved, Rejected, Closed]
+                          policy_id:
+                            type: string
+                          handler:
+                            type: string
+          /claims/{claim_id}/approval:
+            post:
+              operationId: updateClaimApproval
+              summary: Update claim approval status
+              parameters:
+                - name: claim_id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        approval:
+                          type: string
+                          enum: [ApprovedForSettlement, Rejected, Escalated]
+                        approved_by:
+                          type: string
+              responses:
+                "200":
+                  description: Claim approval updated
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          claim_id:
+                            type: string
+                          approval:
+                            type: string
+                          updated_at:
+                            type: string
+                            format: date-time
+
+  # 5 MySQL
+  - name: "MYSQL"
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          # if you want unmocked ops to fall through to real calls, set this true
+          passthrough_unmocked: false
+          mock_responses:
+            MYSQL:
+              mysql_query:
+                __default__:
+                  response: |
+                    [
+                      {
+                        "POLICY_ID": "POL-8872",
+                        "STATUS": "Active",
+                        "COVERAGE_LIMIT": "20000.00"
+                      }
+                    ]
+    mysql:
+      host: host.docker.internal
+      port: 3306
+      database: claims_db
+      username: ""
+      password: ""
+      use_ssl: false
+
+  # 6 Sharepoint
+  - name: SHAREPOINT
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            SHAREPOINT:
+              get_document_content:
+                __default__:
+                  response: |
+                    {
+                      "type": "text",
+                      "content": [
+                        "Q2xhaW0gSUQ6IENMTS00NTY3CkRhdGU6IDIwMjUtMTEtMTIKU2lnbmVyOiBKb2huIERvZQpWZXJpZmllZDogWWVz"
+                      ],
+                      "line_count": 4,
+                      "word_count": 6,
+                      "character_count": 45,
+                      "documents": [
+                        {
+                          "type": "text",
+                          "file": "id-verification.txt"
+                        }
+                      ]
+                    }
+    microsoft_sharepoint:
+      client_id: ""
+      client_secret: ""
+      tenant_id: ""
+      site_url: ""
+
+  #### WF3 CONNECTORS ####
+
+  - name: ESIGNATURE
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            ESIGNATURE:
+              create_contract:
+                __default__:
+                  response: |
+                    {
+                      "data": {
+                        "data": {
+                          "contract": {
+                            "id": "contract-abc123",
+                            "status": "pending",
+                            "signers": [
+                              {
+                                "sign_page_url": "https://esign.example.com/sign/abc123",
+                                "name": "John Doe",
+                                "email": "john.doe@example.com"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+    esignatures:
+      secret_token: ""
+  - name: SALESFORCE
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            SALESFORCE:
+              create_record:
+                __default__:
+                  response: |
+                    {
+                      "id": "a0X5g000000XYZ1",
+                      "success": true,
+                      "errors": []
+                    }
+    salesforce:
+      instance_url: ""
+      username: ""
+      password: ""
+      security_token: ""
+  - name: EMAIL
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            EMAIL:
+              send_email:
+                __default__:
+                  response: |
+                    {
+                      "message_id": "email-msg-12345",
+                      "status": "sent",
+                      "timestamp": "2025-11-12T17:00:00Z"
+                    }
+    email:
+      smtp_server: email-smtp.us-west-2.amazonaws.com
+      from_address: ""
+      port: 587
+      username: ""
+      password: ""
+      use_tls: true
+
+
+  #### WF4 CONNECTORS ####
+  - name: ZOHO
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            ZOHO:
+              create_invoice:
+                __default__:
+                  response: |
+                    {
+                      "invoice": {
+                        "invoice_id": "INV-10001",
+                        "invoice_number": "1234567000001",
+                        "customer_id": "1234567000001",
+                        "customer_name": "Acme Corp",
+                        "status": "draft",
+                        "date": "2025-11-10",
+                        "due_date": "2025-11-17",
+                        "reference_number": "CLAIM-8472",
+                        "is_inclusive_tax": true,
+                        "currency_code": "GBP",
+                        "exchange_rate": 1.0,
+                        "line_items": [
+                          {
+                            "line_item_id": "LI-1",
+                            "item_id": null,
+                            "name": "Inter-Entity Settlement",
+                            "description": null,
+                            "rate": 1250.0,
+                            "quantity": 1,
+                            "discount": 0.0,
+                            "discount_type": null,
+                            "tax_id": null,
+                            "tax_name": null,
+                            "tax_percentage": 0.0,
+                            "tax_amount": 0.0,
+                            "item_total": 1250.0
+                          }
+                        ],
+                        "sub_total": 1250.0,
+                        "discount_total": 0.0,
+                        "tax_total": 0.0,
+                        "total": 1250.0,
+                        "balance": 1250.0,
+                        "created_time": "2025-11-10T15:05:00Z",
+                        "last_modified_time": "2025-11-10T15:05:00Z",
+                        "url": "https://books.zoho.com/app#/invoices/INV-10001"
+                      },
+                      "message": "Invoice created successfully",
+                      "request_id": "mock-req-abc123"
+                    }
+    zoho_books:
+      client_id: ""
+      client_secret: ""
+      refresh_token: ""
+      organization_id: ""
+      region: "us"
+
+
+  # - name: SHAREPOINT
+  #   microsoft_sharepoint:
+  #     client_id: "078b4b8c-72e2-4988-8832-3bd16aac7499"
+  #     client_secret: "jT68Q~y8jOZ1MbtJf1Ys5fNeHSm02QJREGBFxcMk"
+  #     tenant_id: "a47b59dc-3c90-49c8-84bc-0c9fcaa05616"
+  #     site_url: "https://samwoodluthersystems.sharepoint.com"
+
+  # https://medium.com/@sebasqui1995/creating-a-webhook-in-servicenow-a-step-by-step-guide-a8de37ca22f0
+  - name: SERVICENOW
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            SERVICENOW:
+              create_incident:
+                __default__:
+                  response: |
+                    {
+                      "result": {
+                        "sys_id": "abc123def456",
+                        "number": "INC0010001",
+                        "state": "1",
+                        "short_description": "Inter-Entity Settlement Invoice",
+                        "description": "Invoice created for claim settlement",
+                        "link": "https://dev282174.service-now.com/nav_to.do?uri=incident.do?sys_id=abc123def456"
+                      }
+                    }
+    servicenow:
+      instance_url: ""
+      username: ""
+      password: ""
+
+  #### WF5 CONNECTORS ####
+  - name: ABSINBOUND
+    # general_settings:
+    #   use_runtime_injection: true
+    inbound_rest:
+      # Use an inline OpenAPI so this is self-contained
+      openapi_spec_inline: |
+        openapi: 3.0.0
+        info:
+          title: ABS Payment Status Hook
+          version: 1.0.0
+        paths:
+          /allianz-business-system/update-payment-status:
+            post:
+              operationId: absUpdatePaymentStatus
+              summary: ABS tells us to generate payment for a claim
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [claimID, paymentID, status]
+                      properties:
+                        claimID:
+                          type: string
+                          example: C12345
+                        paymentID:
+                          type: string
+                          example: P67890
+                        status:
+                          type: string
+                          enum: [approved, rejected, pending]
+                          example: approved
+              responses:
+                "200":
+                  description: Acknowledged
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          ok:
+                            type: boolean
+                          received:
+                            type: object
+                            additionalProperties: true
+      path_prefix: /
+      target_endpoint: update_payment_status_handler
+      validate_responses: true
+      max_body_bytes: 2097152
+  - name: SAP
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            SAP:
+              hana_execute_query:
+                __default__:
+                  response: |
+                    {
+                      "payment": {
+                        "transaction_id": "SAP-TXN-1001",
+                        "amount": 2500.00,
+                        "posting_ref": "SAP-POST-REF",
+                        "status": "posted"
+                      }
+                    }
+    sap_hana:
+      host: ""
+      port: "443"
+      user: ""
+      password: ""
+      schema: ""
+      connection_type: "auto"
+      ssl: true
+      validate_certificate: false

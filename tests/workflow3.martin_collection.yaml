@@ -1,0 +1,28 @@
+name: "Cdcs: Workflow 3 - Invoice Processing"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Initiate Workflow 3"
+    method: POST
+    path: "v1/cdcs/UploadClaimWF3"
+    body: |
+      {
+        "claim_id": "{{CLAIM_ID}}",
+        "invoice_amount": "2500.00",
+        "signer_name": "John Doe",
+        "signer_email": "john.doe@example.com",
+        "originator_name": "Finance Department",
+        "recipient_name": "Accounts Payable",
+        "issue_date": "2024-01-15"
+      }
+    test_script: |
+      pm.test("ok", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.response.to.have.status(200);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data).to.have.property("claim_id");
+          pm.expect(data).to.have.property("state");
+      });
+

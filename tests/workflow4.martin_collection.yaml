@@ -1,0 +1,35 @@
+name: "Cdcs: Workflow 4 - Zoho Invoice Creation"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Initiate Workflow 4"
+    method: POST
+    path: "v1/cdcs/UploadClaimWF4"
+    body: |
+      {
+        "policy_id": "POL-8872",
+        "customer_id": "CUST-12345",
+        "reference_number": "{{CLAIM_ID}}",
+        "due_date": "2024-02-15",
+        "is_inclusive_tax": true,
+        "line_items": [
+          {
+            "name": "Claim Settlement",
+            "rate": 2500.00,
+            "quantity": 1
+          }
+        ],
+        "claim_id": "{{CLAIM_ID}}",
+        "currency_code": "GBP"
+      }
+    test_script: |
+      pm.test("ok", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.response.to.have.status(200);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data).to.have.property("claim_id");
+          pm.expect(data).to.have.property("state");
+      });
+
