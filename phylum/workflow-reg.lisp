@@ -129,36 +129,32 @@
 ;; Unified Process Manager: All workflows combined
 ;; -----------------------------------------------------------------------------
 
+;; Helper function to merge multiple state specs, with later specs overriding earlier ones
+(defun merge-state-specs (&rest specs)
+  (let* ([merged (sorted-map)])
+    (map () (lambda (spec)
+              (map () (lambda (key)
+                        (assoc! merged key (get spec key)))
+                   (keys spec)))
+         specs)
+    merged))
+
 ;; Combined state spec for the entire process (WF1 → WF2 → WF3 → WF4 → WF5)
-;; Done handlers transition to next workflow's init state in unified process
+;; Merges all workflow state specs and overrides specific handlers for chaining
 (set 'state-spec-claim
-     (sorted-map
-       ;; WF1 states
-       "WF1_CLAIM_STATE_NEW"                      (wf1-claim-init-state-handler)
-       "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED" (wf1-claim-oracle-details-retrieved-state-handler)
-       "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"         (wf1-claim-equifax-verified-state-handler)
-       "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler "WF2_CLAIM_STATE_INIT")
-       ;; WF2 states
-       "WF2_CLAIM_STATE_INIT"                  (wf2-claim-init-state-handler)
-       "WF2_CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED" (wf2-claim-guidewire-snapshotted-state-handler)
-       "WF2_CLAIM_STATE_MYSQL_VALIDATED"       (wf2-claim-mysql-validated-state-handler)
-       "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"     (wf2-claim-sp-docs-collected-state-handler)
-       "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
-       ;; WF3 states
-       "WF3_CLAIM_STATE_INVOICE_INIT"                  (wf3-invoice-init-state-handler)
-       "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"          (wf3-invoice-esig-created-state-handler)
-       "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"             (wf3-invoice-sf-synced-state-handler)
-       "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler "WF4_CLAIM_STATE_INIT")
-       ;; WF4 states
-       "WF4_CLAIM_STATE_INIT"                          (wf4-claim-init-state-handler)
-       "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"          (wf4-zoho-invoice-created-state-handler)
-       "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"      (wf4-sharepoint-doc-retrieved-state-handler)
-       "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler "WF5_CLAIM_STATE_INIT")
-       ;; WF5 states
-       "WF5_CLAIM_STATE_INIT"              (wf5-claim-init-state-handler)
-       "WF5_CLAIM_STATE_AWAITING_APPROVAL" (wf5-claim-awaiting-approval-handler)
-       "WF5_CLAIM_STATE_SAP_PAID"          (wf5-claim-sap-paid-handler)
-       "WF5_CLAIM_STATE_DONE"              (wf5-claim-done-state-handler)))
+     (merge-state-specs
+       ;; Base workflow specs (merged in order)
+       state-spec-wf1
+       state-spec-wf2
+       state-spec-wf3
+       state-spec-wf4
+       state-spec-wf5
+       ;; Overrides for unified process chaining
+       (sorted-map
+         "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler "WF2_CLAIM_STATE_INIT")
+         "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
+         "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler "WF4_CLAIM_STATE_INIT")
+         "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED" (wf4-servicenow-incident-created-state-handler "WF5_CLAIM_STATE_INIT"))))
 
 ;; Completion hook for unified process: logs completion of workflow stages
 ;; State transitions are handled directly by handlers (via :next parameter)
