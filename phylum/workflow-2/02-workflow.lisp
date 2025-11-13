@@ -1,23 +1,20 @@
 (defun wf2-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; resp can be empty; we drive off entity.claim_id/policy_id
-      ;; Also capture optional fields for workflow 3 chaining
-      (let* ([guidewire-claim-id (or (get entity "guidewire_claim_id")
-                                     (get entity "gw_claim_id")
-                                     (get resp "guidewire_claim_id")
+      ;; Prioritize resp (explicit request) over entity (accumulated data)
+      ;; For unified process, resp is empty so falls back to entity
+      (let* ([guidewire-claim-id (or (get resp "guidewire_claim_id")
                                      (get resp "gw_claim_id")
+                                     (get entity "guidewire_claim_id")
+                                     (get entity "gw_claim_id")
                                      (get entity "claim_id"))]
-             [policy-id (or (get entity "policy_id") (get resp "policy_id"))]
-             [signer-email (or (get entity "signer_email") (get resp "signer_email"))]
-             [invoice-amount (or (get entity "invoice_amount") (get resp "invoice_amount"))]
-             [signer-name (or (get entity "signer_name") (get resp "signer_name"))]
-             [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
-             [recipient-name (or (get entity "recipient_name") (get resp "recipient_name"))]
-             [issue-date (or (get entity "issue_date") (get resp "issue_date"))]
-             [chain-flag (normalize-bool (or (get resp "chain_to_wf3")
-                                             (get entity "chain_to_wf3"))
-                                         *wf2-chain-enabled*)])
+             [policy-id (or (get resp "policy_id") (get entity "policy_id"))]
+             [signer-email (or (get resp "signer_email") (get entity "signer_email"))]
+             [invoice-amount (or (get resp "invoice_amount") (get entity "invoice_amount"))]
+             [signer-name (or (get resp "signer_name") (get entity "signer_name"))]
+             [originator-name (or (get resp "originator_name") (get entity "originator_name"))]
+             [recipient-name (or (get resp "recipient_name") (get entity "recipient_name"))]
+             [issue-date (or (get resp "issue_date") (get entity "issue_date"))])
         (sorted-map
           "guidewire_claim_id"  guidewire-claim-id
           "gw_claim_id"         guidewire-claim-id
@@ -28,8 +25,7 @@
           "signer_name"         signer-name
           "originator_name"     originator-name
           "recipient_name"      recipient-name
-          "issue_date"          issue-date
-          "chain_to_wf3"        chain-flag))]
+          "issue_date"          issue-date))]
 
      [stage-ephemeral (entity parsed accessors) ()]
 
@@ -44,8 +40,7 @@
         "signer_name"         (get parsed "signer_name")
         "originator_name"     (get parsed "originator_name")
         "recipient_name"      (get parsed "recipient_name")
-        "issue_date"          (get parsed "issue_date")
-        "chain_to_wf3"        (get parsed "chain_to_wf3"))]
+        "issue_date"          (get parsed "issue_date"))]
 
      [create-events (entity parsed accessors)
       (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id")))])
@@ -66,12 +61,11 @@
     ([parse (resp entity) (parse-guidewire-claim (parse-generic-resp resp))] ; create
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (cc:infof (sorted-map "status" (get parsed "status")) "guidewire parsed status in durable")
       (sorted-map "guidewire_status" (get parsed "status"))]
      [create-events (entity parsed accessors)
       (vector (mk-mysql-check-policy-event entity ; create
-                (sorted-map "policy_id" "POL-8872"
-                            "claim_id"  "CLM-4567")))])
+                (sorted-map "policy_id" *wf2-default-policy-id*
+                            "claim_id"  *wf2-default-claim-id*)))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_MYSQL_VALIDATED"
     :parse           parse
@@ -87,7 +81,6 @@
 (defun wf2-claim-mysql-validated-state-handler ()
   (labels
     ([parse (resp entity) 
-      (cc:infof (sorted-map "resp" resp) "parse mysql resp")
         (parse-mysql-policy (parse-generic-resp resp))
       ] ; create
      [stage-ephemeral (entity parsed accessors) ()]
@@ -97,13 +90,13 @@
         "coverage_limit" (get parsed "coverage_limit"))]
      [create-events (entity parsed accessors)
   (vector
-    (mk-sharepoint-get-id-doc-event
+        (wf2-mk-sharepoint-get-id-doc-event
       entity
       (sorted-map
-        "site_id"  "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245"
-        "drive_id" "b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8"
-        "item_id"  "01RAAXWAZH6LCSA5FLHRE2QJXBSIVDOGV4"
-        "filename" "id-verification.txt")))])
+        "site_id"  *wf2-default-sharepoint-site-id*
+        "drive_id" *wf2-default-sharepoint-drive-id*
+        "item_id"  *wf2-default-sharepoint-item-id*
+        "filename" *wf2-default-sharepoint-filename*)))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"
     :parse           parse
@@ -119,7 +112,7 @@
 
 (defun wf2-claim-sp-docs-collected-state-handler ()
   (labels
-    ([parse (resp entity) (parse-sharepoint-docs resp)] ; create
+    ([parse (resp entity) (wf2-parse-sharepoint-docs resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (sorted-map "sp_docs" (get parsed "documents"))]
      [create-events (entity parsed accessors)
@@ -140,7 +133,7 @@
 ;; 8) GUIDEWIRE_APPROVED -> (handoff to WF3)
 ;; After Guidewire approval, hand off to workflow 3 (invoice generation)
 ;; =============================
-(defun wf2-claim-guidewire-approved-state-handler ()
+(defun wf2-claim-guidewire-approved-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-guidewire-approval-update resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -151,21 +144,9 @@
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler
-      :next            "WF2_CLAIM_STATE_DONE"
+      :next            (or next-state "WF2_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
-
-(defun wf2-claim-done-state-handler ()
-  (labels
-    ([parse (resp entity) (parse-generic-resp resp)]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            "WF2_CLAIM_STATE_DONE"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false))))

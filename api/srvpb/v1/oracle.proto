@@ -183,4 +183,16 @@ service SandboxService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
   }
+
+  // ------------------------------------------------------------
+  // UNIFIED PROCESS (WF1 → WF2 → WF3 → WF4 → WF5)
+  // ------------------------------------------------------------
+
+  rpc InvokeProcess(pb.v1.InvokeProcessRequest) returns (pb.v1.InvokeProcessResponse) {
+    option (google.api.http) = {
+      post: "/v1/sandbox/InvokeProcess"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+  }
 }

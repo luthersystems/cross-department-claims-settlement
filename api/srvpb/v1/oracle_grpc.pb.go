@@ -29,6 +29,7 @@ const (
 	SandboxService_UploadClaimWF3_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF3"
 	SandboxService_UploadClaimWF4_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF4"
 	SandboxService_UploadClaimWF5_FullMethodName = "/srvpb.v1.SandboxService/UploadClaimWF5"
+	SandboxService_InvokeProcess_FullMethodName  = "/srvpb.v1.SandboxService/InvokeProcess"
 )
 
 // SandboxServiceClient is the client API for SandboxService service.
@@ -40,6 +41,7 @@ type SandboxServiceClient interface {
 	UploadClaimWF3(ctx context.Context, in *v1.UploadClaimWF3Request, opts ...grpc.CallOption) (*v1.UploadClaimWF3Response, error)
 	UploadClaimWF4(ctx context.Context, in *v1.UploadClaimWF4Request, opts ...grpc.CallOption) (*v1.UploadClaimWF4Response, error)
 	UploadClaimWF5(ctx context.Context, in *v1.UploadClaimWF5Request, opts ...grpc.CallOption) (*v1.UploadClaimWF5Response, error)
+	InvokeProcess(ctx context.Context, in *v1.InvokeProcessRequest, opts ...grpc.CallOption) (*v1.InvokeProcessResponse, error)
 }
 
 type sandboxServiceClient struct {
@@ -100,6 +102,16 @@ func (c *sandboxServiceClient) UploadClaimWF5(ctx context.Context, in *v1.Upload
 	return out, nil
 }
 
+func (c *sandboxServiceClient) InvokeProcess(ctx context.Context, in *v1.InvokeProcessRequest, opts ...grpc.CallOption) (*v1.InvokeProcessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.InvokeProcessResponse)
+	err := c.cc.Invoke(ctx, SandboxService_InvokeProcess_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SandboxServiceServer is the server API for SandboxService service.
 // All implementations must embed UnimplementedSandboxServiceServer
 // for forward compatibility.
@@ -109,6 +121,7 @@ type SandboxServiceServer interface {
 	UploadClaimWF3(context.Context, *v1.UploadClaimWF3Request) (*v1.UploadClaimWF3Response, error)
 	UploadClaimWF4(context.Context, *v1.UploadClaimWF4Request) (*v1.UploadClaimWF4Response, error)
 	UploadClaimWF5(context.Context, *v1.UploadClaimWF5Request) (*v1.UploadClaimWF5Response, error)
+	InvokeProcess(context.Context, *v1.InvokeProcessRequest) (*v1.InvokeProcessResponse, error)
 	mustEmbedUnimplementedSandboxServiceServer()
 }
 
@@ -133,6 +146,9 @@ func (UnimplementedSandboxServiceServer) UploadClaimWF4(context.Context, *v1.Upl
 }
 func (UnimplementedSandboxServiceServer) UploadClaimWF5(context.Context, *v1.UploadClaimWF5Request) (*v1.UploadClaimWF5Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadClaimWF5 not implemented")
+}
+func (UnimplementedSandboxServiceServer) InvokeProcess(context.Context, *v1.InvokeProcessRequest) (*v1.InvokeProcessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InvokeProcess not implemented")
 }
 func (UnimplementedSandboxServiceServer) mustEmbedUnimplementedSandboxServiceServer() {}
 func (UnimplementedSandboxServiceServer) testEmbeddedByValue()                        {}
@@ -245,6 +261,24 @@ func _SandboxService_UploadClaimWF5_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _SandboxService_InvokeProcess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.InvokeProcessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SandboxServiceServer).InvokeProcess(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SandboxService_InvokeProcess_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SandboxServiceServer).InvokeProcess(ctx, req.(*v1.InvokeProcessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SandboxService_ServiceDesc is the grpc.ServiceDesc for SandboxService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -271,6 +305,10 @@ var SandboxService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UploadClaimWF5",
 			Handler:    _SandboxService_UploadClaimWF5_Handler,
+		},
+		{
+			MethodName: "InvokeProcess",
+			Handler:    _SandboxService_InvokeProcess_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

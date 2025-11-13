@@ -492,8 +492,18 @@ compile-phylum-%: $$(shell find -L phylum_$$* -name "*.lisp" -not -path "*/build
 	mkdir -p ./build/phylum_$*
 	rm -rf   ./build/phylum_$*/src
 	mkdir -p ./build/phylum_$*/src
-	cp $^    ./build/phylum_$*/src/
-	cd       ./build/phylum_$*/src && ls && rm -f ./../phylum.zip && zip ./../phylum.zip $(notdir $^)
+	@for file in $^; do \
+		dir=$$(dirname "$$file"); \
+		rel_dir=$${dir#phylum_$*/}; \
+		rel_dir=$${rel_dir#./}; \
+		if [ "$$rel_dir" = "phylum_$*" ] || [ -z "$$rel_dir" ] || [ "$$rel_dir" = "." ]; then \
+			cp "$$file" "./build/phylum_$*/src/"; \
+		else \
+			mkdir -p "./build/phylum_$*/src/$$rel_dir"; \
+			cp "$$file" "./build/phylum_$*/src/$$rel_dir/"; \
+		fi; \
+	done
+	cd       ./build/phylum_$*/src && find . -name "*.lisp" -type f | sort && rm -f ./../phylum.zip && cd . && zip -r ./../phylum.zip . -x "*.orig"
 
 chaincodes/:
 	mkdir -p chaincodes/

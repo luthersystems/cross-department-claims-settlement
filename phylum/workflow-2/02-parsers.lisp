@@ -1,5 +1,10 @@
-;;; guidewire
+(in-package 'sandbox)
 
+;; -----------------------------------------------------------------------------
+;; Parsers and Event Creators for Workflow 2 (Guidewire → MySQL → SharePoint)
+;; -----------------------------------------------------------------------------
+
+;; Guidewire
 (defun mk-guidewire-get-claim-event (entity claim-id)
   (let* ([req (mk-connector-req
                 (sorted-map
@@ -9,7 +14,6 @@
     (build-event entity req "get claim" "OUTBOUNDGW")))
 
 (defun parse-guidewire-claim (resp)
-  (cc:infof (sorted-map "resp" resp) "guidewire claim resp")
   (if (nil? resp)
       (set-exception-business "missing Guidewire claim response")
       (sorted-map
@@ -33,18 +37,16 @@
 
 (defun parse-mysql-policy (resp)
   "Parse MySQL MCP response for policy status and coverage."
-  (cc:infof (sorted-map "resp" resp) "resp in parse-mysql-policy")
   (let* ([row (if (and (vector? resp) (> (length resp) 0))
                   (first resp)
                   (set-exception-business "MySQL returned no rows"))])
-    (cc:infof (sorted-map "row" row) "row in parse-mysql-policy")
     (sorted-map
       "policy_id"      (get row "POLICY_ID")
       "status"         (get row "STATUS")
       "coverage_limit" (get row "COVERAGE_LIMIT"))))
 
 ;; sharepoint
-(defun mk-sharepoint-get-id-doc-event (entity args)
+(defun wf2-mk-sharepoint-get-id-doc-event (entity args)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind"      "KIND_MICROSOFT_SHAREPOINT"
@@ -57,7 +59,7 @@
     (build-event entity req "get id-verification content" "SHAREPOINT")))
 
 
-(defun parse-sharepoint-docs (resp)
+(defun wf2-parse-sharepoint-docs (resp)
   (let* ([docs (get resp "documents")])
     (sorted-map
       "documents"
@@ -90,36 +92,22 @@
 ;; =============================
 ;; 9) DONE (terminal state)
 ;; =============================
-(defun wf2-claim-done-state-handler ()
+(defun wf2-claim-done-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-generic-resp resp)]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) ()]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            "WF2_CLAIM_STATE_DONE"
+      :next            (or next-state "WF2_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false)
+      :terminal        (not next-state))))
 
-(defun build-event (entity req action sys-name)
-  (cc:infof (sorted-map "event" (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req)) "event for {}" sys-name)
-  (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req))
+;; build-event moved to substr_generic_parser.lisp
 
     
 
@@ -136,12 +124,6 @@
          [text     (string-join decoded-lines "\n")]
          [claim-id (get entity "claim_id")]
          [signer   (get entity "signer_name")])
-
-    (cc:infof (sorted-map "parsed" parsed) "parse1" )
-          (cc:infof (sorted-map "ctype" ctype) "parse2" )
-                (cc:infof (sorted-map "lines" lines) "parse3" )
-                      (cc:infof (sorted-map "decoded-lines" decoded-lines) "parse4" )
-                      (cc:infof (sorted-map "text" text) "parse5" )
     (when (not (= ctype "text"))
       (set-exception-business (format-string "unexpected content type: {}" ctype)))
 

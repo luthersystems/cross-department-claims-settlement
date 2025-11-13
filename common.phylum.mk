@@ -44,10 +44,18 @@ repl:
 
 ${PHYLUM_PATH}: ${SOURCE_FILES}
 	mkdir -p $(dir $@)
-	cp $^ $(dir $@)
+	@for file in $^; do \
+		dir=$$(dirname "$$file"); \
+		if [ "$$dir" != "." ]; then \
+			mkdir -p "$(dir $@)$$dir"; \
+			cp "$$file" "$(dir $@)$$dir/"; \
+		else \
+			cp "$$file" "$(dir $@)"; \
+		fi; \
+	done
 	sed -i='.orig' "s/LUTHER_PROJECT_VERSION/${VERSION}/" $(dir $@)/main.lisp
 	sed -i='.orig' "s/LUTHER_PROJECT_BUILD_ID/${BUILD_ID}/" $(dir $@)/main.lisp
-	cd $(dir $@) && ls && zip $(notdir $@) $^
+	cd $(dir $@) && find . -name "*.lisp" -type f | sort && zip -r $(notdir $@) .
 
 .PHONY: phylum-path
 phylum-path:

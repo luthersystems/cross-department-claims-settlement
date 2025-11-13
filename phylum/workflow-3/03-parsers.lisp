@@ -1,48 +1,21 @@
-;; ===== eSignature defaults (configurable later) =====
-(set '*ESIG_TEMPLATE_ID*        "91550d63-d436-43bb-9068-a39b46a0e005")
-(set '*ESIG_LOCALE*             "en-GB")
-(set '*ESIG_TEST_MODE*          "yes")      ;; "yes"|"no"
-(set '*ESIG_EXPIRES_IN_HOURS*   "336")      ;; 14 days
-(set '*ESIG_LABELS*             (vector "inter-entity" "settlement"))
-(set '*ESIG_CUSTOM_WEBHOOK_URL* "")
+(in-package 'sandbox)
 
-;; ===== Salesforce defaults =====
-(set '*SF_OBJECT_API*           "Settlement_Invoice__c")
-(set '*SF_FIELDS_MAP*           (sorted-map
-  "name"           "Name__c"                ;; use "Name" if you kept standard Name
-  "claim_id"       "Claim_ID__c"
-  "contract_id"    "Contract_ID__c"
-  "amount"         "Amount__c"
-  "status"         "Status__c"
-  "sign_url"       "esignature_sign_page_url__c"
-  "invoice_amount" "invoice_amount__c"
-  "signer_name"    "signer_name__c"))
-(set '*SF_BASE_URL*             "https://orgfarm-cc0b69f3bb-dev-ed.develop.my.salesforce.com")
-
-;; ===== Email defaults =====
-(set '*EMAIL_SUBJECT_TEMPLATE*
-     "Settlement Invoice {{claim_id}} Sent for Signature")
-(set '*EMAIL_BODY_TEMPLATE*
-     (concat 'string
-       "Hi {{signer_name}},\n\n"
-       "The inter-entity settlement invoice for claim {{claim_id}} has been generated and sent for signature via eSignature.\n\n"
-       "View in Salesforce: {{sf_record_url}}\n\n"
-       "— ConnectorHub Automation"))
-
-(set '*EMAIL_FROM*              "ap@acme.example")
+;; -----------------------------------------------------------------------------
+;; Parsers and Event Creators for Workflow 3 (Invoice → eSignature → Salesforce → Email)
+;; -----------------------------------------------------------------------------
 
 ;; eSignature: create contract from template
 (defun mk-esignature-create-contract-event (entity)
   (let* ([args (sorted-map
-                 "template_id"      (or (get entity "template_id") *ESIG_TEMPLATE_ID*)
+                 "template_id"      (or (get entity "template_id") *wf3-default-esig-template-id*)
                  "title"            (or (get entity "title")
                                         (format-string "Inter-Entity Invoice for Claim {}" (get entity "claim_id")))
                  "contract_source"  "mcpserver"
                  "mcp_query"        "Generate inter-entity invoice for signature"
-                 "locale"           *ESIG_LOCALE*
-                 "expires_in_hours" *ESIG_EXPIRES_IN_HOURS*
-                 "test"             *ESIG_TEST_MODE*
-                 "labels"           *ESIG_LABELS*
+                 "locale"           *wf3-default-esig-locale*
+                 "expires_in_hours" *wf3-default-esig-expires-in-hours*
+                 "test"             *wf3-default-esig-test-mode*
+                 "labels"           *wf3-default-esig-labels*
                  "placeholder_fields" (vector
                    (sorted-map "api_key" "claim_id"        "value" (get entity "claim_id"))
                    (sorted-map "api_key" "originator_name" "value" (get entity "originator_name"))
@@ -70,10 +43,7 @@
 
 ;; Salesforce: create invoice record
 (defun mk-salesforce-create-invoice-event (entity args)
-  (cc:infof (sorted-map "entity" entity) "passed entity")
-
-  (cc:infof (sorted-map "args" args) "passed args")
-  (let* ([m *SF_FIELDS_MAP*]
+  (let* ([m *wf3-default-sf-fields-map*]
          [data (sorted-map
                  (get m "name")           (format-string "Inter-Entity Invoice {}" (get entity "claim_id"))
                  (get m "claim_id")       (get entity "claim_id")
@@ -88,7 +58,7 @@
                   "kind" "KIND_SALESFORCE"
                   "operation" "create_record"
                   "args" (sorted-map
-                           "object_name" "Settlement_Invoice__c"
+                           "object_name" *wf3-default-sf-object-api*
                            "data"        (sorted-map
                               "Name__c"                         (format-string "Inter-Entity Invoice {}" (get entity "claim_id"))
                               "Claim_ID__c"                     (get entity "claim_id")
@@ -127,10 +97,6 @@
         [contract (and data (get data "contract"))]
         [signers (and contract (get contract "signers"))]
         [first-s (and (vector? signers) (> (length signers) 0) (first signers))])
-
-    (cc:infof (sorted-map "outer-data" outer-data) "parsed outer-data")
-    (cc:infof (sorted-map "data" data) "parsed data data")
-    (cc:infof (sorted-map "contract" contract) "parsed contract")
     ;; extract useful data for later workflow steps
     (sorted-map
       "contract_id"   (and contract (get contract "id"))
@@ -139,7 +105,6 @@
 
 ;; Salesforce: parse create_record → {sf_record_id}
 (defun parse-salesforce-create-record (resp)
-  (cc:infof (sorted-map "generic" (parse-generic-resp resp)) "generic salesforce resp parsed")
   (let* ([decoded (parse-generic-resp resp)]
          [id      (get decoded "id")])
     (if id

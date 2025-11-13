@@ -1,68 +1,43 @@
 (in-package 'sandbox)
 
 ;; -----------------------------------------------------------------------------
-;; Helper functions for Workflow 4 (Zoho → SharePoint → ServiceNow)
-;; -----------------------------------------------------------------------------
-
-(defun mk-zoho-create-invoice-event (entity payload)
-  (let* ([req (mk-connector-req
-                (sorted-map
-                  "kind" "KIND_ZOHO_BOOKS"
-                  "operation" "create_invoice"
-                  "args" (sorted-map "json_data" payload)))])
-    (build-event entity req "create invoice" "ZOHO")))
-
-(defun parse-zoho-create-invoice (resp)
-  (let* ([parsed (parse-generic-resp resp)]
-         [invoice (or (get parsed "invoice")
-                      (set-exception-business "Zoho response missing invoice"))])
-    (cc:infof (sorted-map "parsed" parsed "invoice" invoice) "parsing Zoho invoice response")
-    (sorted-map
-      "invoice_id"      (get invoice "invoice_id")
-      "invoice_number"  (get invoice "invoice_number")
-      "customer_id"     (get invoice "customer_id")
-      "customer_name"   (get invoice "customer_name")
-      "status"          (get invoice "status")
-      "date"            (get invoice "date")
-      "due_date"        (get invoice "due_date")
-      "reference_number"(get invoice "reference_number")
-      "total"           (get invoice "total")
-      "balance"         (get invoice "balance")
-      "url"             (or (get invoice "url") (get invoice "invoice_url"))
-      "line_items"      (get invoice "line_items"))))
-
-(defun mk-servicenow-create-incident-event (entity payload)
-  (let* ([req (mk-connector-req
-                (sorted-map
-                  "kind" "KIND_SERVICENOW"
-                  "operation" "create_incident"
-                  "args" payload))])
-    (build-event entity req "create incident" "SERVICENOW")))
-
-(defun parse-servicenow-create-incident (resp)
-  (let* ([parsed (parse-generic-resp resp)]
-         [result (or (get parsed "result") parsed)])
-    (sorted-map
-      "incident_id"     (or (get result "incident_id") (get result "sys_id"))
-      "incident_number" (or (get result "incident_number") (get result "number"))
-      "state"           (get result "state")
-      "short_description" (get result "short_description")
-      "url"             (get result "link"))))
-
-;; -----------------------------------------------------------------------------
-;; State handlers
+;; State handlers for Workflow 4 (Zoho → SharePoint → ServiceNow)
 ;; -----------------------------------------------------------------------------
 
 (defun wf4-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
-      (let* ([zoho       (or (get resp "zoho") (set-exception-business "missing zoho payload"))]
-             [sharepoint (or (get resp "sharepoint") (set-exception-business "missing sharepoint payload"))]
-             [servicenow (or (get resp "servicenow") (set-exception-business "missing servicenow payload"))]
-             [claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
-             [policy-id  (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
-             [chain-to-wf5 (normalize-bool (or (get resp "chain_to_wf5")
-                                               (get entity "chain_to_wf5")) *wf4-chain-enabled*)])
+      ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
+      ;; For unified process, resp is empty so falls back to entity
+      (let* ([claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
+             [policy-id  (or (get resp "policy_id") (get entity "policy_id") *wf4-default-policy-id*)]
+             ;; Hardcode defaults for now
+             [zoho       (or (get resp "zoho")
+                            (get entity "zoho")
+                            (sorted-map
+                              "customer_id"      *wf4-default-customer-id*
+                              "reference_number" (or claim-id "WF4-CLAIM-001")
+                              "due_date"         *wf4-default-due-date*
+                              "is_inclusive_tax" *wf4-default-is-inclusive-tax*
+                              "currency_code"    *wf4-default-currency-code*
+                              "line_items"       *wf4-default-line-items*))]
+             [sharepoint (or (get resp "sharepoint")
+                            (get entity "sharepoint")
+                            (sorted-map
+                              "site_id"  *wf4-default-sharepoint-site-id*
+                              "drive_id" *wf4-default-sharepoint-drive-id*
+                              "item_id"  *wf4-default-sharepoint-item-id*
+                              "filename" *wf4-default-sharepoint-filename*))]
+             [servicenow (or (get resp "servicenow")
+                            (get entity "servicenow")
+                            (sorted-map
+                              "short_description" (format-string "Create incident for claim {}" (or claim-id "WF4-CLAIM-001"))
+                              "description"      *wf4-default-servicenow-description*
+                              "priority"         *wf4-default-servicenow-priority*
+                              "category"         *wf4-default-servicenow-category*
+                              "impact"           *wf4-default-servicenow-impact*
+                              "urgency"          *wf4-default-servicenow-urgency*
+                              "assignment_group" *wf4-default-servicenow-assignment-group*))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
@@ -70,8 +45,7 @@
           "policy_id"  policy-id
           "zoho"       zoho
           "sharepoint" sharepoint
-          "servicenow" servicenow
-          "chain_to_wf5" chain-to-wf5))]
+          "servicenow" servicenow))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       (sorted-map
@@ -79,8 +53,7 @@
         "policy_id"  (get parsed "policy_id")
         "zoho"       (get parsed "zoho")
         "sharepoint" (get parsed "sharepoint")
-        "servicenow" (get parsed "servicenow")
-        "chain_to_wf5" (get parsed "chain_to_wf5"))]
+        "servicenow" (get parsed "servicenow"))]
      [create-events (entity parsed accessors)
       (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))])
     (mk-state-handler
@@ -105,7 +78,7 @@
         "zoho_customer_id"     (get parsed "customer_id")
         "zoho_customer_name"   (get parsed "customer_name"))]
      [create-events (entity parsed accessors)
-      (vector (mk-sharepoint-get-id-doc-event entity (get entity "sharepoint")))])
+      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity "sharepoint")))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
       :parse           parse
@@ -116,7 +89,7 @@
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
     ([parse (resp entity)
-      (let* ([documents (parse-sharepoint-docs resp)])
+      (let* ([documents (wf4-parse-sharepoint-docs resp)])
         (assoc documents "retrieved_at" "2025-11-11"))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
@@ -130,7 +103,7 @@
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun wf4-servicenow-incident-created-state-handler ()
+(defun wf4-servicenow-incident-created-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-servicenow-create-incident resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -143,21 +116,24 @@
         "servicenow_short_description" (get parsed "short_description"))]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_DONE"
+      :next            (or next-state "WF4_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false))))
 
-(defun wf4-claim-done-state-handler ()
+(defun wf4-claim-done-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (if (nil? resp) (sorted-map) (parse-generic-resp resp))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) ()]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_DONE"
+      :next            (or next-state "WF4_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false)
+      :terminal        (not next-state))))

@@ -83,7 +83,6 @@
            (sidedb:put (mk-request-key req-id) callback-state))]
 
        [unregister-request (req-id ctx)
-         ;; TODO: handle multiple responses for single request_id (optional) 
          (let* ([callback-state-key (mk-request-key req-id)]
                 [key (get ctx "key")]
                 [pdc (get ctx "pdc")])
@@ -100,22 +99,20 @@
        [invoke-handler-helper (resp-body)
          (unless resp-body (error 'missing-resp "missing response"))
          (let* ([req-id (get resp-body "request_id")]
-                [_       (cc:infof (sorted-map "req-id" req-id) "req-id in invoke-handler-helper")]
                 [callback-state (get-callback-state req-id)]
-                [_       (cc:infof (sorted-map "callback-state" callback-state) "callback-state in invoke-handler-helper")]
                 [handler-name (get callback-state "handler_name")]
-                [_       (cc:infof (sorted-map "handler-name" handler-name) "handler-name in invoke-handler-helper")]
                 [ctx (default (get callback-state "ctx") (sorted-map))]
-                [_       (cc:infof (sorted-map "ctx" ctx) "ctx in invoke-handler-helper")]
                 [msp (get ctx "msp")]
-                [_       (cc:infof (sorted-map "msp" msp) "msp in invoke-handler-helper")]
-                [handler-fn (get reg-handlers handler-name)]
-                [_       (cc:infof (sorted-map "handler-fn" handler-fn) "handler-fn in invoke-handler-helper")]
-                )
+                [system-name (get ctx "sys")]
+                [handler-fn (get reg-handlers handler-name)])
+           (cc:infof (sorted-map
+                       "request_id" req-id
+                       "system" system-name
+                       "handler" handler-name
+                       "entity_id" (get ctx "oid"))
+                     "Response received from ConnectorHub")
            (when msp 
-             (cc:debugf (sorted-map "msp" msp "req_id" req-id) "validating MSP")
-             (if (valid-msp? msp)
-               (cc:debugf (sorted-map "msp" msp) "MSPID validated")
+             (unless (valid-msp? msp)
                (set-exception-security "invalid MSP for response")))
                
            (if handler-fn
@@ -209,6 +206,12 @@
                                      event-key
                                      event-body-bytes)
              (cc:storage-put event-key event-body-bytes))
+           (cc:infof (sorted-map
+                       "system" (get event "sys")
+                       "action" (get event "eng")
+                       "request_id" event-req-id
+                       "entity_id" (get event "oid"))
+                     "Event sent to ConnectorHub")
            (inc-events))])
       (lambda (op &rest args)
         (cond ((equal? op 'raise) (apply raise args)) 
@@ -265,7 +268,6 @@
   (obj-factory)
   (let ([obj-handler-name (or (obj-factory 'name)
                               (error 'missing-name "factory missing name"))])
-    (cc:debugf (sorted-map "handler" obj-handler-name) "register handler")
     (connector-handlers
       'register-handler
       obj-handler-name

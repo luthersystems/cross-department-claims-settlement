@@ -9,13 +9,10 @@
 ;;
 ;; Readonly GET endpoints are protected against state updates via 
 ;; `cc:force-no-commit-tx`.
-;;
-;; Each endpoint maps to a handler that interacts with the connector objects
-;; defined in claim.lisp.
 ;; ----------------------------------------------------------------------------
 (in-package 'sandbox)
 
-; (use-package 'connector)
+; 
 
 ;; wrap-endpoint is a simple wrapper for endpoints which allows them to call
 ;; set-exception and shortcircuit the endpoint handler.  wrap-endpoint may be

@@ -2,21 +2,16 @@
 (defun wf3-invoice-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; pull everything from request entity
-      (let* ([claim-id        (or (get resp "claim_id") (set-exception-business "missing claim_id"))]
-             [amount          (or (get resp "invoice_amount") (set-exception-business "missing invoice_amount"))]
-             [signer-name     (or (get resp "signer_name") (set-exception-business "missing signer_name"))]
-             [signer-email    (or (get resp "signer_email") (set-exception-business "missing signer_email"))]
-             [originator-name (or (get resp "originator_name") "Acme Insurance Ltd.")]
-             [recipient-name  (or (get resp "recipient_name") "BlueRiver Underwriting Partners")]
-             [issue-date      (or (get resp "issue_date")  "2025-11-12")]
-             [policy-id       (or (get resp "policy_id") (get entity "policy_id"))]
-             [chain-to-wf4    (normalize-bool (or (get resp "chain_to_wf4")
-                                                  (get entity "chain_to_wf4"))
-                                             *wf3-chain-enabled*)]
-             [chain-to-wf5    (normalize-bool (or (get resp "chain_to_wf5")
-                                                  (get entity "chain_to_wf5"))
-                                             *wf4-chain-enabled*)])
+      ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
+      ;; For unified process, resp is empty so falls back to entity
+      (let* ([claim-id        (or (get resp "claim_id") (get entity "claim_id") (set-exception-business "missing claim_id"))]
+             [amount          (or (get resp "invoice_amount") (get entity "invoice_amount") (set-exception-business "missing invoice_amount"))]
+             [signer-name     (or (get resp "signer_name") (get entity "signer_name") (set-exception-business "missing signer_name"))]
+             [signer-email    (or (get resp "signer_email") (get entity "signer_email") (set-exception-business "missing signer_email"))]
+             [originator-name (or (get resp "originator_name") (get entity "originator_name") *wf3-default-originator-name*)]
+             [recipient-name  (or (get resp "recipient_name") (get entity "recipient_name") *wf3-default-recipient-name*)]
+             [issue-date      (or (get resp "issue_date") (get entity "issue_date") *wf3-default-issue-date*)]
+             [policy-id       (or (get resp "policy_id") (get entity "policy_id"))])
         (sorted-map
           "claim_id"        claim-id
           "amount"          amount
@@ -25,9 +20,7 @@
           "originator_name" originator-name
           "recipient_name"  recipient-name
           "issue_date"      issue-date
-          "policy_id"       policy-id
-          "chain_to_wf4"    chain-to-wf4
-          "chain_to_wf5"    chain-to-wf5))]
+          "policy_id"       policy-id))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) parsed]
      [create-events (entity parsed accessors)
@@ -43,7 +36,6 @@
     ([parse (resp entity) (parse-esignature-create-contract resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (cc:infof (sorted-map "parsed" parsed) "here is parsed esig resp") 
       (sorted-map
         "esign_contract_id"    (get parsed "contract_id")
         "esign_sign_page_url"  (get parsed "sign_page_url")
@@ -75,36 +67,22 @@
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable :create-events create-events)))
 
-;; 4) EMAIL_DISPATCHED → DONE
-(defun wf3-invoice-email-dispatched-state-handler ()
+;; 4) EMAIL_DISPATCHED → DONE (or WF4_INIT if chained)
+(defun wf3-invoice-email-dispatched-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-smtp-send resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (sorted-map "email_dispatched" true)]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next "WF3_CLAIM_STATE_DONE"
+      :next (or next-state "WF3_CLAIM_STATE_DONE")
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable 
-      :create-events create-events)))
+      :create-events create-events
+      :immediate-next (if next-state true false))))
 
-(defun build-event (entity req action sys-name)
-  (cc:infof (sorted-map "event" (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req)) "event for {}" sys-name)
-  (sorted-map
-    "oid" (get entity "claim_id")
-    "key" (mk-uuid)
-    "pdc" "private"
-    "msp" "Org1MSP"
-    "sys" sys-name
-    "eng" action
-    "req" req))
+
+;; build-event moved to substr_generic_parser.lisp
 
 (defun mk-email-body (signer-name claim-id sf-url)
   (string:join
@@ -126,7 +104,7 @@
   (let* (
          [sf-id   (get args "sf_record_id")]
          [sf-url  (if sf-id
-                      (format-string "{}/{}" *SF_BASE_URL* sf-id)
+                      (format-string "{}/{}" *wf3-default-sf-base-url* sf-id)
                       "")]
          [claim-id    (get entity "claim_id")]
          [signer-name (get entity "signer_name")]
@@ -151,19 +129,21 @@
                  "\n")]
 
          ;; Construct connector request
-         [req (mk-email-req "jack.clarke@luthersystems.com" subject body)])
+         [req (mk-email-req *wf3-default-email-to* subject body)])
     (build-event entity req "dispatch invoice email" "EMAIL")))
 
 
-(defun wf3-claim-done-state-handler ()
+(defun wf3-claim-done-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-generic-resp resp)]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) ()]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            "WF3_CLAIM_STATE_DONE"
+      :next            (or next-state "WF3_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false)
+      :terminal        (not next-state))))
