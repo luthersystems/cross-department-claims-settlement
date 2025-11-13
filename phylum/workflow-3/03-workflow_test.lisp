@@ -1,66 +1,166 @@
+;; Copyright © 2025 Luther Systems, Ltd. All right reserved.
+;; Unit tests for Workflow 3: Invoice Processing (eSignature → Salesforce → Email)
+
 (in-package 'cdcs)
 (use-package 'testing)
 
-;; --- Helpers to build mock eSignature responses ---
-
-(defun mk-contract (id status sign-page-url)
+;; Test helper: Create a test entity
+(defun mk-test-entity-wf3 ()
   (sorted-map
-    "id"     id
-    "status" status
-    "signers"
-      (if sign-page-url
-        (vector (sorted-map
-                  "id" "signer-1"
-                  "name" "Jack Clarke"
-                  "email" "jack.clarke@luthersystems.com"
-                  "sign_page_url" sign-page-url))
-        (vector))))  ;; empty vector when no signers
+   "claim_id" "CLM-4567"
+   "policy_id" "POL-8872"
+   "amount" "2500.00"
+   "signer_name" "John Doe"
+   "signer_email" "john.doe@example.com"
+   "originator_name" "Finance Department"
+   "recipient_name" "Accounts Payable"
+   "issue_date" "2024-01-15"))
 
-;; Case A: The decoded payload has {"data":{"contract":{...}}}
-(defun mk-resp-with-data-contract ()
+;; Test helper: Create mock eSignature response
+(defun mk-test-esignature-response ()
   (sorted-map
-    "data" (sorted-map
-             "contract" (mk-contract
-                           "f3a1ba6a-6a02-438e-becd-c445369f1a99"
-                           "sent"
-                           "https://esignatures.com/sign/abc"))))
+   "request_id" "req-esig-123"
+   "response" (sorted-map
+                "generic" (sorted-map
+                           "text" "{\"data\":{\"data\":{\"contract\":{\"id\":\"contract-abc123\",\"status\":\"sent\",\"signers\":[{\"id\":\"signer-1\",\"name\":\"John Doe\",\"email\":\"john.doe@example.com\",\"sign_page_url\":\"https://esign.example.com/sign/abc123\"}]}}}}"))))
 
-;; Case B: The decoded payload has {"contract":{...}} (no "data")
-(defun mk-resp-with-top-level-contract ()
+;; Test helper: Create mock Salesforce response
+(defun mk-test-salesforce-response ()
   (sorted-map
-    "contract" (mk-contract
-                 "0abb6d04-3190-4633-84d1-27d89346eb8f"
-                 "queued"
-                 "https://esignatures.com/sign/def")))
+   "request_id" "req-sf-123"
+   "response" (sorted-map
+                "generic" (sorted-map
+                           "text" "{\"id\":\"a0X5g000000ABC123\",\"success\":true,\"errors\":[]}"))))
 
-;; Case C: No signers in the contract
-(defun mk-resp-without-signers ()
+;; Test helper: Create mock SMTP response
+(defun mk-test-smtp-response ()
   (sorted-map
-    "data" (sorted-map
-             "contract" (mk-contract
-                           "11111111-2222-3333-4444-555555555555"
-                           "sent"
-                           nil))))
+   "request_id" "req-smtp-123"
+   "response" (sorted-map
+                "generic" (sorted-map
+                           "text" "{\"status\":\"sent\",\"message_id\":\"msg-123\"}"))))
 
-;; --- Unit tests for parse-esignature-create-contract ---
+;; =============================
+;; Test: Parse eSignature Response
+;; =============================
+(test "parse-esignature-create-contract"
+      (let* ([resp (mk-test-esignature-response)]
+             [parsed (parse-esignature-create-contract resp)])
+        (assert (not (nil? parsed)))
+        (assert (equal? (get parsed "contract_id") "contract-abc123"))
+        (assert (equal? (get parsed "contract_status") "sent"))
+        (assert (equal? (get parsed "sign_page_url") "https://esign.example.com/sign/abc123"))))
 
-(test "parse-esignature-create-contract: data.contract + signer"
-  (let* ([resp (mk-resp-with-data-contract)]
-         [out  (parse-esignature-create-contract resp)])
-    (assert-equal (get out "contract_id")     "f3a1ba6a-6a02-438e-becd-c445369f1a99")
-    (assert-equal (get out "contract_status") "sent")
-    (assert-equal (get out "sign_page_url")   "https://esignatures.com/sign/abc")))
+;; =============================
+;; Test: Parse Salesforce Response
+;; =============================
+(test "parse-salesforce-create-record"
+      (let* ([resp (mk-test-salesforce-response)]
+             [parsed (parse-salesforce-create-record resp)])
+        (assert (not (nil? parsed)))
+        (assert (equal? (get parsed "sf_record_id") "a0X5g000000ABC123"))))
 
-; (test "parse-esignature-create-contract: top-level contract + signer"
-;   (let* ([resp (mk-resp-with-top-level-contract)]
-;          [out  (parse-esignature-create-contract resp)])
-;     (assert-equal (get out "contract_id")     "0abb6d04-3190-4633-84d1-27d89346eb8f")
-;     (assert-equal (get out "contract_status") "queued")
-;     (assert-equal (get out "sign_page_url")   "https://esignatures.com/sign/def")))
+;; =============================
+;; Test: Parse SMTP Response
+;; =============================
+(test "parse-smtp-send"
+      (let* ([resp (mk-test-smtp-response)]
+             [parsed (parse-smtp-send resp)])
+        (assert (not (nil? parsed)))
+        (assert (equal? (get parsed "status") "sent"))))
 
-; (test "parse-esignature-create-contract: no signers -> no sign_page_url"
-;   (let* ([resp (mk-resp-without-signers)]
-;          [out  (parse-esignature-create-contract resp)])
-;     (assert-equal (get out "contract_id")     "11111111-2222-3333-4444-555555555555")
-;     (assert-equal (get out "contract_status") "sent")
-;     (assert (nil? (get out "sign_page_url")))))
+;; =============================
+;; Test: Create eSignature Event
+;; =============================
+(test "mk-esignature-create-contract-event"
+      (let* ([entity (mk-test-entity-wf3)]
+             [event (mk-esignature-create-contract-event entity)])
+        (assert (not (nil? event)))
+        (assert (equal? (get event "oid") "CLM-4567"))
+        (assert (equal? (get event "sys") "ESIGNATURE"))
+        (assert (equal? (get event "eng") "create invoice contract"))
+        (assert (not (nil? (get event "req"))))))
+
+;; =============================
+;; Test: Create Salesforce Event
+;; =============================
+(test "mk-salesforce-create-invoice-event"
+      (let* ([entity (mk-test-entity-wf3)]
+             [args (sorted-map
+                    "contract_id" "contract-abc123"
+                    "sign_page_url" "https://esign.example.com/sign/abc123")]
+             [event (mk-salesforce-create-invoice-event entity args)])
+        (assert (not (nil? event)))
+        (assert (equal? (get event "oid") "CLM-4567"))
+        (assert (equal? (get event "sys") "SALESFORCE"))
+        (assert (equal? (get event "eng") "create sf invoice"))))
+
+;; =============================
+;; Test: Init State Handler Parse
+;; =============================
+(test "wf3-invoice-init-state-handler-parse"
+      (let* ([handler (wf3-invoice-init-state-handler)]
+             [parse-fn (get handler :parse)]
+             [resp (sorted-map
+                    "claim_id" "CLM-4567"
+                    "invoice_amount" "2500.00"
+                    "signer_name" "John Doe"
+                    "signer_email" "john.doe@example.com"
+                    "originator_name" "Finance Department"
+                    "recipient_name" "Accounts Payable"
+                    "issue_date" "2024-01-15")]
+             [entity (sorted-map)]
+             [parsed (funcall parse-fn resp entity)])
+        (assert (not (nil? parsed)))
+        (assert (equal? (get parsed "claim_id") "CLM-4567"))
+        (assert (equal? (get parsed "amount") "2500.00"))
+        (assert (equal? (get parsed "signer_name") "John Doe"))
+        (assert (equal? (get parsed "signer_email") "john.doe@example.com"))))
+
+;; =============================
+;; Test: eSignature Contract Created State Handler
+;; =============================
+(test "wf3-esignature-contract-created-state-handler"
+      (let* ([handler (wf3-invoice-esig-created-state-handler)]
+             [parse-fn (get handler :parse)]
+             [stage-durable-fn (get handler :stage-durable)]
+             [resp (mk-test-esignature-response)]
+             [entity (mk-test-entity-wf3)]
+             [parsed (parse-fn resp entity)]
+             [durable (stage-durable-fn entity parsed (sorted-map))])
+        (assert (not (nil? parsed)))
+        (assert (not (nil? durable)))
+        (assert (equal? (get durable "esign_contract_id") "contract-abc123"))
+        (assert (equal? (get durable "esign_status") "sent"))
+        (assert (equal? (get durable "esign_sign_page_url") "https://esign.example.com/sign/abc123"))))
+
+;; =============================
+;; Test: Salesforce Invoice Created State Handler
+;; =============================
+(test "wf3-salesforce-invoice-created-state-handler"
+      (let* ([handler (wf3-invoice-sf-synced-state-handler)]
+             [parse-fn (get handler :parse)]
+             [stage-durable-fn (get handler :stage-durable)]
+             [resp (mk-test-salesforce-response)]
+             [entity (mk-test-entity-wf3)]
+             [parsed (parse-fn resp entity)]
+             [durable (stage-durable-fn entity parsed (sorted-map))])
+        (assert (not (nil? parsed)))
+        (assert (not (nil? durable)))
+        (assert (equal? (get durable "sf_record_id") "a0X5g000000ABC123"))))
+
+;; =============================
+;; Test: Email Dispatched State Handler
+;; =============================
+(test "wf3-invoice-email-dispatched-state-handler"
+      (let* ([handler (wf3-invoice-email-dispatched-state-handler)]
+             [parse-fn (get handler :parse)]
+             [stage-durable-fn (get handler :stage-durable)]
+             [resp (mk-test-smtp-response)]
+             [entity (mk-test-entity-wf3)]
+             [parsed (parse-fn resp entity)]
+             [durable (stage-durable-fn entity parsed (sorted-map))])
+        (assert (not (nil? parsed)))
+        (assert (not (nil? durable)))
+        (assert (equal? (get durable "email_dispatched") true)
+                "Email dispatched flag should be set")))

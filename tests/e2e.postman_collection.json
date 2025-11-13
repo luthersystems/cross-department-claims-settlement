@@ -43,9 +43,9 @@
 									"        console.log(data);",
 									"        pm.response.to.have.status(200);",
 									"        pm.expect(data).to.not.have.property(\"exception\");",
-									"        pm.expect(data).to.have.property(\"claim\");",
-									"        pm.expect(data.claim).to.have.property(\"claim_id\");",
-									"        pm.environment.set(\"CLAIM_ID\", data.claim.claim_id);",
+									"        pm.expect(data).to.have.property(\"claim_id\");",
+									"        pm.expect(data).to.have.property(\"state\");",
+									"        pm.environment.set(\"CLAIM_ID\", data.claim_id);",
 									"    });",
 									"    ",
 									"})();",
@@ -62,7 +62,7 @@
 						"body": {
 							"formdata": null,
 							"mode": "raw",
-							"raw": "{\n  \"date_of_accident\": \"2024-01-15\",\n  \"damage_amount\": 500000,\n  \"claim_reason\": \"Car accident due to adverse weather conditions.\"\n}\n"
+							"raw": "{\n  \"policy_id\": \"POL-8872\",\n  \"guidewire_claim_id\": \"GW-CLM-12345\",\n  \"signer_email\": \"john.doe@example.com\",\n  \"signer_name\": \"John Doe\",\n  \"invoice_amount\": \"2500.00\",\n  \"originator_name\": \"Finance Department\",\n  \"recipient_name\": \"Accounts Payable\",\n  \"issue_date\": \"2024-01-15\"\n}\n"
 						},
 						"header": [
 							{
@@ -80,124 +80,10 @@
 							"path": [
 								"v1",
 								"cdcs",
-								"claims"
+								"InvokeProcess"
 							],
 							"protocol": "{{SCHEME}}",
-							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/claims"
-						}
-					}
-				},
-				{
-					"event": [
-						{
-							"id": "59974ad9-9c5d-4963-9f60-bdc457f72677",
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// AUTO-GENERATED. DO NOT MODIFY!",
-									"(function() {",
-									"    \"use strict\";",
-									"    pm.test(\"ok\", () =\u003e {",
-									"        let data = pm.response.json();",
-									"        console.log(data);",
-									"        pm.response.to.have.status(200);",
-									"        pm.expect(data).to.not.have.property(\"exception\");",
-									"        pm.expect(data).to.have.property(\"claim\");",
-									"        pm.expect(data.claim).to.have.property(\"state\");",
-									"    });",
-									"    ",
-									"})();",
-									""
-								],
-								"id": "490e425f-298f-4505-8d99-c600a1457b1f",
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "2558f7e1-6f37-4116-81bc-728b8c8c69c4",
-					"name": "Get claim",
-					"request": {
-						"header": [
-							{
-								"id": "c1ee0db8-25fe-44f0-a823-fcc4d5cd135e",
-								"key": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"method": "GET",
-						"url": {
-							"host": [
-								"{{SERVER}}"
-							],
-							"path": [
-								"v1",
-								"cdcs",
-								"claim",
-								"{{CLAIM_ID}}"
-							],
-							"protocol": "{{SCHEME}}",
-							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/claim/{{CLAIM_ID}}"
-						}
-					}
-				},
-				{
-					"event": [
-						{
-							"id": "b3f39b2d-8c28-4c9e-87e0-832cb412a98e",
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// AUTO-GENERATED. DO NOT MODIFY!",
-									"(function() {",
-									"    \"use strict\";",
-									"    pm.test(\"ok\", () =\u003e {",
-									"        let data = pm.response.json();",
-									"        console.log(data);",
-									"        pm.response.to.have.status(200);",
-									"        pm.expect(data).to.not.have.property(\"exception\");",
-									"        pm.expect(data).to.have.property(\"claim\");",
-									"        pm.expect(data.claim).to.have.property(\"state\");",
-									"    });",
-									"    ",
-									"})();",
-									""
-								],
-								"id": "b6ee3e19-f1bb-462a-861f-f9912d2db4ed",
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "5898b17c-8fb6-49a6-8dad-69fd8a337ce2",
-					"name": "Add claimant",
-					"request": {
-						"body": {
-							"formdata": null,
-							"mode": "raw",
-							"raw": "{\n  \"claim_id\": \"{{CLAIM_ID}}\",\n  \"claimant\": {\n    \"account_number\": \"\",\n    \"account_sort_code\": \"\",\n    \"dob\": \"1945-11-01\",\n    \"surname\": \"Smith\",\n    \"forename\": \"Raymond\",\n    \"full_address\": \"3 High Street\",\n    \"address_number\": \"3\",\n    \"address_street1\": \"High Street\",\n    \"address_postcode\": \"BA13 3BN\",\n    \"address_post_town\": \"Westbury\",\n    \"nationality\": \"NATIONALITY_GB\"\n  }\n}\n"
-						},
-						"header": [
-							{
-								"id": "a3c60882-24dd-4ec5-91d5-0e3f4eac6d67",
-								"key": "Content-Type",
-								"type": "text",
-								"value": "application/json"
-							}
-						],
-						"method": "POST",
-						"url": {
-							"host": [
-								"{{SERVER}}"
-							],
-							"path": [
-								"v1",
-								"cdcs",
-								"claim",
-								"{{CLAIM_ID}}",
-								"claimant"
-							],
-							"protocol": "{{SCHEME}}",
-							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/claim/{{CLAIM_ID}}/claimant"
+							"raw": "{{SCHEME}}://{{SERVER}}/v1/cdcs/InvokeProcess"
 						}
 					}
 				}

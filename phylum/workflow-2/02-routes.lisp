@@ -21,5 +21,6 @@
 (defendpoint "upload_claim_wf2" (req)
   (let* ([inputs (build-wf2-inputs req)]
          [result (invoke-workflow claim-manager-wf2 inputs)])
-    (route-success (sorted-map "claim_id" (get result "claim_id")))))
+    (route-success (sorted-map "claim_id" (get result "claim_id")
+                               "state" (get result "state")))))
 

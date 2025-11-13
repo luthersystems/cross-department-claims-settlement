@@ -1,0 +1,23 @@
+name: "Cdcs: Workflow 1 - Claim Initiation"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Initiate Workflow 1"
+    method: POST
+    path: "v1/cdcs/UploadClaimWF1"
+    body: |
+      {
+        "policy_id": "POL-8872"
+      }
+    test_script: |
+      pm.test("ok", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.response.to.have.status(200);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data).to.have.property("claim_id");
+          pm.expect(data).to.have.property("state");
+          pm.environment.set("CLAIM_ID", data.claim_id);
+      });
+

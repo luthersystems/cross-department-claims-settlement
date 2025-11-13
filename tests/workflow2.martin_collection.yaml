@@ -1,0 +1,26 @@
+name: "Cdcs: Workflow 2 - Guidewire Processing"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Initiate Workflow 2"
+    method: POST
+    path: "v1/cdcs/UploadClaimWF2"
+    body: |
+      {
+        "policy_id": "POL-8872",
+        "guidewire_claim_id": "GW-CLM-12345"
+      }
+    test_script: |
+      pm.test("ok", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.response.to.have.status(200);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data).to.have.property("claim_id");
+          pm.expect(data).to.have.property("state");
+          if (!pm.environment.get("CLAIM_ID")) {
+              pm.environment.set("CLAIM_ID", data.claim_id);
+          }
+      });
+

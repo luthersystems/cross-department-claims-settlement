@@ -36,7 +36,7 @@ test: shiro-test
 
 .PHONY: shiro-test
 shiro-test: build
-	${SHIRO_TEST} unit-tests --verbose .
+	${SHIRO_TEST} unit-tests --verbose . workflow-1 workflow-2 workflow-3 workflow-4 workflow-5
 
 .PHONY: repl
 repl:
