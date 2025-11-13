@@ -2,14 +2,14 @@
 (defun wf3-invoice-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; pull everything from request entity
-      (let* ([claim-id        (or (get resp "claim_id") (set-exception-business "missing claim_id"))]
-             [amount          (or (get resp "invoice_amount") (set-exception-business "missing invoice_amount"))]
-             [signer-name     (or (get resp "signer_name") (set-exception-business "missing signer_name"))]
-             [signer-email    (or (get resp "signer_email") (set-exception-business "missing signer_email"))]
-             [originator-name (or (get resp "originator_name") *wf3-default-originator-name*)]
-             [recipient-name  (or (get resp "recipient_name") *wf3-default-recipient-name*)]
-             [issue-date      (or (get resp "issue_date") *wf3-default-issue-date*)]
+      ;; pull everything from request or entity (for immediate transitions)
+      (let* ([claim-id        (or (get resp "claim_id") (get entity "claim_id") (set-exception-business "missing claim_id"))]
+             [amount          (or (get resp "invoice_amount") (get entity "invoice_amount") (set-exception-business "missing invoice_amount"))]
+             [signer-name     (or (get resp "signer_name") (get entity "signer_name") (set-exception-business "missing signer_name"))]
+             [signer-email    (or (get resp "signer_email") (get entity "signer_email") (set-exception-business "missing signer_email"))]
+             [originator-name (or (get resp "originator_name") (get entity "originator_name") *wf3-default-originator-name*)]
+             [recipient-name  (or (get resp "recipient_name") (get entity "recipient_name") *wf3-default-recipient-name*)]
+             [issue-date      (or (get resp "issue_date") (get entity "issue_date") *wf3-default-issue-date*)]
              [policy-id       (or (get resp "policy_id") (get entity "policy_id"))])
         (sorted-map
           "claim_id"        claim-id
@@ -143,4 +143,4 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (when next-state true))))
+      :immediate-next  (if next-state true false))))

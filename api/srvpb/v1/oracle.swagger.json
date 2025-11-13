@@ -19,6 +19,81 @@
     "application/json"
   ],
   "paths": {
+    "/v1/sandbox/InvokeProcess": {
+      "post": {
+        "operationId": "SandboxService_InvokeProcess",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1InvokeProcessResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request determined by business logic",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "401": {
+            "description": "Authorization failed",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "404": {
+            "description": "Missing resource",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "500": {
+            "description": "Unexpected internal server error",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "503": {
+            "description": "Service not available",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1InvokeProcessRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Service"
+        ]
+      }
+    },
     "/v1/sandbox/UploadClaimWF1": {
       "post": {
         "operationId": "SandboxService_UploadClaimWF1",
@@ -475,6 +550,61 @@
       ],
       "default": "INVALID_TYPE",
       "description": "Type of exception.\n\n - INVALID_TYPE: Default for no exception.\n - BUSINESS: Business logic error.\n - SERVICE_NOT_AVAILABLE: A service was unavailable.\n - INFRASTRUCTURE: Infrastructure was down.\n - UNEXPECTED: Catch-all for all other types.\n - SECURITY_VIOLATION: Security related error."
+    },
+    "v1InvokeProcessRequest": {
+      "type": "object",
+      "properties": {
+        "policyId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "guidewireClaimId": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "gwClaimId": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "signerEmail": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "signerName": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "invoiceAmount": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "originatorName": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "recipientName": {
+          "type": "string",
+          "title": "Optional"
+        },
+        "issueDate": {
+          "type": "string",
+          "title": "Optional (YYYY-MM-DD)"
+        }
+      }
+    },
+    "v1InvokeProcessResponse": {
+      "type": "object",
+      "properties": {
+        "claimId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "exception": {
+          "$ref": "#/definitions/v1Exception"
+        }
+      }
     },
     "v1LineItem": {
       "type": "object",

@@ -157,4 +157,4 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (when next-state true))))
+      :immediate-next  (if next-state true false))))

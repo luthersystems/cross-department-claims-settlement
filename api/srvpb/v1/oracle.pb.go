@@ -31,7 +31,7 @@ var File_srvpb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_srvpb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
-	"\x15srvpb/v1/oracle.proto\x12\bsrvpb.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x12pb/v1/oracle.proto\x1a.protoc-gen-openapiv2/options/annotations.proto2\x9f\x05\n" +
+	"\x15srvpb/v1/oracle.proto\x12\bsrvpb.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x12pb/v1/oracle.proto\x1a.protoc-gen-openapiv2/options/annotations.proto2\x9d\x06\n" +
 	"\x0eSandboxService\x12\x80\x01\n" +
 	"\x0eUploadClaimWF1\x12\x1c.pb.v1.UploadClaimWF1Request\x1a\x1d.pb.v1.UploadClaimWF1Response\"1\x92A\t\n" +
 	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF1\x12\x80\x01\n" +
@@ -42,7 +42,9 @@ const file_srvpb_v1_oracle_proto_rawDesc = "" +
 	"\x0eUploadClaimWF4\x12\x1c.pb.v1.UploadClaimWF4Request\x1a\x1d.pb.v1.UploadClaimWF4Response\"1\x92A\t\n" +
 	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF4\x12\x80\x01\n" +
 	"\x0eUploadClaimWF5\x12\x1c.pb.v1.UploadClaimWF5Request\x1a\x1d.pb.v1.UploadClaimWF5Response\"1\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF5B\xaa\x05\x92A\xa0\x04\x12\x12\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/v1/sandbox/UploadClaimWF5\x12|\n" +
+	"\rInvokeProcess\x12\x1b.pb.v1.InvokeProcessRequest\x1a\x1c.pb.v1.InvokeProcessResponse\"0\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/v1/sandbox/InvokeProcessB\xaa\x05\x92A\xa0\x04\x12\x12\n" +
 	"\vSandbox API2\x031.0*\x01\x022\x10application/json:\x10application/jsonRS\n" +
 	"\x03400\x12L\n" +
 	"(Bad request determined by business logic\x12 \n" +
@@ -75,28 +77,32 @@ var file_srvpb_v1_oracle_proto_goTypes = []any{
 	(*v1.UploadClaimWF3Request)(nil),  // 2: pb.v1.UploadClaimWF3Request
 	(*v1.UploadClaimWF4Request)(nil),  // 3: pb.v1.UploadClaimWF4Request
 	(*v1.UploadClaimWF5Request)(nil),  // 4: pb.v1.UploadClaimWF5Request
-	(*v1.UploadClaimWF1Response)(nil), // 5: pb.v1.UploadClaimWF1Response
-	(*v1.UploadClaimWF2Response)(nil), // 6: pb.v1.UploadClaimWF2Response
-	(*v1.UploadClaimWF3Response)(nil), // 7: pb.v1.UploadClaimWF3Response
-	(*v1.UploadClaimWF4Response)(nil), // 8: pb.v1.UploadClaimWF4Response
-	(*v1.UploadClaimWF5Response)(nil), // 9: pb.v1.UploadClaimWF5Response
+	(*v1.InvokeProcessRequest)(nil),   // 5: pb.v1.InvokeProcessRequest
+	(*v1.UploadClaimWF1Response)(nil), // 6: pb.v1.UploadClaimWF1Response
+	(*v1.UploadClaimWF2Response)(nil), // 7: pb.v1.UploadClaimWF2Response
+	(*v1.UploadClaimWF3Response)(nil), // 8: pb.v1.UploadClaimWF3Response
+	(*v1.UploadClaimWF4Response)(nil), // 9: pb.v1.UploadClaimWF4Response
+	(*v1.UploadClaimWF5Response)(nil), // 10: pb.v1.UploadClaimWF5Response
+	(*v1.InvokeProcessResponse)(nil),  // 11: pb.v1.InvokeProcessResponse
 }
 var file_srvpb_v1_oracle_proto_depIdxs = []int32{
-	0, // 0: srvpb.v1.SandboxService.UploadClaimWF1:input_type -> pb.v1.UploadClaimWF1Request
-	1, // 1: srvpb.v1.SandboxService.UploadClaimWF2:input_type -> pb.v1.UploadClaimWF2Request
-	2, // 2: srvpb.v1.SandboxService.UploadClaimWF3:input_type -> pb.v1.UploadClaimWF3Request
-	3, // 3: srvpb.v1.SandboxService.UploadClaimWF4:input_type -> pb.v1.UploadClaimWF4Request
-	4, // 4: srvpb.v1.SandboxService.UploadClaimWF5:input_type -> pb.v1.UploadClaimWF5Request
-	5, // 5: srvpb.v1.SandboxService.UploadClaimWF1:output_type -> pb.v1.UploadClaimWF1Response
-	6, // 6: srvpb.v1.SandboxService.UploadClaimWF2:output_type -> pb.v1.UploadClaimWF2Response
-	7, // 7: srvpb.v1.SandboxService.UploadClaimWF3:output_type -> pb.v1.UploadClaimWF3Response
-	8, // 8: srvpb.v1.SandboxService.UploadClaimWF4:output_type -> pb.v1.UploadClaimWF4Response
-	9, // 9: srvpb.v1.SandboxService.UploadClaimWF5:output_type -> pb.v1.UploadClaimWF5Response
-	5, // [5:10] is the sub-list for method output_type
-	0, // [0:5] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0,  // 0: srvpb.v1.SandboxService.UploadClaimWF1:input_type -> pb.v1.UploadClaimWF1Request
+	1,  // 1: srvpb.v1.SandboxService.UploadClaimWF2:input_type -> pb.v1.UploadClaimWF2Request
+	2,  // 2: srvpb.v1.SandboxService.UploadClaimWF3:input_type -> pb.v1.UploadClaimWF3Request
+	3,  // 3: srvpb.v1.SandboxService.UploadClaimWF4:input_type -> pb.v1.UploadClaimWF4Request
+	4,  // 4: srvpb.v1.SandboxService.UploadClaimWF5:input_type -> pb.v1.UploadClaimWF5Request
+	5,  // 5: srvpb.v1.SandboxService.InvokeProcess:input_type -> pb.v1.InvokeProcessRequest
+	6,  // 6: srvpb.v1.SandboxService.UploadClaimWF1:output_type -> pb.v1.UploadClaimWF1Response
+	7,  // 7: srvpb.v1.SandboxService.UploadClaimWF2:output_type -> pb.v1.UploadClaimWF2Response
+	8,  // 8: srvpb.v1.SandboxService.UploadClaimWF3:output_type -> pb.v1.UploadClaimWF3Response
+	9,  // 9: srvpb.v1.SandboxService.UploadClaimWF4:output_type -> pb.v1.UploadClaimWF4Response
+	10, // 10: srvpb.v1.SandboxService.UploadClaimWF5:output_type -> pb.v1.UploadClaimWF5Response
+	11, // 11: srvpb.v1.SandboxService.InvokeProcess:output_type -> pb.v1.InvokeProcessResponse
+	6,  // [6:12] is the sub-list for method output_type
+	0,  // [0:6] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_srvpb_v1_oracle_proto_init() }

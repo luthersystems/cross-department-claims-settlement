@@ -142,7 +142,7 @@
        "WF2_CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED" (wf2-claim-guidewire-snapshotted-state-handler)
        "WF2_CLAIM_STATE_MYSQL_VALIDATED"       (wf2-claim-mysql-validated-state-handler)
        "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"     (wf2-claim-sp-docs-collected-state-handler)
-       "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler)
+       "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"    (wf2-claim-guidewire-approved-state-handler "WF2_CLAIM_STATE_DONE")
        "WF2_CLAIM_STATE_DONE"                  (wf2-claim-done-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
        ;; WF3 states
        "WF3_CLAIM_STATE_INVOICE_INIT"                  (wf3-invoice-init-state-handler)

@@ -135,7 +135,7 @@
 ;; 8) GUIDEWIRE_APPROVED -> (handoff to WF3)
 ;; After Guidewire approval, hand off to workflow 3 (invoice generation)
 ;; =============================
-(defun wf2-claim-guidewire-approved-state-handler ()
+(defun wf2-claim-guidewire-approved-state-handler (&optional next-state)
   (labels
     ([parse (resp entity) (parse-guidewire-approval-update resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -146,11 +146,12 @@
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler
-      :next            "WF2_CLAIM_STATE_DONE"
+      :next            (or next-state "WF2_CLAIM_STATE_DONE")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events)))
+      :create-events   create-events
+      :immediate-next  (if next-state true false))))
 
 (defun wf2-claim-done-state-handler (&optional next-state)
   (labels
@@ -164,4 +165,4 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (when next-state true))))
+      :immediate-next  (if next-state true false))))

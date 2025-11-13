@@ -216,3 +216,28 @@ message UploadClaimWF5Response {
     common.v1.Exception exception = 3;
   }
 }
+
+// ------------------------------------------------------------
+// UNIFIED PROCESS (WF1 → WF2 → WF3 → WF4 → WF5)
+// ------------------------------------------------------------
+
+message InvokeProcessRequest {
+  string policy_id = 1; // Required
+  string guidewire_claim_id = 2; // Optional
+  string gw_claim_id = 3; // Optional
+  string signer_email = 4; // Optional
+  string signer_name = 5; // Optional
+  string invoice_amount = 6; // Optional
+  string originator_name = 7; // Optional
+  string recipient_name = 8; // Optional
+  string issue_date = 9; // Optional (YYYY-MM-DD)
+}
+
+message InvokeProcessResponse {
+  string claim_id = 1;
+  string state = 2;
+
+  oneof result {
+    common.v1.Exception exception = 3;
+  }
+}

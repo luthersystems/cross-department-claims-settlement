@@ -218,13 +218,25 @@
       (ephem-purge-for-state! entity-name entity-id next-state))
 
     ;; Check if we should immediately process the next state
-    ;; This happens when :immediate-next is true and no events were emitted
+    ;; This happens when the CURRENT handler has :immediate-next=true and no events were emitted.
+    ;; The :immediate-next flag means "after executing this handler, if there are no events,
+    ;; immediately process the next state synchronously".
     (let* ([immediate-next (spec-immediate-next spec)]
            [events-vector (if (vector? events) events (vector))]
            [no-events (equal? (length events-vector) 0)])
+      (cc:infof (sorted-map
+                  "entity-id" entity-id
+                  "from-state" state
+                  "to-state" next-state
+                  "immediate-next" immediate-next
+                  "no-events" no-events
+                  "events-count" (length events-vector))
+                "Checking immediate transition conditions")
       (if (and immediate-next no-events (not (equal? next-state "STATE_UNKNOWN")))
         ;; Recursively process the next state with empty response
         ;; This allows seamless transitions without waiting for connectorhub callbacks
+        ;; Note: durable-entity already has state=next-state, so run-state-step will execute
+        ;; the handler for next-state
         (let* ([_ (cc:infof (sorted-map
                               "entity-id" entity-id
                               "from-state" state

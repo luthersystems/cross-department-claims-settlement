@@ -70,3 +70,8 @@ func (p *portal) UploadClaimWF5(ctx context.Context, req *pb.UploadClaimWF5Reque
 	fmt.Printf("ProcessInvoiceWF5 payload: %+v\n", req)
 	return oracle.Call(p.orc, ctx, "upload_claim_wf5", req, &pb.UploadClaimWF5Response{}, p.defaultConfigs(ctx)...)
 }
+
+func (p *portal) InvokeProcess(ctx context.Context, req *pb.InvokeProcessRequest) (*pb.InvokeProcessResponse, error) {
+	fmt.Printf("InvokeProcess payload: %+v\n", req)
+	return oracle.Call(p.orc, ctx, "invoke_process", req, &pb.InvokeProcessResponse{}, p.defaultConfigs(ctx)...)
+}
