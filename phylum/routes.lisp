@@ -9,9 +9,6 @@
 ;;
 ;; Readonly GET endpoints are protected against state updates via 
 ;; `cc:force-no-commit-tx`.
-;;
-;; Each endpoint maps to a handler that interacts with the connector objects
-;; defined in claim.lisp.
 ;; ----------------------------------------------------------------------------
 (in-package 'sandbox)
 

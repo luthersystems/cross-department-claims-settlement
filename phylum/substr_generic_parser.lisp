@@ -25,6 +25,32 @@
 (defun get-from-resp-or-entity (key resp entity &optional default)
   (or (get resp key) (get entity key) default))
 
+;; ---------------- Helper: Boolean normalization ----------------
+
+;; Best-effort boolean coercion with sensible defaults.
+;; Handles strings ("true", "false", "1", "0", "yes", "no", etc.), booleans, and nil.
+(export 'normalize-bool)
+(defun normalize-bool (value &optional default-value)
+  (cond
+    ((nil? value) (if (nil? default-value) false default-value))
+    ((equal? value true) true)
+    ((equal? value false) false)
+    ((string? value)
+     (let* ([lower (string:downcase value)])
+       (cond
+         ((or (equal? lower "true")
+              (equal? lower "1")
+              (equal? lower "yes")
+              (equal? lower "y")
+              (equal? lower "on")) true)
+         ((or (equal? lower "false")
+              (equal? lower "0")
+              (equal? lower "no")
+              (equal? lower "n")
+              (equal? lower "off")) false)
+         (:else (if (nil? default-value) false default-value)))))
+    (:else (if (nil? default-value) false default-value))))
+
 (defun parse-generic-resp (resp &key skip-inner-error-check)
   (let* ([resp-body (get resp "response")]
          [resp-err  (get resp "error")])

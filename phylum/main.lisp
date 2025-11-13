@@ -21,7 +21,6 @@
 
 ;; Load all route definitions and core business logic for this phylum.
 (load-file "routes.lisp")
-; (load-file "claim.lisp")
 
 (load-file "substr_connector.lisp")
 (load-file "substr_generic_state_machine.lisp")
@@ -32,7 +31,6 @@
 (load-file "03-constants.lisp")
 (load-file "04-constants.lisp")
 (load-file "05-constants.lisp")
-(load-file "workflow-config.lisp")      ; Shared workflow chaining config & helpers (references constants)
 (load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
 (load-file "01-workflow.lisp")
 (load-file "00-routes.lisp")          ; Unified process endpoint (load before individual workflow routes)

@@ -125,7 +125,6 @@
     (lambda (op &rest args)
       (cond ((equal? op 'init)   (apply init args))
             ((equal? op 'handle) (apply handle args))
-            ; todo should we make this accept a key
             ((equal? op 'entity-state) (get entity "state"))
             (:else (error 'unknown-entity-op op))))))
 

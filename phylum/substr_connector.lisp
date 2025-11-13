@@ -83,7 +83,6 @@
            (sidedb:put (mk-request-key req-id) callback-state))]
 
        [unregister-request (req-id ctx)
-         ;; TODO: handle multiple responses for single request_id (optional) 
          (let* ([callback-state-key (mk-request-key req-id)]
                 [key (get ctx "key")]
                 [pdc (get ctx "pdc")])
