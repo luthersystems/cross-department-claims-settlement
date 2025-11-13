@@ -62,7 +62,7 @@
        ;; Base workflow specs (merged in order)
        state-spec-wf1
        state-spec-wf2
-        (sorted-map
+      (sorted-map
          "CUSTOM_VALIDATION_STATE" (custom-validation-state-handler))
        state-spec-wf3
        state-spec-wf4
