@@ -34,30 +34,36 @@
 ;; Load workflow-1 files
 (load-file "workflow-1/01-constants.lisp")
 (load-file "workflow-1/01-workflow.lisp")
-(load-file "00-routes.lisp")          ; Unified process endpoint (load before individual workflow routes)
 (load-file "workflow-1/01-routes.lisp")
+(load-file "workflow-1/01-reg.lisp")     ; Register WF1 manager
 
 ;; Load workflow-2 files
 (load-file "workflow-2/02-constants.lisp")
 (load-file "workflow-2/02-workflow.lisp")
 (load-file "workflow-2/02-helpers.lisp")
 (load-file "workflow-2/02-routes.lisp")
+(load-file "workflow-2/02-reg.lisp")     ; Register WF2 manager
 
 ;; Load workflow-3 files
 (load-file "workflow-3/03-constants.lisp")
 (load-file "workflow-3/03-workflow.lisp")
 (load-file "workflow-3/03-helpers.lisp")
 (load-file "workflow-3/03-routes.lisp")
+(load-file "workflow-3/03-reg.lisp")     ; Register WF3 manager
 
 ;; Load workflow-4 files
 (load-file "workflow-4/04-constants.lisp")
 (load-file "workflow-4/04-workflow.lisp")
 (load-file "workflow-4/04-routes.lisp")
+(load-file "workflow-4/04-reg.lisp")     ; Register WF4 manager
 
 ;; Load workflow-5 files
 (load-file "workflow-5/05-constants.lisp")
 (load-file "workflow-5/05-workflow.lisp")
 (load-file "workflow-5/05-routes.lisp")
+(load-file "workflow-5/05-reg.lisp")     ; Register WF5 manager
 
-(load-file "workflow-reg.lisp")     ; Registers managers after handlers are defined
+;; Load unified process registration (requires all workflow specs to be loaded)
+(load-file "00-routes.lisp")          ; Unified process endpoint
+(load-file "process-reg.lisp")        ; Register unified process manager
 
