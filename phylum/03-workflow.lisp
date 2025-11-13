@@ -2,7 +2,8 @@
 (defun wf3-invoice-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; pull everything from request or entity (for immediate transitions)
+      ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
+      ;; For unified process, resp is empty so falls back to entity
       (let* ([claim-id        (or (get resp "claim_id") (get entity "claim_id") (set-exception-business "missing claim_id"))]
              [amount          (or (get resp "invoice_amount") (get entity "invoice_amount") (set-exception-business "missing invoice_amount"))]
              [signer-name     (or (get resp "signer_name") (get entity "signer_name") (set-exception-business "missing signer_name"))]

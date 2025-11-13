@@ -22,6 +22,17 @@
     "eng" action
     "req" req))
 
+;; ---------------- Helper: Get from resp or entity ----------------
+
+;; Get a value from resp (explicit request) or entity (accumulated data), with optional default.
+;; Priority: resp > entity > default
+;; This abstracts the common pattern used in init handlers to support both:
+;;   - Route invocations (data in resp)
+;;   - Unified process transitions (data in entity, resp is empty)
+(export 'get-from-resp-or-entity)
+(defun get-from-resp-or-entity (key resp entity &optional default)
+  (or (get resp key) (get entity key) default))
+
 (defun parse-generic-resp (resp &key skip-inner-error-check)
   (let* ([resp-body (get resp "response")]
          [resp-err  (get resp "error")])

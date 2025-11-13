@@ -9,16 +9,18 @@
       ; resp is ch resp
       ; entity is the entity object e.g. claim in this case.
       ; we essentially just parse the incoming request here.
-      (let* ([policy-id (or (get entity "policy_id") (get resp "policy_id"))]
-             [gw-claim-id (or (get entity "gw_claim_id")
-                              (get resp "gw_claim_id")
-                              (get resp "guidewire_claim_id"))]
-             [signer-email (or (get entity "signer_email") (get resp "signer_email"))]
-             [signer-name  (or (get entity "signer_name")  (get resp "signer_name"))]
-             [invoice-amount (or (get entity "invoice_amount") (get resp "invoice_amount"))]
-             [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
-             [recipient-name  (or (get entity "recipient_name")  (get resp "recipient_name"))]
-             [issue-date      (or (get entity "issue_date")      (get resp "issue_date"))])
+      ;; Prioritize resp (explicit request) over entity (accumulated data)
+      ;; For unified process, resp is empty so falls back to entity
+      (let* ([policy-id (get-from-resp-or-entity "policy_id" resp entity)]
+             [gw-claim-id (or (get resp "gw_claim_id")
+                              (get resp "guidewire_claim_id")
+                              (get entity "gw_claim_id"))]
+             [signer-email (get-from-resp-or-entity "signer_email" resp entity)]
+             [signer-name  (get-from-resp-or-entity "signer_name" resp entity)]
+             [invoice-amount (get-from-resp-or-entity "invoice_amount" resp entity)]
+             [originator-name (get-from-resp-or-entity "originator_name" resp entity)]
+             [recipient-name  (get-from-resp-or-entity "recipient_name" resp entity)]
+             [issue-date      (get-from-resp-or-entity "issue_date" resp entity)])
         (sorted-map
           "policy_id"          policy-id
           "gw_claim_id"        gw-claim-id

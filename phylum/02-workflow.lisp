@@ -1,20 +1,20 @@
 (defun wf2-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; resp can be empty; we drive off entity.claim_id/policy_id
-      ;; Also capture optional fields for workflow 3 chaining
-      (let* ([guidewire-claim-id (or (get entity "guidewire_claim_id")
-                                     (get entity "gw_claim_id")
-                                     (get resp "guidewire_claim_id")
+      ;; Prioritize resp (explicit request) over entity (accumulated data)
+      ;; For unified process, resp is empty so falls back to entity
+      (let* ([guidewire-claim-id (or (get resp "guidewire_claim_id")
                                      (get resp "gw_claim_id")
+                                     (get entity "guidewire_claim_id")
+                                     (get entity "gw_claim_id")
                                      (get entity "claim_id"))]
-             [policy-id (or (get entity "policy_id") (get resp "policy_id"))]
-             [signer-email (or (get entity "signer_email") (get resp "signer_email"))]
-             [invoice-amount (or (get entity "invoice_amount") (get resp "invoice_amount"))]
-             [signer-name (or (get entity "signer_name") (get resp "signer_name"))]
-             [originator-name (or (get entity "originator_name") (get resp "originator_name"))]
-             [recipient-name (or (get entity "recipient_name") (get resp "recipient_name"))]
-             [issue-date (or (get entity "issue_date") (get resp "issue_date"))])
+             [policy-id (or (get resp "policy_id") (get entity "policy_id"))]
+             [signer-email (or (get resp "signer_email") (get entity "signer_email"))]
+             [invoice-amount (or (get resp "invoice_amount") (get entity "invoice_amount"))]
+             [signer-name (or (get resp "signer_name") (get entity "signer_name"))]
+             [originator-name (or (get resp "originator_name") (get entity "originator_name"))]
+             [recipient-name (or (get resp "recipient_name") (get entity "recipient_name"))]
+             [issue-date (or (get resp "issue_date") (get entity "issue_date"))])
         (sorted-map
           "guidewire_claim_id"  guidewire-claim-id
           "gw_claim_id"         guidewire-claim-id

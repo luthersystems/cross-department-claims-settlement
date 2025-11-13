@@ -56,6 +56,8 @@
 (defun wf4-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
+      ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
+      ;; For unified process, resp is empty so falls back to entity
       (let* ([claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
              [policy-id  (or (get resp "policy_id") (get entity "policy_id") *wf4-default-policy-id*)]
              ;; Hardcode defaults for now

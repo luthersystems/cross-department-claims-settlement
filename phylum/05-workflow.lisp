@@ -41,10 +41,12 @@
 (defun wf5-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
+      ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
+      ;; For unified process, resp is empty so falls back to entity
       (let* ([claim-id  (or (get resp "claim_id") (get entity "claim_id"))]
              [policy-id (or (get resp "policy_id") (get entity "policy_id")
                              (set-exception-business "missing policy_id"))]
-             [sap       (or (get resp "sap") (sorted-map))])
+             [sap       (or (get resp "sap") (get entity "sap") (sorted-map))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
