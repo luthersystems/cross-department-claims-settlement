@@ -41,25 +41,16 @@
 ;;   ('get  <id>)            -> entity-instance | ()
 ;;   ('put  <entity-map>)    -> ()
 ;;   ('del  <id>)            -> ()
-;;   ('final-state)          -> final-state | nil
 ;;
 ;; Parameters:
 ;;   entity-name: Name of the entity type (e.g., "claim_wf2")
 ;;   entity-key: Primary key field name (e.g., "claim_id")
 ;;   initial-state: Starting state for new entities
 ;;   states: Map of state-name -> state-handler
-;;   final-state: (optional) Terminal state that triggers completion hooks
-;;   completion-hook: (optional) Function called when workflow reaches final-state
-;;                    Signature: (completion-hook entity-name entity state parsed)
-;;                    - entity-name: Name of the entity type
-;;                    - entity: The completed entity
-;;                    - state: The final state that was reached
-;;                    - parsed: The parsed response that triggered the completion
-(defun mk-entity-manager (entity-name entity-key initial-state states &optional final-state completion-hook)
+(defun mk-entity-manager (entity-name entity-key initial-state states)
   (lambda ()
     (labels
       ([name () entity-name]
-       [final-state-hook () final-state]
 
        ;; Key in PDC: "sandbox:<entity-name>:<entity-id>"
        [mk-storage-key (entity-id)
@@ -77,7 +68,7 @@
                           (cc:infof (sorted-map "entity-doc" entity-doc) "entity doc in storage-get")
 
            (when entity-doc
-             (mk-entity-instance entity-name entity-key initial-state states final-state completion-hook entity-doc)))]
+             (mk-entity-instance entity-name entity-key initial-state states entity-doc)))]
 
        [storage-del (entity-id)
          (sidedb:purge (mk-storage-key entity-id))]
@@ -85,7 +76,7 @@
        ;; constructor
        [new-instance ()
          (let* ([doc      (sorted-map entity-key (mk-uuid))]
-                [instance (mk-entity-instance entity-name entity-key initial-state states final-state completion-hook doc)])
+                [instance (mk-entity-instance entity-name entity-key initial-state states doc)])
            (instance 'init))]
            
       [ephemeral-get (entity-id ekey)
@@ -93,7 +84,6 @@
 
       (lambda (op &rest args)
         (cond ((equal? op 'name) (apply name args))
-              ((equal? op 'final-state) (apply final-state-hook args))
               ((equal? op 'new)  (apply new-instance args))
               ((equal? op 'get)  (apply storage-get args))
               ((equal? op 'del)  (apply storage-del args))
@@ -110,7 +100,7 @@
 ;;   ('init)   -> { "put": entity, "events": [] }
 ;;   ('handle) -> advance one step given a connector response
 ;;
-(defun mk-entity-instance (entity-name entity-key initial-state states final-state completion-hook entity)
+(defun mk-entity-instance (entity-name entity-key initial-state states entity)
   (cc:infof (sorted-map "entity-name" entity-name "entity-key" entity-key) "making entity instance")
   (labels
     ([init ()
@@ -134,7 +124,7 @@
                   current-state required-state)))
       ;; Proceed with FSM transition
       ; step 2 run invoked here with
-      (run-state-step entity-name entity-key entity resp states final-state completion-hook))])
+      (run-state-step entity-name entity-key entity resp states))])
 
 
     (lambda (op &rest args)
@@ -148,7 +138,7 @@
 ;; -----------------------------------------------------------------------------
 ;; Step runner (no process-local ephemeral; uses staged ephemerals API)
 ;; -----------------------------------------------------------------------------
-(defun run-state-step (entity-name entity-key instance resp states &optional final-state completion-hook)
+(defun run-state-step (entity-name entity-key instance resp states)
   (let* ([state   (get instance "state")]
          [spec    (lookup-state-spec state states)]
 
@@ -193,25 +183,13 @@
     ;; advance state on the durable entity
     (assoc! durable-entity "state" next-state)
 
-    ;; Call completion hook if we've reached the final state
-    ;; Also call hook for intermediate DONE states in unified process (entity-name == "claim")
+    ;; Call completion notification when reaching a terminal state
+    ;; Check if next-state is marked as terminal in its spec
     (when entity-id
-      (cond
-        ;; Final state reached
-        ((and final-state (equal? next-state final-state))
-         (when completion-hook
-           (completion-hook entity-name durable-entity next-state parsed))
-         ;; Also call the global completion notification system
-         (notify-workflow-completion-by-entity-name entity-name durable-entity))
-        ;; Intermediate DONE state in unified process (check if entity-name is "claim" and state ends with "_DONE")
-        ((and completion-hook
-              (equal? entity-name "claim")
-              (or (equal? next-state "WF1_CLAIM_STATE_DONE")
-                  (equal? next-state "WF2_CLAIM_STATE_DONE")
-                  (equal? next-state "WF3_CLAIM_STATE_DONE")
-                  (equal? next-state "WF4_CLAIM_STATE_DONE"))
-              (not (equal? next-state final-state)))
-         (completion-hook entity-name durable-entity next-state parsed))))
+      (let* ([next-spec (lookup-state-spec next-state states)]
+             [is-terminal (spec-terminal next-spec)])
+        (when is-terminal
+          (notify-workflow-completion-by-entity-name entity-name durable-entity))))
 
     ;; purge ephemerals scheduled for the state we just entered
     (when entity-id
@@ -224,14 +202,6 @@
     (let* ([immediate-next (spec-immediate-next spec)]
            [events-vector (if (vector? events) events (vector))]
            [no-events (equal? (length events-vector) 0)])
-      (cc:infof (sorted-map
-                  "entity-id" entity-id
-                  "from-state" state
-                  "to-state" next-state
-                  "immediate-next" immediate-next
-                  "no-events" no-events
-                  "events-count" (length events-vector))
-                "Checking immediate transition conditions")
       (if (and immediate-next no-events (not (equal? next-state "STATE_UNKNOWN")))
         ;; Recursively process the next state with empty response
         ;; This allows seamless transitions without waiting for connectorhub callbacks
@@ -242,7 +212,7 @@
                               "from-state" state
                               "to-state" next-state)
                             "Immediate transition: processing next state synchronously")]
-               [next-transition (run-state-step entity-name entity-key durable-entity (sorted-map) states final-state completion-hook)])
+               [next-transition (run-state-step entity-name entity-key durable-entity (sorted-map) states)])
           ;; Return the next transition's result (which may itself trigger another immediate transition)
           (sorted-map
             "put"    (get next-transition "put")
@@ -255,14 +225,15 @@
 
 ;; ---------------- Spec builder + defaults + accessors ----------------
 
-(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events immediate-next)
+(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events immediate-next terminal)
   (sorted-map
     :next            (or next "STATE_UNKNOWN")
     :parse           (or parse _noop-parse)
     :stage-durable   (or stage-durable _noop-stage-durable)
     :stage-ephemeral (or stage-ephemeral _noop-stage-ephemeral)
     :create-events   (or create-events _noop-create-events)
-    :immediate-next  (or immediate-next false)))
+    :immediate-next  (or immediate-next false)
+    :terminal        (or terminal false)))
 
 ;; safe defaults
 (defun _noop-parse (resp entity) resp)
@@ -288,3 +259,4 @@
 (defun spec-stage-durable (spec)     (or (get spec :stage-durable) _noop-stage-durable))
 (defun spec-immediate-next (spec)    (or (get spec :immediate-next) false))
 (defun spec-create-events (spec)     (or (get spec :create-events) _noop-create-events))
+(defun spec-terminal (spec)          (or (get spec :terminal) false))

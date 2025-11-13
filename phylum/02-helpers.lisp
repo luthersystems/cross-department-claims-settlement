@@ -102,7 +102,8 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (if next-state true false))))
+      :immediate-next  (if next-state true false)
+      :terminal        (not next-state))))
 
 ;; build-event moved to substr_generic_parser.lisp
 
