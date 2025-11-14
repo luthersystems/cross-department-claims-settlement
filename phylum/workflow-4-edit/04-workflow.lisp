@@ -70,9 +70,9 @@
 (defun wf4-claim-contract-signed-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; Parse contract signed data from inbound REST endpoint or unified process transition
+      ;; Parse contract signed data and prepare Zoho invoice data
       ;; signedBy and verifiedBy come from the request body (inbound) or entity (unified process)
-      ;; For unified process: resp may be empty, so we get signedBy/verifiedBy from entity or use defaults
+      ;; Zoho data comes from entity (if already set) or defaults
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
              ;; signedBy comes from resp (external endpoint) or entity (stored by WAITING_FOR_SIGNATURE)
              ;; During unified process transition, resp is empty, so get from entity
@@ -80,7 +80,17 @@
                               (get entity "signed_by"))]
              [verified-by (or (get resp "verifiedBy")
                               (get entity "verified_by")
-                              "jack.clarke@luthersystems.com")])
+                              "jack.clarke@luthersystems.com")]
+             ;; Zoho data: use existing from entity or defaults
+             [zoho       (or (get resp "zoho")
+                            (get entity "zoho")
+                            (sorted-map
+                              "customer_id"      *wf4-default-customer-id*
+                              "reference_number" (or claim-id "WF4-CLAIM-001")
+                              "due_date"         *wf4-default-due-date*
+                              "is_inclusive_tax" *wf4-default-is-inclusive-tax*
+                              "currency_code"    *wf4-default-currency-code*
+                              "line_items"       *wf4-default-line-items*))])
         (cc:infof (sorted-map
                     "claim_id" claim-id
                     "current_state" (get entity "state")
@@ -90,36 +100,32 @@
                     "signed_by_source" (if (get resp "signedBy") "resp" "entity")
                     "resp_keys" (if resp (keys resp) (vector))
                     "entity_keys" (keys entity))
-                  "wf4-claim-contract-signed-state-handler: parse - arrived at CONTRACT_SIGNED")
+                  "wf4-claim-contract-signed-state-handler: parse - arrived at CONTRACT_SIGNED, preparing Zoho invoice")
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
           "claim_id"    claim-id
           "signed_by"   signed-by
-          "verified_by" verified-by))]
+          "verified_by" verified-by
+          "zoho"        zoho))]
      [stage-ephemeral (entity parsed accessors)
        (cc:infof (sorted-map
                    "claim_id" (get entity "claim_id"))
                  "wf4-claim-contract-signed-state-handler: stage-ephemeral")
        (vector)]
      [stage-durable (entity parsed accessors)
-       (cc:infof (sorted-map
-                   "claim_id" (get parsed "claim_id")
-                   "signed_by" (get parsed "signed_by")
-                   "verified_by" (get parsed "verified_by")
-                   "next_state" "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED")
-                 "wf4-claim-contract-signed-state-handler: stage-durable - storing signature data")
+       ;; Store signed data and Zoho config
        (sorted-map
          "claim_id"    (get parsed "claim_id")
          "signed_by"   (get parsed "signed_by")
-         "verified_by" (get parsed "verified_by"))]
+         "verified_by" (get parsed "verified_by")
+         "zoho"        (get parsed "zoho"))]
      [create-events (entity parsed accessors)
+       ;; Create Zoho invoice event to transition to ZOHO_INVOICE_CREATED
        (cc:infof (sorted-map
-                   "claim_id" (get entity "claim_id")
-                   "next_state" "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
-                   "no_events" true)
-                 "wf4-claim-contract-signed-state-handler: create-events - no events, will auto-transition")
-       (vector)])
+                   "claim_id" (get entity "claim_id"))
+                 "wf4-claim-contract-signed-state-handler: create-events - creating Zoho invoice event")
+       (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
       :parse           parse
@@ -220,7 +226,15 @@
         "zoho_customer_id"     (get parsed "customer_id")
         "zoho_customer_name"   (get parsed "customer_name"))]
      [create-events (entity parsed accessors)
-      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity "sharepoint")))])
+      ;; Get SharePoint data from entity or use defaults
+      (let* ([sharepoint-raw (get entity "sharepoint")]
+             [sharepoint-args (or sharepoint-raw
+                                (sorted-map
+                                  "site_id"  *wf4-default-sharepoint-site-id*
+                                  "drive_id" *wf4-default-sharepoint-drive-id*
+                                  "item_id"  *wf4-default-sharepoint-item-id*
+                                  "filename" *wf4-default-sharepoint-filename*))])
+        (vector (wf4-mk-sharepoint-get-id-doc-event entity sharepoint-args)))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
       :parse           parse
@@ -237,7 +251,19 @@
      [stage-durable (entity parsed accessors)
       (sorted-map "sharepoint_documents" parsed)]
      [create-events (entity parsed accessors)
-      (vector (mk-servicenow-create-incident-event entity (get entity "servicenow")))])
+      ;; Get ServiceNow data from entity or use defaults
+      (let* ([claim-id (get entity "claim_id")]
+             [servicenow-raw (get entity "servicenow")]
+             [servicenow-args (or servicenow-raw
+                                (sorted-map
+                                  "short_description" (format-string "Create incident for claim {}" (or claim-id "WF4-CLAIM-001"))
+                                  "description"      *wf4-default-servicenow-description*
+                                  "priority"         *wf4-default-servicenow-priority*
+                                  "category"         *wf4-default-servicenow-category*
+                                  "impact"           *wf4-default-servicenow-impact*
+                                  "urgency"          *wf4-default-servicenow-urgency*
+                                  "assignment_group" *wf4-default-servicenow-assignment-group*))])
+        (vector (mk-servicenow-create-incident-event entity servicenow-args)))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"
       :parse           parse

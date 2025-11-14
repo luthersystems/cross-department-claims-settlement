@@ -47,19 +47,19 @@
          [payment-id  (get body "paymentID")]
          [status      (get body "status")])
 
-      ;; Validate claim exists
-      (let* ([claim (claim-manager-wf5 'get claim-id)]
+      ;; Validate claim exists in unified claim-manager
+      (let* ([claim (claim-manager 'get claim-id)]
              [_     (when (nil? claim)
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
              [claim-state (claim 'entity-state)])
 
-        ;; Enforce initial state
-        (when (not (equal? claim-state "CLAIM_STATE_AWAITING_APPROVAL"))
+        ;; Enforce correct state for WF5
+        (when (not (equal? claim-state "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE"))
           (set-exception-business
-            (format-string "invalid claim state: expected CLAIM_STATE_AWAITING_APPROVAL, got {}" claim-state)))
+            (format-string "invalid claim state: expected WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE, got {}" claim-state)))
 
     (trigger-connector-object 
-      claim-manager-wf5
+      claim-manager
       claim-id 
       (sorted-map "payment_id" payment-id "status" status))
 

@@ -28,23 +28,28 @@
   (labels
     ([parse (resp entity)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
-      ;; For unified process, resp is empty so falls back to entity
+      ;; For unified process, resp contains payment_id/status from inbound REST, entity has accumulated data
       (let* ([claim-id  (or (get resp "claim_id") (get entity "claim_id"))]
-             [policy-id (or (get resp "policy_id") (get entity "policy_id")
-                             (set-exception-business "missing policy_id"))]
+             [policy-id (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
+             [payment-id (get resp "payment_id")]
+             [status (get resp "status")]
              [sap       (or (get resp "sap") (get entity "sap") (sorted-map))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"  claim-id
-          "policy_id" policy-id
-          "sap"       sap))]
+          "claim_id"   claim-id
+          "policy_id"  policy-id
+          "payment_id" payment-id
+          "status"    status
+          "sap"        sap))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
-        "claim_id"  (get parsed "claim_id")
-        "policy_id" (get parsed "policy_id")
-        "sap"       (get parsed "sap"))]
+        "claim_id"   (get parsed "claim_id")
+        "policy_id"  (get parsed "policy_id")
+        "payment_id" (get parsed "payment_id")
+        "status"     (get parsed "status")
+        "sap"        (get parsed "sap"))]
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler
