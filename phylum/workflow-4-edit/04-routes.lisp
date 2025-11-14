@@ -98,8 +98,11 @@
     (route-success (sorted-map "claim_id" (get result "claim_id")
                                "state" (get result "state")))))
 
+;; Workflow-specific handler for contract signed
+;; Uses claim-manager-wf4 (workflow-specific manager)
 (defendpoint "contract_signed_handler" (req)
-  ;; Handler for inbound REST endpoint /contract-signed
+  ;; Handler for inbound REST endpoint /contract/contract-signed
+  ;; Uses workflow-specific claim-manager-wf4
   ;; req is empty/placeholder; ignore it and use transient instead
   (let* ([raw (transient:get "$ch_rep:0")]
          [env (if (string? raw) (json:parse raw) raw)]      ;; transient may already be a map
@@ -127,8 +130,8 @@
       (when (nil? signed-by)
         (set-exception-business "missing signedBy in request body"))
 
-      ;; Get existing claim - error if not found
-      (let* ([claim (claim-manager 'get claim-id)]
+      ;; Get existing claim from workflow-specific manager - error if not found
+      (let* ([claim (claim-manager-wf4 'get claim-id)]
              [_     (when (nil? claim)
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
              [claim-state-before (claim 'entity-state)])
@@ -136,9 +139,9 @@
         (cc:infof (sorted-map
                     "claim_id" claim-id
                     "state_before" claim-state-before)
-                  "contract_signed_handler: continuing existing claim from unified process")
+                  "contract_signed_handler: continuing existing claim from workflow")
 
-        ;; Enforce that we're in the waiting state (from unified process)
+        ;; Enforce that we're in the waiting state
         (when (not (equal? claim-state-before "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"))
           (cc:warnf (sorted-map
                       "claim_id" claim-id
@@ -155,15 +158,15 @@
                     "state_before" claim-state-before)
                   "contract_signed_handler: triggering state transition from WAITING_FOR_SIGNATURE")
 
-        ;; Trigger state transition using unified claim-manager
+        ;; Trigger state transition using workflow-specific manager
         ;; First call: process WAITING_FOR_SIGNATURE handler with signedBy/verifiedBy data
         (let* ([transition-result-1 (trigger-connector-object 
-                                      claim-manager
+                                      claim-manager-wf4
                                       claim-id 
                                       (sorted-map "signedBy" signed-by
                                                  "verifiedBy" verified-by
                                                  "claim_id" claim-id))]
-               [claim-after-1 (claim-manager 'get claim-id)]
+               [claim-after-1 (claim-manager-wf4 'get claim-id)]
                [state-after-1 (if claim-after-1 (claim-after-1 'entity-state) nil)])
           
           (cc:infof (sorted-map
@@ -174,10 +177,10 @@
           ;; Second call: trigger transition to CONTRACT_SIGNED
           ;; The handler will read signedBy/verifiedBy from entity (stored by previous call)
           (let* ([transition-result-2 (trigger-connector-object 
-                                        claim-manager
+                                        claim-manager-wf4
                                         claim-id 
                                         (sorted-map "claim_id" claim-id))]
-                 [updated-claim (claim-manager 'get claim-id)]
+                 [updated-claim (claim-manager-wf4 'get claim-id)]
                  [claim-state-after (if updated-claim (updated-claim 'entity-state) nil)])
 
             (cc:infof (sorted-map

@@ -51,9 +51,10 @@
         "status"     (get parsed "status")
         "sap"        (get parsed "sap"))]
      [create-events (entity parsed accessors)
-      (vector)])
+      (vector (wf5-mk-d365fo-payment-event entity
+                 (or (get entity "sap") (sorted-map))))])
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_PAYMENT_APPROVED"
+      :next            "WF5_CLAIM_STATE_D365FO_PAID"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable

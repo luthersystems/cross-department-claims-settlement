@@ -6,6 +6,10 @@
 
 ;; Create D365FO payment journal event
 (defun wf5-mk-d365fo-payment-event (entity sap-payload)
+  (cc:infof (sorted-map
+              "entity" entity
+              "sap-payload" sap-payload)
+            "wf5-mk-d365fo-payment-event: creating D365FO payment journal event")
   (let* ([payment-id   (or (get sap-payload "payment_id") *wf5-default-sap-payment-id*)]
          [invoice-id   (or (get sap-payload "invoice_id") *wf5-default-sap-invoice-id*)]
          [reference    (or (get sap-payload "reference") *wf5-default-sap-reference*)]

@@ -56,19 +56,29 @@
 (load-file "workflow-4-edit/04-constants.lisp")
 (load-file "workflow-4-edit/04-parsers.lisp")     ; Parsing & event creation
 (load-file "workflow-4-edit/04-workflow.lisp")
-(load-file "workflow-4-edit/04-routes.lisp")
 (load-file "workflow-4-edit/04-reg.lisp")         ; Register WF4 manager (workflow-4-edit)
 
 ;; Load workflow-5 files
 (load-file "workflow-5/05-constants.lisp")
 (load-file "workflow-5/05-parsers.lisp")     ; Parsing & event creation
 (load-file "workflow-5/05-workflow.lisp")
-(load-file "workflow-5/05-routes.lisp")
 (load-file "workflow-5/05-reg.lisp")         ; Register WF5 manager
 
 ;; Load unified process registration (requires all workflow specs to be loaded)
-(load-file "process-routes.lisp")          ; Unified process endpoint
 (load-file "process-reg.lisp")        ; Register unified process manager
+
+;; Configuration: Load EITHER workflow-specific routes OR unified process routes
+;; Set *use-unified-process-routes* to false to use individual workflow routes
+;; Defaults to true (unified process routes)
+(set '*use-unified-process-routes* true)
+
+(if *use-unified-process-routes*
+    ;; Load unified process routes (uses claim-manager)
+    (load-file "process-routes.lisp")
+    ;; Load workflow-specific routes (uses claim-manager-wf4, claim-manager-wf5, etc.)
+    (progn
+      (load-file "workflow-4-edit/04-routes.lisp")
+      (load-file "workflow-5/05-routes.lisp")))
 
 ;; Note: Test files (*_test.lisp) are automatically discovered and loaded by the test runner
 ;; They should NOT be loaded here to avoid duplicate test registration

@@ -32,23 +32,22 @@
     (route-success (sorted-map "claim_id" (get result "claim_id")
                                "state" (get result "state")))))
 
+;; Workflow-specific handler for payment status updates
+;; Uses claim-manager-wf5 (workflow-specific manager)
 (defendpoint "update_payment_status_handler" (req)
+  ;; Handler for inbound REST endpoint /payment/update-payment-status
+  ;; Uses workflow-specific claim-manager-wf5
   ;; req is empty/placeholder; ignore it and use transient instead
   (let* ([raw (transient:get "$ch_rep:0")]
          [env (if (string? raw) (json:parse raw) raw)]      ;; transient may already be a map
          [_   (when (nil? env) (set-exception-business "missing transient payload $ch_rep:0"))]
          [body        (get env "body")]
-         [headers     (get env "headers")]
-         [operationId (get env "operationId")]
-         [method      (get env "method")]
-         [path        (get env "path")]
-         [timestamp   (get env "timestamp")]
          [claim-id    (get body "claimID")]
          [payment-id  (get body "paymentID")]
          [status      (get body "status")])
 
-      ;; Validate claim exists in unified claim-manager
-      (let* ([claim (claim-manager 'get claim-id)]
+      ;; Validate claim exists in workflow-specific manager
+      (let* ([claim (claim-manager-wf5 'get claim-id)]
              [_     (when (nil? claim)
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
              [claim-state (claim 'entity-state)])
@@ -59,7 +58,7 @@
             (format-string "invalid claim state: expected WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE, got {}" claim-state)))
 
     (trigger-connector-object 
-      claim-manager
+      claim-manager-wf5
       claim-id 
       (sorted-map "payment_id" payment-id "status" status))
 
