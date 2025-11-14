@@ -70,16 +70,39 @@
 ;; 4) EMAIL_DISPATCHED → DONE (or WF4_INIT if chained)
 (defun wf3-invoice-email-dispatched-state-handler (&optional next-state)
   (labels
-    ([parse (resp entity) (parse-smtp-send resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors) (sorted-map "email_dispatched" true)]
-     [create-events (entity parsed accessors) ()])
+    ([parse (resp entity)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id")
+                   "current_state" (get entity "state")
+                   "resp_keys" (if resp (keys resp) (vector))
+                   "next_state" (or next-state "WF3_CLAIM_STATE_DONE"))
+                 "wf3-invoice-email-dispatched-state-handler: parse - transitioning from WF3")
+       (parse-smtp-send resp)]
+     [stage-ephemeral (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id")
+                   "next_state" (or next-state "WF3_CLAIM_STATE_DONE"))
+                 "wf3-invoice-email-dispatched-state-handler: stage-ephemeral")
+       ()]
+     [stage-durable (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id")
+                   "next_state" (or next-state "WF3_CLAIM_STATE_DONE"))
+                 "wf3-invoice-email-dispatched-state-handler: stage-durable - setting email_dispatched=true")
+       (sorted-map "email_dispatched" true)]
+     [create-events (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id")
+                   "next_state" (or next-state "WF3_CLAIM_STATE_DONE")
+                   "immediate_next" (if next-state true false))
+                 "wf3-invoice-email-dispatched-state-handler: create-events - no events, transitioning to next state")
+       ()])
     (mk-state-handler
       :next (or next-state "WF3_CLAIM_STATE_DONE")
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable 
-      :create-events create-events
-      :immediate-next (if next-state true false))))
+      :create-events create-events)))
+      ; :immediate-next (if next-state true false))))
 
 
 ;; build-event moved to substr_generic_parser.lisp
@@ -144,6 +167,6 @@
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))
+      :create-events   create-events)))
+      ; :immediate-next  (if next-state true false)
+      ; :terminal        (not next-state))))

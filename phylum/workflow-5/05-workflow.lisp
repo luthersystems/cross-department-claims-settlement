@@ -1,7 +1,7 @@
 (in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
-;; State handlers for Workflow 5 (SAP payment acknowledgement)
+;; State handlers for Workflow 5 (D365FO payment journal + SAP HANA recording)
 ;; -----------------------------------------------------------------------------
 
 (defun wf5-claim-init-state-handler ()
@@ -40,8 +40,34 @@
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (or parsed (sorted-map))]
      [create-events (entity parsed accessors)
-      (vector (wf5-mk-sap-store-payment-event entity
+      ;; Create D365FO payment journal event
+      (vector (wf5-mk-d365fo-payment-event entity
                  (or (get entity "sap") (sorted-map))))])
+    (mk-state-handler
+      :next            "WF5_CLAIM_STATE_D365FO_PAID"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
+
+;; Handler for D365FO payment journal creation response
+;; Stores D365FO data and triggers SAP HANA recording
+(defun wf5-claim-d365fo-paid-handler ()
+  (labels
+    ([parse (resp entity) (wf5-parse-d365fo-payment resp)]
+     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-durable (entity parsed accessors)
+      ;; Store D365FO payment journal data
+      (sorted-map
+        "d365fo_payment_txn_id" (get parsed "transaction_id")
+        "d365fo_paid_amount"     (get parsed "amount")
+        "d365fo_posting_ref"     (get parsed "posting_ref")
+        "d365fo_status"          (get parsed "status"))]
+     [create-events (entity parsed accessors)
+      ;; Create SAP HANA recording event using D365FO record and entity SAP data
+      (let* ([d365fo-record (get parsed "d365fo_record")]
+             [sap-payload (or (get entity "sap") (sorted-map))])
+        (vector (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload)))])
     (mk-state-handler
       :next            "WF5_CLAIM_STATE_SAP_PAID"
       :parse           parse
@@ -49,11 +75,13 @@
       :stage-durable   stage-durable
       :create-events   create-events)))
 
+;; Handler for SAP HANA payment recording response
 (defun wf5-claim-sap-paid-handler ()
   (labels
     ([parse (resp entity) (wf5-parse-sap-payment resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
+      ;; Store SAP HANA recording data
       (sorted-map
         "sap_payment_txn_id" (get parsed "transaction_id")
         "sap_paid_amount"    (get parsed "amount")

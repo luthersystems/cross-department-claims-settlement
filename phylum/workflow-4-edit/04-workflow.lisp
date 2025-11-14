@@ -13,30 +13,62 @@
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
              [signed-by   (get resp "signedBy")]  ;; Only present when called from external endpoint
              [verified-by (or (get resp "verifiedBy") "jack.clarke@luthersystems.com")])
+        (cc:infof (sorted-map
+                  "state" (get entity "state")
+                    "claim_id" claim-id
+                    "current_state" (get entity "state")
+                    "has_signed_by" (not (nil? signed-by))
+                    "signed_by" signed-by
+                    "verified_by" verified-by
+                    "resp_keys" (if resp (keys resp) (vector))
+                    "entity_keys" (keys entity))
+                  "wf4-claim-waiting-for-signature-state-handler: parse - arrived at WAITING_FOR_SIGNATURE")
         ;; During unified process transition, resp is empty so signedBy will be nil - that's OK
         ;; When external endpoint calls, signedBy will be present
         (sorted-map
           "claim_id"    claim-id
           "signed_by"   signed-by
           "verified_by" verified-by))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-ephemeral (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id"))
+                 "wf4-claim-waiting-for-signature-state-handler: stage-ephemeral")
+       (vector)]
      [stage-durable (entity parsed accessors)
       ;; Store signedBy/verifiedBy if provided (from external endpoint)
       ;; During unified process transition, these will be nil and won't be stored
-      (if (get parsed "signed_by")
-        (sorted-map
-          "signed_by"   (get parsed "signed_by")
-          "verified_by" (get parsed "verified_by"))
-        ())]  ;; Empty map during unified process transition
-     [create-events (entity parsed accessors) (vector)])
+      (let* ([has-signed-by (get parsed "signed_by")]
+             [durable-result (if has-signed-by
+                               (sorted-map
+                                 "signed_by"   (get parsed "signed_by")
+                                 "verified_by" (get parsed "verified_by"))
+                               ())])
+        (cc:infof (sorted-map
+                    "claim_id" (get entity "claim_id")
+                    "has_signed_by" (not (nil? has-signed-by))
+                    "will_store_data" (not (nil? has-signed-by))
+                    "next_state" "WF4_CLAIM_STATE_CONTRACT_SIGNED"
+                    "immediate_next" false
+                    "terminal" true)
+                  "wf4-claim-waiting-for-signature-state-handler: stage-durable - parking in WAITING_FOR_SIGNATURE")
+        durable-result)]  ;; Empty map during unified process transition
+     [create-events (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id")
+                   "next_state" "WF4_CLAIM_STATE_CONTRACT_SIGNED"
+                   "immediate_next" false
+                   "terminal" true
+                   "no_events" true)
+                 "wf4-claim-waiting-for-signature-state-handler: create-events - no events, will pause here")
+       (vector)])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_CONTRACT_SIGNED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  false  ;; Don't auto-transition - wait for external endpoint to trigger
-      :terminal        true)))  ;; Terminal state - waits for external input via /contract-signed endpoint
+      :create-events   create-events)))
+      ; :immediate-next  false  ;; Don't auto-transition - wait for external endpoint to trigger
+      ; :terminal        true)))  ;; Terminal state - waits for external input via /contract-signed endpoint
 
 (defun wf4-claim-contract-signed-state-handler ()
   (labels
@@ -52,19 +84,47 @@
              [verified-by (or (get resp "verifiedBy")
                               (get entity "verified_by")
                               "jack.clarke@luthersystems.com")])
+        (cc:infof (sorted-map
+                    "claim_id" claim-id
+                    "current_state" (get entity "state")
+                    "has_signed_by" (not (nil? signed-by))
+                    "signed_by" signed-by
+                    "verified_by" verified-by
+                    "signed_by_source" (if (get resp "signedBy") "resp" "entity")
+                    "resp_keys" (if resp (keys resp) (vector))
+                    "entity_keys" (keys entity))
+                  "wf4-claim-contract-signed-state-handler: parse - arrived at CONTRACT_SIGNED")
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
           "claim_id"    claim-id
           "signed_by"   signed-by
           "verified_by" verified-by))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-ephemeral (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id"))
+                 "wf4-claim-contract-signed-state-handler: stage-ephemeral")
+       (vector)]
      [stage-durable (entity parsed accessors)
-      (sorted-map
-        "claim_id"    (get parsed "claim_id")
-        "signed_by"   (get parsed "signed_by")
-        "verified_by" (get parsed "verified_by"))]
-     [create-events (entity parsed accessors) (vector)])
+       (cc:infof (sorted-map
+                   "claim_id" (get parsed "claim_id")
+                   "signed_by" (get parsed "signed_by")
+                   "verified_by" (get parsed "verified_by")
+                   "next_state" "WF4_CLAIM_STATE_INIT"
+                   "immediate_next" true)
+                 "wf4-claim-contract-signed-state-handler: stage-durable - storing signature data")
+       (sorted-map
+         "claim_id"    (get parsed "claim_id")
+         "signed_by"   (get parsed "signed_by")
+         "verified_by" (get parsed "verified_by"))]
+     [create-events (entity parsed accessors)
+       (cc:infof (sorted-map
+                   "claim_id" (get entity "claim_id")
+                   "next_state" "WF4_CLAIM_STATE_INIT"
+                   "immediate_next" true
+                   "no_events" true)
+                 "wf4-claim-contract-signed-state-handler: create-events - no events, will auto-transition")
+       (vector)])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_INIT"
       :parse           parse

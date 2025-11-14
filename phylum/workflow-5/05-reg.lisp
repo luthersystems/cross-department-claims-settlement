@@ -8,8 +8,9 @@
   (sorted-map
     "WF5_CLAIM_STATE_INIT"              (wf5-claim-init-state-handler)
     "WF5_CLAIM_STATE_AWAITING_APPROVAL" (wf5-claim-awaiting-approval-handler)
-    "WF5_CLAIM_STATE_SAP_PAID"          (wf5-claim-sap-paid-handler)
-    "WF5_CLAIM_STATE_DONE"              (wf5-claim-done-state-handler)))
+    "WF5_CLAIM_STATE_D365FO_PAID"      (wf5-claim-d365fo-paid-handler)
+    "WF5_CLAIM_STATE_SAP_PAID"         (wf5-claim-sap-paid-handler)
+    "WF5_CLAIM_STATE_DONE"             (wf5-claim-done-state-handler)))
 
 (set 'claim-manager-wf5
      (singleton (mk-entity-manager
@@ -28,5 +29,5 @@
       (sorted-map
         "workflow" workflow-name
         "claim_id" (get entity "claim_id"))
-      "SAP/NetSuite workflow completed!")))
+      "D365FO payment journal + SAP HANA recording workflow completed!")))
 

@@ -1,10 +1,10 @@
 (in-package 'cdcs)
 
 ;; -----------------------------------------------------------------------------
-;; Constants for Workflow 5 (SAP/NetSuite)
+;; Constants for Workflow 5 (D365FO payment journal)
 ;; -----------------------------------------------------------------------------
 
-;; SAP payment defaults
+;; D365FO payment defaults (keeping SAP naming for backward compatibility)
 (set '*wf5-default-sap-payment-id* "PAYM-002")
 (set '*wf5-default-sap-invoice-id* "INV-1002")
 (set '*wf5-default-sap-reference* "Batch-Nov-01")
