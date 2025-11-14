@@ -9,8 +9,7 @@
     "WF4_CLAIM_STATE_INIT"                          (wf4-claim-init-state-handler)
     "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"          (wf4-zoho-invoice-created-state-handler)
     "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"      (wf4-sharepoint-doc-retrieved-state-handler)
-    "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)
-    "WF4_CLAIM_STATE_DONE"                          (wf4-claim-done-state-handler)))
+    "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)))
 
 (set 'claim-manager-wf4
      (singleton (mk-entity-manager

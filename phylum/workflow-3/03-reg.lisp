@@ -9,8 +9,7 @@
     "WF3_CLAIM_STATE_INVOICE_INIT"                  (wf3-invoice-init-state-handler)
     "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"          (wf3-invoice-esig-created-state-handler)
     "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"             (wf3-invoice-sf-synced-state-handler)
-    "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler)
-    "WF3_CLAIM_STATE_DONE"                          (wf3-claim-done-state-handler)))
+    "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"      (wf3-invoice-email-dispatched-state-handler)))
 
 (set 'claim-manager-wf3
      (singleton (mk-entity-manager

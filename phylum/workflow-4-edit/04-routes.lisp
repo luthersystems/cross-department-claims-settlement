@@ -157,7 +157,6 @@
 
         ;; Trigger state transition using unified claim-manager
         ;; First call: process WAITING_FOR_SIGNATURE handler with signedBy/verifiedBy data
-        ;; This stores the data but doesn't transition (immediate-next is false)
         (let* ([transition-result-1 (trigger-connector-object 
                                       claim-manager
                                       claim-id 

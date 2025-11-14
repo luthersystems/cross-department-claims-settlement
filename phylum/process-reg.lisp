@@ -20,7 +20,7 @@
 
 ;; Example: Custom validation/processing state that can be inserted between workflows
 ;; This demonstrates how to add custom states that aren't part of any specific workflow
-(defun custom-validation-state-handler (&optional next-state)
+(defun custom-validation-state-handler (&optional next-state after-storage-hook)
   (labels
     ([parse (resp entity)
        ;; Parse any incoming data or validate entity state
@@ -52,7 +52,7 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (if next-state true false))))
+      :after-storage-hook after-storage-hook)))
 
 ;; Combined state spec for the entire process
 ;; Merges all workflow state specs and overrides specific handlers for chaining
@@ -69,20 +69,81 @@
        state-spec-wf5
        ;; Custom states (inserted between workflows or within workflows)
   
-       ;; Overrides for unified process chaining
-       ;; Note: You can route through custom states by changing next-state
-       ;; Example: WF2 → CUSTOM_VALIDATION_STATE → WF3
-       ;; WF4 uses workflow-4-edit which starts with CONTRACT_SIGNED state
+       ;; Overrides for unified process chaining using after-storage hooks
+       ;; Workflows transition to their DONE states, then hooks chain to the next workflow
        (sorted-map
-         "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler "WF2_CLAIM_STATE_INIT")
-         "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler "CUSTOM_VALIDATION_STATE")
-         "CUSTOM_VALIDATION_STATE"                 (custom-validation-state-handler "WF3_CLAIM_STATE_INVOICE_INIT")
-         "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE")
-         "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED" (wf4-servicenow-incident-created-state-handler "WF5_CLAIM_STATE_INIT"))))
+         ;; WF1: chain to WF2 via hook
+         "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler 
+                                                      "WF2_CLAIM_STATE_INIT" 
+                                                      (lambda (entity) 
+                                                        (let* ([claim-id (get entity "claim_id")]) 
+                                                          (cc:infof (sorted-map "claim_id" claim-id) "WF1 completed - chaining to WF2 via after-storage hook") 
+                                                          (let* ([updated-entity (assoc entity "state" "WF2_CLAIM_STATE_INIT")]) 
+                                                            (claim-manager 'put updated-entity) 
+                                                            (trigger-connector-object claim-manager claim-id (sorted-map "claim_id" claim-id))))))
+
+         "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler
+                                                      "CUSTOM_VALIDATION_STATE"
+                                                      (lambda (entity)
+                                                        (let* ([claim-id (get entity "claim_id")])
+                                                          (cc:infof
+                                                            (sorted-map "claim_id" claim-id)
+                                                            "WF2 completed - chaining to CUSTOM_VALIDATION_STATE via after-storage hook")
+                                                          ;; Update entity state to CUSTOM_VALIDATION_STATE, then trigger
+                                                          (let* ([updated-entity (assoc entity "state" "CUSTOM_VALIDATION_STATE")])
+                                                            (claim-manager 'put updated-entity)
+                                                            (trigger-connector-object 
+                                                              claim-manager 
+                                                              claim-id 
+                                                              (sorted-map "claim_id" claim-id))))))
+         ;; CUSTOM_VALIDATION_STATE: hook chains to WF3
+         "CUSTOM_VALIDATION_STATE"                 (custom-validation-state-handler 
+                                                      "WF3_CLAIM_STATE_INVOICE_INIT"
+                                                      (lambda (entity)
+                                                        (let* ([claim-id (get entity "claim_id")])
+                                                          (cc:infof
+                                                            (sorted-map "claim_id" claim-id)
+                                                            "CUSTOM_VALIDATION_STATE completed - chaining to WF3 via after-storage hook")
+                                                          ;; Update entity state to WF3's initial state, then trigger
+                                                          (let* ([updated-entity (assoc entity "state" "WF3_CLAIM_STATE_INVOICE_INIT")])
+                                                            (claim-manager 'put updated-entity)
+                                                            (trigger-connector-object 
+                                                              claim-manager 
+                                                              claim-id 
+                                                              (sorted-map "claim_id" claim-id))))))
+         ;; WF3: transition directly to WF4 init via hook
+         "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler 
+                                                       "WF4_CLAIM_STATE_INIT"
+                                                       (lambda (entity)
+                                                         (let* ([claim-id (get entity "claim_id")])
+                                                           (cc:infof
+                                                             (sorted-map "claim_id" claim-id)
+                                                             "WF3 completed - chaining to WF4 via after-storage hook")
+                                                           ;; Update entity state to WF4's initial state, then trigger
+                                                           (let* ([updated-entity (assoc entity "state" "WF4_CLAIM_STATE_INIT")])
+                                                             (claim-manager 'put updated-entity)
+                                                             (trigger-connector-object 
+                                                               claim-manager 
+                                                               claim-id 
+                                                               (sorted-map "claim_id" claim-id))))))
+         ;; WF4: transition directly to WF5 init via hook
+         "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED" (wf4-servicenow-incident-created-state-handler 
+                                                         "WF5_CLAIM_STATE_INIT"
+                                                         (lambda (entity)
+                                                           (let* ([claim-id (get entity "claim_id")])
+                                                             (cc:infof
+                                                               (sorted-map "claim_id" claim-id)
+                                                               "WF4 completed - chaining to WF5 via after-storage hook")
+                                                             ;; Update entity state to WF5's initial state, then trigger
+                                                             (let* ([updated-entity (assoc entity "state" "WF5_CLAIM_STATE_INIT")])
+                                                               (claim-manager 'put updated-entity)
+                                                               (trigger-connector-object 
+                                                                 claim-manager 
+                                                                 claim-id 
+                                                                 (sorted-map "claim_id" claim-id)))))))))
 
 ;; Unified claim manager for the entire process
-;; State transitions between workflows are handled directly by handlers (via :immediate-next and next-state)
-;; Completion logging is handled by notify-workflow-completion-by-entity-name in the state machine
+;; Workflow chaining is handled via after-storage hooks in DONE states
 (set 'claim-manager
      (singleton (mk-entity-manager
                  "claim"                    ;; entity kind

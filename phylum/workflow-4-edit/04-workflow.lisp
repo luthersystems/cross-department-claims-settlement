@@ -67,9 +67,6 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
-      ; :immediate-next  false  ;; Don't auto-transition - wait for external endpoint to trigger
-      ; :terminal        true)))  ;; Terminal state - waits for external input via /contract-signed endpoint
-
 (defun wf4-claim-contract-signed-state-handler ()
   (labels
     ([parse (resp entity)
@@ -110,8 +107,7 @@
                    "claim_id" (get parsed "claim_id")
                    "signed_by" (get parsed "signed_by")
                    "verified_by" (get parsed "verified_by")
-                   "next_state" "WF4_CLAIM_STATE_INIT"
-                   "immediate_next" true)
+                   "next_state" "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED")
                  "wf4-claim-contract-signed-state-handler: stage-durable - storing signature data")
        (sorted-map
          "claim_id"    (get parsed "claim_id")
@@ -120,18 +116,35 @@
      [create-events (entity parsed accessors)
        (cc:infof (sorted-map
                    "claim_id" (get entity "claim_id")
-                   "next_state" "WF4_CLAIM_STATE_INIT"
-                   "immediate_next" true
+                   "next_state" "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
                    "no_events" true)
                  "wf4-claim-contract-signed-state-handler: create-events - no events, will auto-transition")
        (vector)])
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_INIT"
+      :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  true)))
+      :create-events   create-events)))
+
+;; Simple init handler for unified process - transitions to WAITING_FOR_SIGNATURE with no events
+(defun wf4-claim-init-simple-state-handler ()
+  (labels
+    ([parse (resp entity)
+      ;; Simple init - just extract claim_id
+      (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
+        (when (nil? claim-id)
+          (set-exception-business "missing claim_id"))
+        (sorted-map "claim_id" claim-id))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-durable (entity parsed accessors) ()]
+     [create-events (entity parsed accessors) (vector)])
+    (mk-state-handler
+      :next            "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
 (defun wf4-claim-init-state-handler ()
   (labels
@@ -232,7 +245,7 @@
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun wf4-servicenow-incident-created-state-handler (&optional next-state)
+(defun wf4-servicenow-incident-created-state-handler (&optional next-state after-storage-hook)
   (labels
     ([parse (resp entity) (parse-servicenow-create-incident resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -245,26 +258,12 @@
         "servicenow_short_description" (get parsed "short_description"))]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            (or next-state "WF4_CLAIM_STATE_DONE")
+      :next            (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (if next-state true false))))
+      :after-storage-hook after-storage-hook)))
 
-(defun wf4-claim-done-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity) (if (nil? resp) (sorted-map) (parse-generic-resp resp))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF4_CLAIM_STATE_DONE")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))
 
 ;; build-event moved to substr_generic_parser.lisp

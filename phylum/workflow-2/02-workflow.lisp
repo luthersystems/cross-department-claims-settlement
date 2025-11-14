@@ -53,7 +53,7 @@
       :create-events   create-events)))
 
 ;; =============================
-;; 5) GUIDEWIRE_SNAPSHOTTED -> MYSQL_VALIDATED
+;; 1) GUIDEWIRE_SNAPSHOTTED -> MYSQL_VALIDATED
 ;; MySQL policy check (may run in parallel with SharePoint docs fetch)
 ;; =============================
 (defun wf2-claim-guidewire-snapshotted-state-handler ()
@@ -75,7 +75,7 @@
 
 
 ;; =============================
-;; 6) MYSQL_VALIDATED -> SP_DOCS_COLLECTED
+;; 2) MYSQL_VALIDATED -> SP_DOCS_COLLECTED
 ;; SharePoint: collect supporting docs
 ;; =============================
 (defun wf2-claim-mysql-validated-state-handler ()
@@ -106,7 +106,7 @@
 
 
 ;; =============================
-;; 7) SP_DOCS_COLLECTED -> GUIDEWIRE_APPROVED
+;; 3) SP_DOCS_COLLECTED -> GUIDEWIRE_APPROVED
 ;; Update/sync approval in Guidewire
 ;; =============================
 
@@ -127,13 +127,12 @@
     :stage-durable   stage-durable
     :create-events   create-events)))
 
-;;;; guidewire (start)
 
 ;; =============================
-;; 8) GUIDEWIRE_APPROVED -> (handoff to WF3)
-;; After Guidewire approval, hand off to workflow 3 (invoice generation)
+;; 4) GUIDEWIRE_APPROVED
+;; Update Guidewire approval status and complete workflow
 ;; =============================
-(defun wf2-claim-guidewire-approved-state-handler (&optional next-state)
+(defun wf2-claim-guidewire-approved-state-handler (&optional next-state after-storage-hook)
   (labels
     ([parse (resp entity) (parse-guidewire-approval-update resp)]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -144,9 +143,9 @@
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler
-      :next            (or next-state "WF2_CLAIM_STATE_DONE")
+      :next            (or next-state "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (if next-state true false))))
+      :after-storage-hook after-storage-hook)))

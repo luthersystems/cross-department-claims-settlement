@@ -116,24 +116,9 @@
         "servicenow_short_description" (get parsed "short_description"))]
      [create-events (entity parsed accessors) ()])
     (mk-state-handler
-      :next            (or next-state "WF4_CLAIM_STATE_DONE")
+      :next            (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events
-      :immediate-next  (if next-state true false))))
-
-(defun wf4-claim-done-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity) (if (nil? resp) (sorted-map) (parse-generic-resp resp))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF4_CLAIM_STATE_DONE")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))
+      :after-storage-hook after-storage-hook)))

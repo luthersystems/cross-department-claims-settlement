@@ -4,7 +4,27 @@
 ;; State handlers for Workflow 5 (D365FO payment journal + SAP HANA recording)
 ;; -----------------------------------------------------------------------------
 
+;; Simple init handler for unified process - transitions to AWAITING_PAYMENT_UPDATE with no events
 (defun wf5-claim-init-state-handler ()
+  (labels
+    ([parse (resp entity)
+      ;; Simple init - just extract claim_id
+      (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
+        (when (nil? claim-id)
+          (set-exception-business "missing claim_id"))
+        (sorted-map "claim_id" claim-id))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-durable (entity parsed accessors) ()]
+     [create-events (entity parsed accessors) (vector)])
+    (mk-state-handler
+      :next            "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
+
+;; Handler for awaiting payment update - waits for external payment status update
+(defun wf5-claim-awaiting-payment-update-state-handler ()
   (labels
     ([parse (resp entity)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
@@ -28,13 +48,13 @@
      [create-events (entity parsed accessors)
       (vector)])
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_AWAITING_APPROVAL"
+      :next            "WF5_CLAIM_STATE_PAYMENT_APPROVED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
 
-(defun wf5-claim-awaiting-approval-handler ()
+(defun wf5-claim-payment-approved-handler ()
   (labels
     ([parse (resp entity) resp]
      [stage-ephemeral (entity parsed accessors) ()]
@@ -89,25 +109,10 @@
         "sap_status"         (get parsed "status"))]
      [create-events (entity parsed accessors) (vector)])
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_DONE"
+      :next            "WF5_CLAIM_STATE_SAP_PAID"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
-
-(defun wf5-claim-done-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity) (if (nil? resp) (sorted-map) (parse-generic-resp resp))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF5_CLAIM_STATE_DONE")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))
 
 ;; build-event moved to substr_generic_parser.lisp
