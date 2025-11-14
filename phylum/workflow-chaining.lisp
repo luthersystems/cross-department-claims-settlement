@@ -39,7 +39,7 @@
     ((equal? entity-name "claim_wf3") "wf3")
     ((equal? entity-name "claim_wf4") "wf4")
     ((equal? entity-name "claim_wf5") "wf5")
-    (:else nil)))
+    (:else false)))
 
 ;; Notify all completion listeners that a workflow has completed.
 ;; This is called from the done state handler.

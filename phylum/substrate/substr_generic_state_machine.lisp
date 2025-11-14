@@ -177,52 +177,34 @@
     ;; advance state on the durable entity
     (assoc! durable-entity "state" next-state)
 
-    ;; Call completion notification when reaching a terminal state
-    ;; Check if next-state is marked as terminal in its spec
-    (when entity-id
-      (let* ([next-spec (lookup-state-spec next-state states)]
-             [is-terminal (spec-terminal next-spec)])
-        (when is-terminal
-          (notify-workflow-completion-by-entity-name entity-name durable-entity))))
-
     ;; purge ephemerals scheduled for the state we just entered
     (when entity-id
       (ephem-purge-for-state! entity-name entity-id next-state))
 
-    ;; Check if we should immediately process the next state
-    ;; This happens when the CURRENT handler has :immediate-next=true and no events were emitted.
-    ;; The :immediate-next flag means "after executing this handler, if there are no events,
-    ;; immediately process the next state synchronously".
-    (let* ([immediate-next (spec-immediate-next spec)]
+    ;; Build transition result with hook from current handler spec
+    ;; Hook will be called by do-transition after storage but before events
+    ;; Use hooks to trigger next state transitions instead of immediate processing
+    (let* ([after-storage-hook (spec-after-storage-hook spec)]
            [events-vector (if (vector? events) events (vector))]
-           [no-events (equal? (length events-vector) 0)])
-      (if (and immediate-next no-events (not (equal? next-state "STATE_UNKNOWN")))
-        ;; Recursively process the next state with empty response
-        ;; This allows seamless transitions without waiting for connectorhub callbacks
-        ;; Note: durable-entity already has state=next-state, so run-state-step will execute
-        ;; the handler for next-state
-        (let* ([next-transition (run-state-step entity-name entity-key durable-entity (sorted-map) states)])
-          ;; Return the next transition's result (which may itself trigger another immediate transition)
-          (sorted-map
-            "put"    (get next-transition "put")
-            "events" (get next-transition "events")))
-        ;; Normal return: transition payload
-        (sorted-map
-          "put"    durable-entity
-          "events" events-vector)))))
+           [result (sorted-map
+                    "put"    durable-entity
+                    "events" events-vector)])
+      (when after-storage-hook
+        (assoc! result "after-storage-hook" after-storage-hook))
+      result)))
+
 
 
 ;; ---------------- Spec builder + defaults + accessors ----------------
 
-(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events immediate-next terminal)
+(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events after-storage-hook)
   (sorted-map
     :next            (or next "STATE_UNKNOWN")
     :parse           (or parse _noop-parse)
     :stage-durable   (or stage-durable _noop-stage-durable)
     :stage-ephemeral (or stage-ephemeral _noop-stage-ephemeral)
     :create-events   (or create-events _noop-create-events)
-    :immediate-next  (or immediate-next false)
-    :terminal        (or terminal false)))
+    :after-storage-hook (or after-storage-hook false)))
 
 ;; safe defaults
 (defun _noop-parse (resp entity) resp)
@@ -246,6 +228,5 @@
 (defun spec-parse (spec)             (or (get spec :parse) _noop-parse))
 (defun spec-stage-ephemeral (spec)   (or (get spec :stage-ephemeral) _noop-stage-ephemeral))
 (defun spec-stage-durable (spec)     (or (get spec :stage-durable) _noop-stage-durable))
-(defun spec-immediate-next (spec)    (or (get spec :immediate-next) false))
 (defun spec-create-events (spec)     (or (get spec :create-events) _noop-create-events))
-(defun spec-terminal (spec)          (or (get spec :terminal) false))
+(defun spec-after-storage-hook (spec)  (or (get spec :after-storage-hook) false))

@@ -89,27 +89,7 @@
     "approval_status" (get resp "status")
     "confirmation"    (get resp "message")))
 
-;; =============================
-;; 9) DONE (terminal state)
-;; =============================
-(defun wf2-claim-done-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity) (parse-generic-resp resp)]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF2_CLAIM_STATE_DONE")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))
-
 ;; build-event moved to substr_generic_parser.lisp
-
-    
 
   ; "Parses the SharePoint get_document_content response via parse-generic-resp.
   ;  Validates that decoded text mentions the claim_id and (if provided) signer_name.

@@ -68,18 +68,21 @@
       :stage-durable stage-durable :create-events create-events)))
 
 ;; 4) EMAIL_DISPATCHED → DONE (or WF4_INIT if chained)
-(defun wf3-invoice-email-dispatched-state-handler (&optional next-state)
+(defun wf3-invoice-email-dispatched-state-handler (&optional next-state after-storage-hook)
   (labels
-    ([parse (resp entity) (parse-smtp-send resp)]
+    ([parse (resp entity)
+       (parse-smtp-send resp)]
      [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors) (sorted-map "email_dispatched" true)]
-     [create-events (entity parsed accessors) ()])
+     [stage-durable (entity parsed accessors)
+       (sorted-map "email_dispatched" true)]
+     [create-events (entity parsed accessors)
+       ()])
     (mk-state-handler
-      :next (or next-state "WF3_CLAIM_STATE_DONE")
+      :next (or next-state "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED")
       :parse parse :stage-ephemeral stage-ephemeral
       :stage-durable stage-durable 
       :create-events create-events
-      :immediate-next (if next-state true false))))
+      :after-storage-hook after-storage-hook)))
 
 
 ;; build-event moved to substr_generic_parser.lisp
@@ -131,19 +134,3 @@
          ;; Construct connector request
          [req (mk-email-req *wf3-default-email-to* subject body)])
     (build-event entity req "dispatch invoice email" "EMAIL")))
-
-
-(defun wf3-claim-done-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity) (parse-generic-resp resp)]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF3_CLAIM_STATE_DONE")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))

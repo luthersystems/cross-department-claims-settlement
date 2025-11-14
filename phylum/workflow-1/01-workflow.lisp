@@ -96,7 +96,7 @@
     :create-events   create-events)))
 
 ;; ====================================================
-;; 2)  CLAIM_STATE_EQUIFAX_VERIFIED -> CLAIM_STATE_DONE
+;; 2)  CLAIM_STATE_EQUIFAX_VERIFIED -> CLAIM_STATE_TEAMS_THREAD_CREATED
 ;; Validate identity of user using Equifax
 ;; ====================================================
 
@@ -157,11 +157,11 @@
       :create-events   create-events)))
 
 ;; ===================
-;; 2) CLAIM_STATE_DONE
-;; Validate identity 
+;; 3) CLAIM_STATE_TEAMS_THREAD_CREATED
+;; Create Teams thread and complete workflow
 ;; ===================
 
-(defun wf1-teams-thread-created-state-handler (&optional next-state)
+(defun wf1-teams-thread-created-state-handler (&optional next-state after-storage-hook)
   (labels
     ;; parse generic response (also checks for errors)
     ([parse (resp entity) (parse-generic-resp resp)]
@@ -177,24 +177,9 @@
      [create-events (entity parsed accessors) ()])
 
   (mk-state-handler
-    :next            (or next-state "WF1_CLAIM_STATE_DONE")
+    :next            (or next-state "WF1_CLAIM_TEAMS_THREAD_CREATED")
     :parse           parse
     :stage-ephemeral stage-ephemeral
     :stage-durable   stage-durable
     :create-events   create-events
-    :immediate-next  (if next-state true false))))
-
-(defun wf1-claim-done-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity) (parse-generic-resp resp)]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF1_CLAIM_STATE_DONE")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :immediate-next  (if next-state true false)
-      :terminal        (not next-state))))
+    :after-storage-hook after-storage-hook)))

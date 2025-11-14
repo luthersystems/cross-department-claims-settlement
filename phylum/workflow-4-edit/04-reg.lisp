@@ -6,7 +6,9 @@
 
 (set 'state-spec-wf4
   (sorted-map
-    "WF4_CLAIM_STATE_INIT"                          (wf4-claim-init-state-handler)
+    "WF4_CLAIM_STATE_INIT"                          (wf4-claim-init-simple-state-handler)
+    "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"        (wf4-claim-waiting-for-signature-state-handler)
+    "WF4_CLAIM_STATE_CONTRACT_SIGNED"              (wf4-claim-contract-signed-state-handler)
     "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"          (wf4-zoho-invoice-created-state-handler)
     "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"      (wf4-sharepoint-doc-retrieved-state-handler)
     "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"   (wf4-servicenow-incident-created-state-handler)))

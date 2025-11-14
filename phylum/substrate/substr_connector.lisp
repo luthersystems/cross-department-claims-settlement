@@ -225,11 +225,22 @@
                              (error 'missing-name "factory missing name"))]
          [put-obj (get transition "put")]
          [del-obj (get transition "del")]
-         [events (get transition "events")])
+         [events (get transition "events")]
+         [after-storage-hook (get transition "after-storage-hook")])
+    ;; Persist state changes first
     (when put-obj
       (obj-factory 'put put-obj))
     (when del-obj
       (obj-factory 'del obj-id))
+    ;; Call completion hook after storage but before events
+    ;; This allows workflow chaining with guaranteed state persistence
+    (when after-storage-hook
+      (cc:infof (sorted-map
+                  "entity_id" (get put-obj "claim_id")
+                  "state" (get put-obj "state"))
+                "Calling after-storage hook")
+      (after-storage-hook put-obj))
+    ;; Raise events after hook (hook may trigger next workflow which also raises events)
     (map () #^(connector-events 'raise % obj-handler-name) events)
     put-obj))
 
