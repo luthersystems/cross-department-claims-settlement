@@ -9,16 +9,17 @@ tests:
     body: |
       {
         "policy_id": "POL-8872",
-        "guidewire_claim_id": "GW-CLM-12345",
-        "signer_email": "john.doe@example.com",
-        "signer_name": "John Doe",
-        "invoice_amount": "2500.00",
-        "originator_name": "Finance Department",
-        "recipient_name": "Accounts Payable",
-        "issue_date": "2024-01-15"
+        "guidewire_claim_id": "GW-1001",
+        "gw_claim_id": "GW-1001",
+        "signer_email": "jack.clarke@luthersystems.com",
+        "signer_name": "Jack Clarke",
+        "invoice_amount": "25000.00",
+        "originator_name": "Acme Insurance Ltd.",
+        "recipient_name": "BlueRiver Underwriting Partners",
+        "issue_date": "2025-11-12"
       }
     test_script: |
-      pm.test("ok", () => {
+      pm.test("ok", (done) => {
           let data = pm.response.json();
           console.log(data);
           pm.response.to.have.status(200);
@@ -26,5 +27,357 @@ tests:
           pm.expect(data).to.have.property("claim_id");
           pm.expect(data).to.have.property("state");
           pm.environment.set("CLAIM_ID", data.claim_id);
+          // Small delay to allow async processing to start
+          setTimeout(() => {
+              console.log("Process invoked, waiting for async workflows to start...");
+              done();
+          }, 1000);
+      });
+
+  - name: "Wait for WF4 to reach WAITING_FOR_SIGNATURE"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("Wait for process to progress to WF4", (done) => {
+          // Process needs time to go through WF1 → WF2 → WF3 → WF4
+          // Poll every 2 seconds, up to 60 seconds total (increased for slower systems)
+          let maxAttempts = 30;
+          let attempt = 0;
+          let claimId = pm.environment.get("CLAIM_ID");
+          let targetState = "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE";
+          let lastState = "";
+          
+          console.log(`Starting to poll for state: ${targetState}, claim_id: ${claimId}`);
+          
+          // Function to check state
+          let checkState = () => {
+              attempt++;
+              console.log(`Polling attempt ${attempt}/${maxAttempts}...`);
+              
+              pm.sendRequest({
+                  url: pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId,
+                  method: 'GET',
+                  header: {
+                      'Content-Type': 'application/json'
+                  }
+              }, (err, res) => {
+                  if (err) {
+                      console.log(`Error on attempt ${attempt}:`, err);
+                      if (attempt < maxAttempts) {
+                          setTimeout(checkState, 2000);
+                      } else {
+                          pm.expect.fail(`Failed to check claim state after ${maxAttempts} attempts: ${err.message}`);
+                          done();
+                      }
+                      return;
+                  }
+                  
+                  // Check response status
+                  if (res.code !== 200) {
+                      console.log(`Non-200 response on attempt ${attempt}: ${res.code}, body: ${res.text()}`);
+                      if (attempt < maxAttempts) {
+                          setTimeout(checkState, 2000);
+                      } else {
+                          pm.expect.fail(`GetClaimState returned ${res.code} after ${maxAttempts} attempts`);
+                          done();
+                      }
+                      return;
+                  }
+                  
+                  try {
+                      let data = res.json();
+                      let state = data.state || "";
+                      lastState = state;
+                      
+                      console.log(`Attempt ${attempt}: Current state: ${state}`);
+                      
+                      if (state === targetState) {
+                          console.log(`✓ Process reached ${targetState}!`);
+                          pm.expect(state).to.equal(targetState);
+                          done();
+                      } else if (attempt < maxAttempts) {
+                          // Continue polling - process is still progressing
+                          setTimeout(checkState, 2000);
+                      } else {
+                          let errorMsg = `Timeout: Process did not reach ${targetState} after ${maxAttempts} attempts (${maxAttempts * 2} seconds). Last state: ${state}`;
+                          console.log(`✗ ${errorMsg}`);
+                          pm.expect.fail(errorMsg);
+                          done();
+                      }
+                  } catch (e) {
+                      console.log(`Failed to parse JSON on attempt ${attempt}:`, e.message);
+                      console.log("Response text:", res.text());
+                      if (attempt < maxAttempts) {
+                          setTimeout(checkState, 2000);
+                      } else {
+                          pm.expect.fail(`Failed to parse response after ${maxAttempts} attempts: ${e.message}. Response: ${res.text()}`);
+                          done();
+                      }
+                  }
+              });
+          };
+          
+          // Check initial response first
+          try {
+              if (pm.response.code === 200) {
+                  let initialData = pm.response.json();
+                  let initialState = initialData.state || "";
+                  console.log(`Initial state check: ${initialState}`);
+                  lastState = initialState;
+                  
+                  if (initialState === targetState) {
+                      console.log(`✓ Process already at ${targetState}!`);
+                      pm.expect(initialState).to.equal(targetState);
+                      done();
+                      return;
+                  }
+              } else {
+                  console.log(`Initial request returned ${pm.response.code}, will start polling`);
+              }
+          } catch (e) {
+              console.log("Initial response check failed, will start polling:", e.message);
+          }
+          
+          // Start polling (always poll to ensure we catch state changes)
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "WF4: Contract Signed - External System Notifies Signature"
+    method: POST
+    path: "contract/contract-signed"
+    setup_script: |
+      pm.environment.set("OLD_SERVER", pm.environment.get("SERVER"));
+      pm.environment.set("OLD_SCHEME", pm.environment.get("SCHEME"));
+      pm.environment.set("SERVER", pm.environment.get("CONNECTORHUB_SERVER") || "connectorhub_cdcs:8090");
+      pm.environment.set("SCHEME", "http");
+    body: |
+      {
+        "claimID": "{{CLAIM_ID}}",
+        "signedBy": "john.doe@example.com",
+        "verifiedBy": "jack.clarke@luthersystems.com"
+      }
+    test_script: |
+      pm.test("Contract signed notification received", () => {
+          pm.response.to.have.status(200);
+          pm.environment.set("SERVER", pm.environment.get("OLD_SERVER"));
+          pm.environment.set("SCHEME", pm.environment.get("OLD_SCHEME"));
+      });
+
+  - name: "Wait for WF5 to reach AWAITING_PAYMENT_UPDATE"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("Wait for process to progress to WF5", (done) => {
+          // Process needs time to go through WF4 → WF5 after contract signed
+          // Poll every 2 seconds, up to 30 seconds total
+          let maxAttempts = 15;
+          let attempt = 0;
+          let claimId = pm.environment.get("CLAIM_ID");
+          let targetState = "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE";
+          let stateReached = false;
+          
+          // First check the response from the initial GET request
+          try {
+              let initialData = pm.response.json();
+              let initialState = initialData.state || "";
+              console.log(`Initial state check: ${initialState}`);
+              
+              if (initialState === targetState) {
+                  console.log(`Process already at ${targetState}!`);
+                  pm.expect(initialState).to.equal(targetState);
+                  stateReached = true;
+                  done();
+                  return;
+              }
+          } catch (e) {
+              console.log("Initial response not JSON, will start polling:", pm.response.text());
+          }
+          
+          // If not at target state, start polling
+          if (!stateReached) {
+              let checkState = () => {
+                  attempt++;
+                  pm.sendRequest({
+                      url: pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId,
+                      method: 'GET',
+                      header: {
+                          'Content-Type': 'application/json'
+                      }
+                  }, (err, res) => {
+                      if (err) {
+                          console.log("Error checking state:", err);
+                          if (attempt < maxAttempts) {
+                              setTimeout(checkState, 2000);
+                          } else {
+                              pm.expect.fail(`Failed to check claim state after ${maxAttempts} attempts: ${err.message}`);
+                              done();
+                          }
+                          return;
+                      }
+                      
+                      try {
+                          let data = res.json();
+                          let state = data.state || "";
+                          console.log(`Poll attempt ${attempt}: Current state: ${state}`);
+                          
+                          if (state === targetState) {
+                              console.log(`Process reached ${targetState}!`);
+                              pm.expect(state).to.equal(targetState);
+                              done();
+                          } else if (attempt < maxAttempts) {
+                              setTimeout(checkState, 2000);
+                          } else {
+                              let errorMsg = `Timeout: Process did not reach ${targetState} after ${maxAttempts} attempts. Current state: ${state}`;
+                              console.log(errorMsg);
+                              pm.expect.fail(errorMsg);
+                              done();
+                          }
+                      } catch (e) {
+                          console.log("Failed to parse response:", res.text());
+                          if (attempt < maxAttempts) {
+                              setTimeout(checkState, 2000);
+                          } else {
+                              pm.expect.fail(`Failed to parse response after ${maxAttempts} attempts: ${e.message}`);
+                              done();
+                          }
+                      }
+                  });
+              };
+              
+              // Start polling after initial delay
+              setTimeout(checkState, 2000);
+          }
+      });
+
+  - name: "WF5: Payment Status Update - External System Notifies Payment"
+    method: POST
+    path: "payment/update-payment-status"
+    setup_script: |
+      pm.environment.set("OLD_SERVER", pm.environment.get("SERVER"));
+      pm.environment.set("OLD_SCHEME", pm.environment.get("SCHEME"));
+      pm.environment.set("SERVER", pm.environment.get("CONNECTORHUB_SERVER") || "connectorhub_cdcs:8090");
+      pm.environment.set("SCHEME", "http");
+    body: |
+      {
+        "claimID": "{{CLAIM_ID}}",
+        "paymentID": "PAY-12345",
+        "status": "approved"
+      }
+    test_script: |
+      pm.test("Payment status update received", () => {    
+          pm.response.to.have.status(200);
+          // Restore original SERVER and SCHEME
+          pm.environment.set("SERVER", pm.environment.get("OLD_SERVER"));
+          pm.environment.set("SCHEME", pm.environment.get("OLD_SCHEME"));
+      });
+
+  - name: "Wait for Final State - SAP_PAID"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("Wait for process to reach final state", (done) => {
+          // Process needs time to go through WF5 states: D365FO_PAID → SAP_PAID
+          // Poll every 2 seconds, up to 60 seconds total
+          let maxAttempts = 30;
+          let attempt = 0;
+          let claimId = pm.environment.get("CLAIM_ID");
+          let targetState = "WF5_CLAIM_STATE_SAP_PAID";
+          let lastState = "";
+          
+          console.log(`Starting to poll for final state: ${targetState}, claim_id: ${claimId}`);
+          
+          // Function to check state
+          let checkState = () => {
+              attempt++;
+              console.log(`Polling attempt ${attempt}/${maxAttempts}...`);
+              
+              pm.sendRequest({
+                  url: pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId,
+                  method: 'GET',
+                  header: {
+                      'Content-Type': 'application/json'
+                  }
+              }, (err, res) => {
+                  if (err) {
+                      console.log(`Error on attempt ${attempt}:`, err);
+                      if (attempt < maxAttempts) {
+                          setTimeout(checkState, 2000);
+                      } else {
+                          pm.expect.fail(`Failed to check claim state after ${maxAttempts} attempts: ${err.message}`);
+                          done();
+                      }
+                      return;
+                  }
+                  
+                  // Check response status
+                  if (res.code !== 200) {
+                      console.log(`Non-200 response on attempt ${attempt}: ${res.code}, body: ${res.text()}`);
+                      if (attempt < maxAttempts) {
+                          setTimeout(checkState, 2000);
+                      } else {
+                          pm.expect.fail(`GetClaimState returned ${res.code} after ${maxAttempts} attempts`);
+                          done();
+                      }
+                      return;
+                  }
+                  
+                  try {
+                      let data = res.json();
+                      let state = data.state || "";
+                      lastState = state;
+                      
+                      console.log(`Attempt ${attempt}: Current state: ${state}`);
+                      
+                      if (state === targetState) {
+                          console.log(`✓ Process reached final state ${targetState}!`);
+                          pm.expect(state).to.equal(targetState);
+                          pm.expect(data).to.have.property("claim_id");
+                          console.log(`✓ Process completed successfully. Final claim_id: ${data.claim_id}`);
+                          done();
+                      } else if (attempt < maxAttempts) {
+                          // Continue polling - process is still progressing
+                          setTimeout(checkState, 2000);
+                      } else {
+                          let errorMsg = `Timeout: Process did not reach final state ${targetState} after ${maxAttempts} attempts (${maxAttempts * 2} seconds). Last state: ${state}`;
+                          console.log(`✗ ${errorMsg}`);
+                          pm.expect.fail(errorMsg);
+                          done();
+                      }
+                  } catch (e) {
+                      console.log(`Failed to parse JSON on attempt ${attempt}:`, e.message);
+                      console.log("Response text:", res.text());
+                      if (attempt < maxAttempts) {
+                          setTimeout(checkState, 2000);
+                      } else {
+                          pm.expect.fail(`Failed to parse response after ${maxAttempts} attempts: ${e.message}. Response: ${res.text()}`);
+                          done();
+                      }
+                  }
+              });
+          };
+          
+          // Check initial response first
+          try {
+              if (pm.response.code === 200) {
+                  let initialData = pm.response.json();
+                  let initialState = initialData.state || "";
+                  console.log(`Initial state check: ${initialState}`);
+                  lastState = initialState;
+                  
+                  if (initialState === targetState) {
+                      console.log(`✓ Process already at final state ${targetState}!`);
+                      pm.expect(initialState).to.equal(targetState);
+                      done();
+                      return;
+                  }
+              } else {
+                  console.log(`Initial request returned ${pm.response.code}, will start polling`);
+              }
+          } catch (e) {
+              console.log("Initial response check failed, will start polling:", e.message);
+          }
+          
+          // Start polling (always poll to ensure we catch state changes)
+          setTimeout(checkState, 2000);
       });
 

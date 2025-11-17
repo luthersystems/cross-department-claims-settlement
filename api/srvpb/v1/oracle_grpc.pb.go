@@ -30,6 +30,7 @@ const (
 	CdcsService_UploadClaimWF4_FullMethodName = "/srvpb.v1.CdcsService/UploadClaimWF4"
 	CdcsService_UploadClaimWF5_FullMethodName = "/srvpb.v1.CdcsService/UploadClaimWF5"
 	CdcsService_InvokeProcess_FullMethodName  = "/srvpb.v1.CdcsService/InvokeProcess"
+	CdcsService_GetClaimState_FullMethodName  = "/srvpb.v1.CdcsService/GetClaimState"
 )
 
 // CdcsServiceClient is the client API for CdcsService service.
@@ -42,6 +43,7 @@ type CdcsServiceClient interface {
 	UploadClaimWF4(ctx context.Context, in *v1.UploadClaimWF4Request, opts ...grpc.CallOption) (*v1.UploadClaimWF4Response, error)
 	UploadClaimWF5(ctx context.Context, in *v1.UploadClaimWF5Request, opts ...grpc.CallOption) (*v1.UploadClaimWF5Response, error)
 	InvokeProcess(ctx context.Context, in *v1.InvokeProcessRequest, opts ...grpc.CallOption) (*v1.InvokeProcessResponse, error)
+	GetClaimState(ctx context.Context, in *v1.GetClaimStateRequest, opts ...grpc.CallOption) (*v1.GetClaimStateResponse, error)
 }
 
 type cdcsServiceClient struct {
@@ -112,6 +114,16 @@ func (c *cdcsServiceClient) InvokeProcess(ctx context.Context, in *v1.InvokeProc
 	return out, nil
 }
 
+func (c *cdcsServiceClient) GetClaimState(ctx context.Context, in *v1.GetClaimStateRequest, opts ...grpc.CallOption) (*v1.GetClaimStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(v1.GetClaimStateResponse)
+	err := c.cc.Invoke(ctx, CdcsService_GetClaimState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CdcsServiceServer is the server API for CdcsService service.
 // All implementations must embed UnimplementedCdcsServiceServer
 // for forward compatibility.
@@ -122,6 +134,7 @@ type CdcsServiceServer interface {
 	UploadClaimWF4(context.Context, *v1.UploadClaimWF4Request) (*v1.UploadClaimWF4Response, error)
 	UploadClaimWF5(context.Context, *v1.UploadClaimWF5Request) (*v1.UploadClaimWF5Response, error)
 	InvokeProcess(context.Context, *v1.InvokeProcessRequest) (*v1.InvokeProcessResponse, error)
+	GetClaimState(context.Context, *v1.GetClaimStateRequest) (*v1.GetClaimStateResponse, error)
 	mustEmbedUnimplementedCdcsServiceServer()
 }
 
@@ -149,6 +162,9 @@ func (UnimplementedCdcsServiceServer) UploadClaimWF5(context.Context, *v1.Upload
 }
 func (UnimplementedCdcsServiceServer) InvokeProcess(context.Context, *v1.InvokeProcessRequest) (*v1.InvokeProcessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InvokeProcess not implemented")
+}
+func (UnimplementedCdcsServiceServer) GetClaimState(context.Context, *v1.GetClaimStateRequest) (*v1.GetClaimStateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClaimState not implemented")
 }
 func (UnimplementedCdcsServiceServer) mustEmbedUnimplementedCdcsServiceServer() {}
 func (UnimplementedCdcsServiceServer) testEmbeddedByValue()                     {}
@@ -279,6 +295,24 @@ func _CdcsService_InvokeProcess_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _CdcsService_GetClaimState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(v1.GetClaimStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CdcsServiceServer).GetClaimState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: CdcsService_GetClaimState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CdcsServiceServer).GetClaimState(ctx, req.(*v1.GetClaimStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // CdcsService_ServiceDesc is the grpc.ServiceDesc for CdcsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -309,6 +343,10 @@ var CdcsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InvokeProcess",
 			Handler:    _CdcsService_InvokeProcess_Handler,
+		},
+		{
+			MethodName: "GetClaimState",
+			Handler:    _CdcsService_GetClaimState_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -7,7 +7,9 @@ TESTS_DIR=${PROJECT_ABS_DIR}/tests
 
 LOCAL_POSTMAN_ENVIRONMENT=Docker.postman_environment.json
 
-MARTIN_ENV_OPTS=
+# MARTIN_ENV_OPTS can be set to pass environment variables to the martin container
+# Example: make test-docker MARTIN_ENV_OPTS="-e CONNECTORHUB_SERVER=localhost:8090 -e ORACLE_SERVER=localhost:8080"
+MARTIN_ENV_OPTS?=
 MARTIN_BIND_SOURCE=${PROJECT_ABS_DIR}
 MARTIN_BIND_DEST=/etc/postman
 MARTIN_BIND=${MARTIN_BIND_SOURCE}:${MARTIN_BIND_DEST}

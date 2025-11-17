@@ -241,3 +241,20 @@ message InvokeProcessResponse {
     common.v1.Exception exception = 3;
   }
 }
+
+// ------------------------------------------------------------
+// GET CLAIM STATE
+// ------------------------------------------------------------
+
+message GetClaimStateRequest {
+  string claim_id = 1; // Required: Unique identifier of the claim
+}
+
+message GetClaimStateResponse {
+  string claim_id = 1;
+  string state = 2;
+
+  oneof result {
+    common.v1.Exception exception = 3;
+  }
+}

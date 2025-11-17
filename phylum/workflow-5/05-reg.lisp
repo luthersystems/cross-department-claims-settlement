@@ -6,11 +6,11 @@
 
 (set 'state-spec-wf5
   (sorted-map
-    "WF5_CLAIM_STATE_INIT"                  (wf5-claim-init-state-handler)
-    "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE" (wf5-claim-awaiting-payment-update-state-handler)
-    "WF5_CLAIM_STATE_PAYMENT_APPROVED" (wf5-claim-payment-approved-handler)
-    "WF5_CLAIM_STATE_D365FO_PAID"      (wf5-claim-d365fo-paid-handler)
-    "WF5_CLAIM_STATE_SAP_PAID"         (wf5-claim-sap-paid-handler)))
+    "WF5_CLAIM_STATE_INIT"                     (wf5-claim-init-state-handler)
+    "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE"  (wf5-claim-awaiting-payment-update-state-handler)
+    "WF5_CLAIM_STATE_PAYMENT_APPROVED"         (wf5-claim-payment-approved-handler)
+    "WF5_CLAIM_STATE_D365FO_PAID"              (wf5-claim-d365fo-paid-handler)
+    "WF5_CLAIM_STATE_SAP_PAID"                 (wf5-claim-sap-paid-handler)))
     
 (set 'claim-manager-wf5
      (singleton (mk-entity-manager

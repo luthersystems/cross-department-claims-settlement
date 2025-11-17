@@ -22,6 +22,17 @@
     (route-success (sorted-map "claim_id" (get result "claim_id")
                                "state" (get result "state")))))
 
+;; Get claim state endpoint - returns current state of a claim
+(defendpoint-get "get_claim_state" (req)
+  (let* ([claim-id (or (get req "claim_id")
+                       (set-exception-business "missing claim_id"))]
+         [claim (claim-manager 'get claim-id)]
+         [_     (when (nil? claim)
+                  (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
+         [claim-state (claim 'entity-state)])
+    (route-success (sorted-map "claim_id" claim-id
+                               "state"    claim-state))))
+
 ;; -----------------------------------------------------------------------------
 ;; Inbound REST handlers for unified process
 ;; These use claim-manager (unified process manager)
@@ -104,21 +115,18 @@
         ;; Trigger state transition using unified claim-manager
         ;; Process WAITING_FOR_SIGNATURE handler with signedBy/verifiedBy data
         ;; The handler will store the data and transition to CONTRACT_SIGNED automatically
-        (trigger-connector-object 
-          claim-manager
-          claim-id 
-          (sorted-map "signedBy" signed-by
-                     "verifiedBy" verified-by
-                     "claim_id" claim-id))
-
-        ;; Get final state after transition
-        (let* ([updated-claim (claim-manager 'get claim-id)]
-               [claim-state-after (if updated-claim (updated-claim 'entity-state) nil)])
+        (let* ([updated-entity (trigger-connector-object 
+                                  claim-manager
+                                  claim-id 
+                                  (sorted-map "signedBy" signed-by
+                                             "verifiedBy" verified-by
+                                             "claim_id" claim-id))]
+               [claim-state-after (if updated-entity (get updated-entity "state") claim-state-before)])
 
           (route-success
             (sorted-map
               "claim_id" claim-id
-              "state"    (or claim-state-after claim-state-before)
+              "state"    claim-state-after
               "signed_by" signed-by
               "verified_by" verified-by))))))
 
