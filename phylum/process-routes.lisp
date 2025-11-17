@@ -130,3 +130,52 @@
               "signed_by" signed-by
               "verified_by" verified-by))))))
 
+;; Handler for invoice/payment signature notification - uses unified claim-manager
+(defendpoint "notify_invoice_signed_handler" (req)
+  ;; Handler for inbound REST endpoint /invoice/invoice-signed
+  ;; Uses unified claim-manager
+  ;; req is empty/placeholder; ignore it and use transient instead
+  (let* ([raw (transient:get "$ch_rep:0")]
+         [env (if (string? raw) (json:parse raw) raw)]      ;; transient may already be a map
+         [_   (when (nil? env) (set-exception-business "missing transient payload $ch_rep:0"))]
+         [body        (get env "body")]
+         [claim-id    (get body "claimID")]
+         [signed-by   (get body "signedBy")])
+
+      ;; Validate required fields
+      (when (nil? claim-id)
+        (set-exception-business "missing claimID in request body"))
+      (when (nil? signed-by)
+        (set-exception-business "missing signedBy in request body"))
+
+      ;; Get existing claim from unified claim-manager - error if not found
+      (let* ([claim (claim-manager 'get claim-id)]
+             [_     (when (nil? claim)
+                      (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
+             [claim-state-before (claim 'entity-state)])
+
+        ;; Enforce that we're in the waiting state
+        (when (not (equal? claim-state-before "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE"))
+          (cc:warnf (sorted-map
+                      "claim_id" claim-id
+                      "expected_state" "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE"
+                      "actual_state" claim-state-before)
+                    "notify_invoice_signed_handler: invalid state, aborting")
+          (set-exception-business
+            (format-string "invalid claim state: expected CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE, got {}" claim-state-before)))
+
+        ;; Trigger state transition using unified claim-manager
+        ;; Process WAITING_FOR_PAYMENT_SIGNATURE handler with signedBy data
+        (let* ([updated-entity (trigger-connector-object 
+                                  claim-manager
+                                  claim-id 
+                                  (sorted-map "signedBy" signed-by
+                                             "claim_id" claim-id))]
+               [claim-state-after (if updated-entity (get updated-entity "state") claim-state-before)])
+
+          (route-success
+            (sorted-map
+              "claim_id" claim-id
+              "state"    claim-state-after
+              "signed_by" signed-by))))))
+

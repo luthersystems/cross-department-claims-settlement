@@ -164,13 +164,19 @@
 (defun wf1-teams-thread-created-state-handler (&optional next-state after-storage-hook)
   (labels
     ;; parse generic response (also checks for errors)
-    ([parse (resp entity) (parse-generic-resp resp)]
+    ([parse (resp entity)
+      (let* ([parsed (parse-generic-resp resp)]
+             [thread-id (get parsed "thread_id")]
+             [message-id (get parsed "message_id")])
+        (sorted-map "thread_id" thread-id "message_id" message-id))]
 
      ;; nothing to stage here
      [stage-ephemeral (entity parsed accessors) (vector)]
 
-     ;; store reference to oracle claim
-     [stage-durable (entity parsed accessors) ()]
+     ;; store thread_id and message_id for later use
+     [stage-durable (entity parsed accessors)
+      (sorted-map "teams_thread_id" (get parsed "thread_id")
+                  "teams_message_id" (get parsed "message_id"))]
 
 
      ;; no further events

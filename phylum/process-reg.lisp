@@ -18,41 +18,82 @@
 ;; Custom State Handlers (can be inserted anywhere in the process chain)
 ;; -----------------------------------------------------------------------------
 
-;; Example: Custom validation/processing state that can be inserted between workflows
-;; This demonstrates how to add custom states that aren't part of any specific workflow
-(defun custom-validation-state-handler (&optional next-state after-storage-hook)
+;; Waiting state for payment signature - waits for inbound REST call
+(defun waiting-for-payment-signature-state-handler ()
   (labels
     ([parse (resp entity)
-       ;; Parse any incoming data or validate entity state
-       ;; In this example, we'll just log some entity fields
-       (sorted-map
-         "claim_id" (get entity "claim_id")
-         "current_state" (get entity "state")
-         "validation_timestamp" (get entity "updated_at"))]
-     
-     [stage-ephemeral (entity parsed accessors)
-       ;; Store temporary validation data if needed
-       (vector)]
-     
+      ;; Waiting state - accepts signedBy when external system calls payment signature endpoint
+      ;; During unified process transition, resp is empty - just wait (no events)
+      (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
+             [signed-by   (get resp "signedBy")])  ;; Only present when called from external endpoint
+        (when (nil? claim-id)
+          (set-exception-business "missing claim_id"))
+        (sorted-map
+          "claim_id"  claim-id
+          "signed_by" signed-by))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
-       ;; Persist any validation results or metadata
-       (sorted-map
-         "custom_validation_passed" true
-         "custom_validation_timestamp" (get parsed "validation_timestamp"))]
-     
+      ;; Store signedBy if provided (from external endpoint)
+      (let* ([has-signature (get parsed "signed_by")]
+             [durable-result (if has-signature
+                               (sorted-map "payment_signed_by" (get parsed "signed_by"))
+                               ())])
+        durable-result)]  ;; Empty map during unified process transition
      [create-events (entity parsed accessors)
-       ;; Optionally emit events (e.g., audit log, notification, etc.)
-       ;; For now, no events - just a pass-through state
-       (cc:infof (sorted-map) "yep we passed through")
-       (vector)])
-    
+      (vector)])  ;; No events - will pause here
     (mk-state-handler
-      :next            (or next-state "CUSTOM_VALIDATION_COMPLETE")
+      :next            "CLAIM_STATE_PAYMENT_TEAMS_NOTIFICATION"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
-      :create-events   create-events
-      :after-storage-hook after-storage-hook)))
+      :create-events   create-events)))
+
+;; Send Teams message with claim summary to payments team
+(defun payment-teams-notification-state-handler ()
+  (labels
+    ([parse (resp entity)
+      ;; Build claim summary message
+      (let* ([claim-id        (get entity "claim_id")]
+             [policy-id       (get entity "policy_id")]
+             [amount          (get entity "amount")]
+             [invoice-id      (get entity "zoho_invoice_id")]
+             [signed-by       (get entity "payment_signed_by")]
+             [thread-id       (get entity "teams_thread_id")]
+             [message-id      (get entity "teams_message_id")])
+        (sorted-map
+          "claim_id"    claim-id
+          "thread_id"   thread-id
+          "message_id"  message-id
+          "message"     (format-string
+                          "📋 **Claim Payment Request**\n\n"
+                          "**Claim ID:** {}\n"
+                          "**Policy ID:** {}\n"
+                          "**Amount:** {}\n"
+                          "**Invoice ID:** {}\n"
+                          "**Status:** Claim approved, invoice generated, contract signed, payment approved\n"
+                          "**Signed By:** {}\n\n"
+                          "✅ Please process payment for this claim."
+                          claim-id
+                          (or policy-id "N/A")
+                          (or amount "N/A")
+                          (or invoice-id "N/A")
+                          (or signed-by "N/A"))))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
+     [stage-durable (entity parsed accessors) ()]
+     [create-events (entity parsed accessors)
+      ;; Update Teams thread message
+      (let* ([thread-id  (get parsed "thread_id")]
+             [message-id (get parsed "message_id")]
+             [message    (get parsed "message")])
+        (if (and thread-id message-id)
+          (vector (mk-teams-update-thread-event entity thread-id message-id message))
+          (vector)))])  ;; No thread_id or message_id - skip Teams update
+    (mk-state-handler
+      :next            "WF5_CLAIM_STATE_INIT"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
 
 ;; Combined state spec for the entire process
 ;; Merges all workflow state specs and overrides specific handlers for chaining
@@ -62,12 +103,12 @@
        ;; Base workflow specs (merged in order)
        state-spec-wf1
        state-spec-wf2
-      (sorted-map
-         "CUSTOM_VALIDATION_STATE" (custom-validation-state-handler))
        state-spec-wf3
        state-spec-wf4  ;; workflow-4-edit (includes WAITING_FOR_SIGNATURE and CONTRACT_SIGNED states)
-       state-spec-wf5
-       ;; Custom states (inserted between workflows or within workflows)
+       ;; Custom states for payment signature flow
+       (sorted-map
+         "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE" (waiting-for-payment-signature-state-handler)
+         "CLAIM_STATE_PAYMENT_TEAMS_NOTIFICATION"    (payment-teams-notification-state-handler))
   
        ;; Overrides for unified process chaining using after-storage hooks
        ;; Workflows transition to their DONE states, then hooks chain to the next workflow
@@ -82,28 +123,14 @@
                                                             (claim-manager 'put updated-entity) 
                                                             (trigger-connector-object claim-manager claim-id (sorted-map "claim_id" claim-id))))))
 
+         ;; WF2: skip CUSTOM_VALIDATION_STATE, go directly to WF3
          "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler
-                                                      "CUSTOM_VALIDATION_STATE"
-                                                      (lambda (entity)
-                                                        (let* ([claim-id (get entity "claim_id")])
-                                                          (cc:infof
-                                                            (sorted-map "claim_id" claim-id)
-                                                            "WF2 completed - chaining to CUSTOM_VALIDATION_STATE via after-storage hook")
-                                                          ;; Update entity state to CUSTOM_VALIDATION_STATE, then trigger
-                                                          (let* ([updated-entity (assoc entity "state" "CUSTOM_VALIDATION_STATE")])
-                                                            (claim-manager 'put updated-entity)
-                                                            (trigger-connector-object 
-                                                              claim-manager 
-                                                              claim-id 
-                                                              (sorted-map "claim_id" claim-id))))))
-         ;; CUSTOM_VALIDATION_STATE: hook chains to WF3
-         "CUSTOM_VALIDATION_STATE"                 (custom-validation-state-handler 
                                                       "WF3_CLAIM_STATE_INVOICE_INIT"
                                                       (lambda (entity)
                                                         (let* ([claim-id (get entity "claim_id")])
                                                           (cc:infof
                                                             (sorted-map "claim_id" claim-id)
-                                                            "CUSTOM_VALIDATION_STATE completed - chaining to WF3 via after-storage hook")
+                                                            "WF2 completed - chaining to WF3 via after-storage hook")
                                                           ;; Update entity state to WF3's initial state, then trigger
                                                           (let* ([updated-entity (assoc entity "state" "WF3_CLAIM_STATE_INVOICE_INIT")])
                                                             (claim-manager 'put updated-entity)
@@ -126,21 +153,15 @@
                                                                claim-manager 
                                                                claim-id 
                                                                (sorted-map "claim_id" claim-id))))))
-         ;; WF4: transition directly to WF5 init via hook
+         ;; WF4: transition to waiting for payment signature instead of WF5
          "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED" (wf4-servicenow-incident-created-state-handler 
-                                                         "WF5_CLAIM_STATE_INIT"
+                                                         "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE"
                                                          (lambda (entity)
                                                            (let* ([claim-id (get entity "claim_id")])
                                                              (cc:infof
                                                                (sorted-map "claim_id" claim-id)
-                                                               "WF4 completed - chaining to WF5 via after-storage hook")
-                                                             ;; Update entity state to WF5's initial state, then trigger
-                                                             (let* ([updated-entity (assoc entity "state" "WF5_CLAIM_STATE_INIT")])
-                                                               (claim-manager 'put updated-entity)
-                                                               (trigger-connector-object 
-                                                                 claim-manager 
-                                                                 claim-id 
-                                                                 (sorted-map "claim_id" claim-id)))))))))
+                                                               "WF4 completed - chaining to WAITING_FOR_PAYMENT_SIGNATURE via after-storage hook")
+                                                             ))))))
 
 ;; Unified claim manager for the entire process
 ;; Workflow chaining is handled via after-storage hooks in DONE states
