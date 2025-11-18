@@ -32,29 +32,16 @@
           "policy_id"       policy-id))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      ;; Preserve claim_id and Teams IDs from entity - don't lose them when storing parsed data
-      ;; Exclude claim_id from parsed to avoid full entity replacement, but preserve it explicitly
-      (let* ([claim-id (get entity "claim_id")]
-             [teams-thread-id (get entity "teams_thread_id")]
+      ;; Preserve Teams IDs from entity - don't lose them when storing parsed data
+      ;; NEVER include claim_id in stage-durable - it causes full entity replacement
+      (let* ([teams-thread-id (get entity "teams_thread_id")]
              [teams-message-id (get entity "teams_message_id")]
              [result parsed])
-        ;; Preserve claim_id and Teams IDs if they exist
-        (when claim-id
-          (assoc! result "claim_id" claim-id))
+        ;; Preserve Teams IDs if they exist (but NOT claim_id)
         (when teams-thread-id
           (assoc! result "teams_thread_id" teams-thread-id))
         (when teams-message-id
           (assoc! result "teams_message_id" teams-message-id))
-        (cc:infof (sorted-map
-                    "claim_id_before" claim-id
-                    "claim_id_in_parsed" (get parsed "claim_id")
-                    "claim_id_in_result" (get result "claim_id")
-                    "teams_thread_id_preserved" (get result "teams_thread_id")
-                    "teams_message_id_preserved" (get result "teams_message_id")
-                    "parsed_keys" (keys parsed)
-                    "entity_keys" (keys entity)
-                    "staged_durable_keys" (keys result))
-                  "WF3 INIT stage-durable: preserving claim_id and Teams IDs")
         result)]
      [create-events (entity parsed accessors)
       ;; Use entity (which has claim_id) instead of parsed (which doesn't)

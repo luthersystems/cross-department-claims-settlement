@@ -45,7 +45,6 @@
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
-        "claim_id"   (get parsed "claim_id")
         "policy_id"  (get parsed "policy_id")
         "payment_id" (get parsed "payment_id")
         "status"     (get parsed "status")

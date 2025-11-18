@@ -74,7 +74,6 @@
              [message-id (get entity "teams_message_id")]
              [message    (get parsed "message")]
              [has-signature (get parsed "signed_by")])
-        (cc:infof (sorted-map "thread_id" thread-id "message_id" message-id "has_signature" has-signature) "Sending Teams message")
         ;; Send Teams message if we have thread/message IDs
         (if (and thread-id message-id)
           (vector (mk-teams-update-thread-event entity thread-id message-id message))
