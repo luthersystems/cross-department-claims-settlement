@@ -100,6 +100,7 @@ connectors:
                   response: |
                     {
                       "thread_id": "thread-12345",
+                      "message_id": "msg-12345",
                       "status": "created",
                       "timestamp": "2025-11-12T17:00:00Z"
                     }
@@ -556,6 +557,56 @@ connectors:
                           signed_by:
                             type: string
                           verified_by:
+                            type: string
+      validate_responses: true
+      max_body_bytes: 2097152
+  - name: PAYMENTSIGNED
+    inbound_rest:
+      path_prefix: "/invoice"
+      target_endpoint: "notify_invoice_signed_handler"
+      openapi_spec_inline: |
+        openapi: 3.0.0
+        info:
+          title: Payment Signature Notification
+          version: 1.0.0
+        servers:
+          - url: http://localhost:8090/invoice
+          - url: http://connectorhub_cdcs:8090/invoice
+        paths:
+          /notify-invoice-signed:
+            post:
+              operationId: notifyInvoiceSigned
+              summary: External system notifies us that invoice/payment has been signed/approved
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [claimID, signedBy]
+                      properties:
+                        claimID:
+                          type: string
+                          description: The claim ID to update
+                          example: "42e038ce-6578-4867-97e2-ff6f821e3c88"
+                        signedBy:
+                          type: string
+                          format: email
+                          description: Email address of the person who signed/approved the payment
+                          example: "payments@example.com"
+              responses:
+                "200":
+                  description: Payment signature notification received
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          claim_id:
+                            type: string
+                          state:
+                            type: string
+                          signed_by:
                             type: string
       validate_responses: true
       max_body_bytes: 2097152

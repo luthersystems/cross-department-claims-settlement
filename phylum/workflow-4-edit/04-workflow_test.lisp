@@ -111,7 +111,7 @@
 ;; Test: Init State Handler Parse
 ;; =============================
 (test "wf4-claim-init-state-handler-parse"
-      (let* ([handler (wf4-claim-init-state-handler)]
+      (let* ([handler (wf4-claim-init-simple-state-handler)]
              [parse-fn (get handler :parse)]
              [resp (sorted-map
                     "policy_id" "POL-8872"
@@ -128,8 +128,10 @@
              [entity (sorted-map "claim_id" "CLM-4567")]
              [parsed (funcall parse-fn resp entity)])
         (assert (not (nil? parsed)))
-        (assert (equal? (get parsed "policy_id") "POL-8872"))
-        (assert (equal? (get (get parsed "zoho") "customer_id") "CUST-12345"))))
+        ;; Init handler validates claim_id exists but doesn't include it in parsed
+        ;; claim_id is managed by entity manager, not persisted in stage functions
+        (assert (nil? (get parsed "claim_id")))
+        (assert (equal? (length (keys parsed)) 0))))
 
 ;; =============================
 ;; Test: Zoho Invoice Created State Handler

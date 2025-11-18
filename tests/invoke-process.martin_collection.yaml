@@ -163,17 +163,17 @@ tests:
           pm.environment.set("SCHEME", pm.environment.get("OLD_SCHEME"));
       });
 
-  - name: "Wait for WF5 to reach AWAITING_PAYMENT_UPDATE"
+  - name: "Wait for WAITING_FOR_PAYMENT_SIGNATURE state"
     method: GET
     path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}"
     test_script: |
-      pm.test("Wait for process to progress to WF5", (done) => {
-          // Process needs time to go through WF4 → WF5 after contract signed
+      pm.test("Wait for process to reach WAITING_FOR_PAYMENT_SIGNATURE", (done) => {
+          // Process needs time to go through WF4 → WAITING_FOR_PAYMENT_SIGNATURE after contract signed
           // Poll every 2 seconds, up to 30 seconds total
           let maxAttempts = 15;
           let attempt = 0;
           let claimId = pm.environment.get("CLAIM_ID");
-          let targetState = "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE";
+          let targetState = "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE";
           let stateReached = false;
           
           // First check the response from the initial GET request
@@ -249,9 +249,9 @@ tests:
           }
       });
 
-  - name: "WF5: Payment Status Update - External System Notifies Payment"
+  - name: "Payment Signature: External System Notifies Payment Signature"
     method: POST
-    path: "payment/update-payment-status"
+    path: "invoice/notify-invoice-signed"
     setup_script: |
       pm.environment.set("OLD_SERVER", pm.environment.get("SERVER"));
       pm.environment.set("OLD_SCHEME", pm.environment.get("SCHEME"));
@@ -260,37 +260,30 @@ tests:
     body: |
       {
         "claimID": "{{CLAIM_ID}}",
-        "paymentID": "PAY-12345",
-        "status": "approved"
+        "signedBy": "payments@example.com"
       }
     test_script: |
-      pm.test("Payment status update received", () => {    
+      pm.test("Payment signature notification received", () => {    
           pm.response.to.have.status(200);
           // Restore original SERVER and SCHEME
           pm.environment.set("SERVER", pm.environment.get("OLD_SERVER"));
           pm.environment.set("SCHEME", pm.environment.get("OLD_SCHEME"));
       });
 
-  - name: "Wait for Final State - SAP_PAID"
+  - name: "Wait for PAYMENT_TEAM_NOTIFIED state"
     method: GET
     path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}"
     test_script: |
-      pm.test("Wait for process to reach final state", (done) => {
-          // Process needs time to go through WF5 states: D365FO_PAID → SAP_PAID
-          // Poll every 2 seconds, up to 60 seconds total
-          let maxAttempts = 30;
+      pm.test("Wait for process to reach PAYMENT_TEAM_NOTIFIED", (done) => {
+          // Process transitions to PAYMENT_TEAM_NOTIFIED after payment signature
+          // Poll every 2 seconds, up to 15 seconds total
+          let maxAttempts = 8;
           let attempt = 0;
           let claimId = pm.environment.get("CLAIM_ID");
-          let targetState = "WF5_CLAIM_STATE_SAP_PAID";
-          let lastState = "";
+          let targetState = "CLAIM_STATE_PAYMENT_TEAM_NOTIFIED";
           
-          console.log(`Starting to poll for final state: ${targetState}, claim_id: ${claimId}`);
-          
-          // Function to check state
           let checkState = () => {
               attempt++;
-              console.log(`Polling attempt ${attempt}/${maxAttempts}...`);
-              
               pm.sendRequest({
                   url: pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId,
                   method: 'GET',
@@ -299,7 +292,7 @@ tests:
                   }
               }, (err, res) => {
                   if (err) {
-                      console.log(`Error on attempt ${attempt}:`, err);
+                      console.log("Error checking state:", err);
                       if (attempt < maxAttempts) {
                           setTimeout(checkState, 2000);
                       } else {
@@ -309,47 +302,29 @@ tests:
                       return;
                   }
                   
-                  // Check response status
-                  if (res.code !== 200) {
-                      console.log(`Non-200 response on attempt ${attempt}: ${res.code}, body: ${res.text()}`);
-                      if (attempt < maxAttempts) {
-                          setTimeout(checkState, 2000);
-                      } else {
-                          pm.expect.fail(`GetClaimState returned ${res.code} after ${maxAttempts} attempts`);
-                          done();
-                      }
-                      return;
-                  }
-                  
                   try {
                       let data = res.json();
                       let state = data.state || "";
-                      lastState = state;
-                      
-                      console.log(`Attempt ${attempt}: Current state: ${state}`);
+                      console.log(`Poll attempt ${attempt}: Current state: ${state}`);
                       
                       if (state === targetState) {
-                          console.log(`✓ Process reached final state ${targetState}!`);
+                          console.log(`Process reached ${targetState}!`);
                           pm.expect(state).to.equal(targetState);
-                          pm.expect(data).to.have.property("claim_id");
-                          console.log(`✓ Process completed successfully. Final claim_id: ${data.claim_id}`);
                           done();
                       } else if (attempt < maxAttempts) {
-                          // Continue polling - process is still progressing
                           setTimeout(checkState, 2000);
                       } else {
-                          let errorMsg = `Timeout: Process did not reach final state ${targetState} after ${maxAttempts} attempts (${maxAttempts * 2} seconds). Last state: ${state}`;
-                          console.log(`✗ ${errorMsg}`);
+                          let errorMsg = `Timeout: Process did not reach ${targetState} after ${maxAttempts} attempts. Current state: ${state}`;
+                          console.log(errorMsg);
                           pm.expect.fail(errorMsg);
                           done();
                       }
                   } catch (e) {
-                      console.log(`Failed to parse JSON on attempt ${attempt}:`, e.message);
-                      console.log("Response text:", res.text());
+                      console.log("Failed to parse response:", res.text());
                       if (attempt < maxAttempts) {
                           setTimeout(checkState, 2000);
                       } else {
-                          pm.expect.fail(`Failed to parse response after ${maxAttempts} attempts: ${e.message}. Response: ${res.text()}`);
+                          pm.expect.fail(`Failed to parse response after ${maxAttempts} attempts: ${e.message}`);
                           done();
                       }
                   }
@@ -362,22 +337,36 @@ tests:
                   let initialData = pm.response.json();
                   let initialState = initialData.state || "";
                   console.log(`Initial state check: ${initialState}`);
-                  lastState = initialState;
                   
                   if (initialState === targetState) {
-                      console.log(`✓ Process already at final state ${targetState}!`);
+                      console.log(`Process already at ${targetState}!`);
                       pm.expect(initialState).to.equal(targetState);
                       done();
                       return;
                   }
-              } else {
-                  console.log(`Initial request returned ${pm.response.code}, will start polling`);
               }
           } catch (e) {
               console.log("Initial response check failed, will start polling:", e.message);
           }
           
-          // Start polling (always poll to ensure we catch state changes)
+          // Start polling
           setTimeout(checkState, 2000);
+      });
+
+  - name: "Verify Final State - PAYMENT_TEAM_NOTIFIED (Process Complete)"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("Verify process reached final state", () => {
+          // Process completes at PAYMENT_TEAM_NOTIFIED state
+          // (WF5 is not part of the unified process flow)
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          let state = data.state || "";
+          console.log(`Final state: ${state}`);
+          
+          pm.expect(state).to.equal("CLAIM_STATE_PAYMENT_TEAM_NOTIFIED");
+          pm.expect(data).to.have.property("claim_id");
+          console.log(`✓ Process completed successfully. Final claim_id: ${data.claim_id}, state: ${state}`);
       });
 

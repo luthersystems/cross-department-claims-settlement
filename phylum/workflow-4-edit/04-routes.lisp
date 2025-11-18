@@ -117,13 +117,6 @@
          [signed-by   (get body "signedBy")]
          [verified-by (or (get body "verifiedBy") "jack.clarke@luthersystems.com")])
 
-      (cc:infof (sorted-map
-                  "claim_id" claim-id
-                  "signed_by" signed-by
-                  "verified_by" verified-by
-                  "operationId" operationId)
-                "contract_signed_handler: received contract signed notification")
-
       ;; Validate required fields
       (when (nil? claim-id)
         (set-exception-business "missing claimID in request body"))
@@ -136,11 +129,6 @@
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
              [claim-state-before (claim 'entity-state)])
 
-        (cc:infof (sorted-map
-                    "claim_id" claim-id
-                    "state_before" claim-state-before)
-                  "contract_signed_handler: continuing existing claim from workflow")
-
         ;; Enforce that we're in the waiting state
         (when (not (equal? claim-state-before "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"))
           (cc:warnf (sorted-map
@@ -150,13 +138,6 @@
                     "contract_signed_handler: invalid state, aborting")
           (set-exception-business
             (format-string "invalid claim state: expected WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE, got {}" claim-state-before)))
-
-        (cc:infof (sorted-map
-                    "claim_id" claim-id
-                    "signed_by" signed-by
-                    "verified_by" verified-by
-                    "state_before" claim-state-before)
-                  "contract_signed_handler: triggering state transition from WAITING_FOR_SIGNATURE")
 
         ;; Trigger state transition using workflow-specific manager
         ;; First call: process WAITING_FOR_SIGNATURE handler with signedBy/verifiedBy data
@@ -169,11 +150,6 @@
                [claim-after-1 (claim-manager-wf4 'get claim-id)]
                [state-after-1 (if claim-after-1 (claim-after-1 'entity-state) nil)])
           
-          (cc:infof (sorted-map
-                      "claim_id" claim-id
-                      "state_after_storage" state-after-1)
-                    "contract_signed_handler: stored signature data, now transitioning to CONTRACT_SIGNED")
-          
           ;; Second call: trigger transition to CONTRACT_SIGNED
           ;; The handler will read signedBy/verifiedBy from entity (stored by previous call)
           (let* ([transition-result-2 (trigger-connector-object 
@@ -182,13 +158,6 @@
                                         (sorted-map "claim_id" claim-id))]
                  [updated-claim (claim-manager-wf4 'get claim-id)]
                  [claim-state-after (if updated-claim (updated-claim 'entity-state) nil)])
-
-            (cc:infof (sorted-map
-                        "claim_id" claim-id
-                        "state_before" claim-state-before
-                        "state_after" claim-state-after
-                        "transition_result" transition-result-2)
-                      "contract_signed_handler: state transition completed")
 
             (route-success
               (sorted-map

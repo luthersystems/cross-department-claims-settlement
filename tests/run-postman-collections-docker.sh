@@ -38,8 +38,8 @@ echo ${cmd}
 if ! ${cmd} ${MARTIN_BIND_DEST}/tests/run-postman-collections.sh "$@"; then
     set -x
     docker ps
-    docker logs cdcs_oracle
-    docker logs shiroclient_gw_cdcs
-    docker logs fnb-cdcs-peer0-1
+    # docker logs cdcs_oracle
+    # docker logs shiroclient_gw_cdcs
+    # docker logs fnb-cdcs-peer0-1
     exit 1
 fi

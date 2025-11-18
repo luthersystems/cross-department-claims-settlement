@@ -31,13 +31,6 @@
              [invoice-id  (get entity "zoho_invoice_id")]
              [thread-id   (get entity "teams_thread_id")]
              [message-id  (get entity "teams_message_id")])
-        (cc:infof (sorted-map 
-                   "claim_id" claim-id
-                   "teams_thread_id" thread-id
-                   "teams_message_id" message-id
-                   "entity_keys" (keys entity)
-                   "has_signed_by" (not (nil? signed-by)))
-                  "Waiting for payment signature - checking Teams IDs")
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
@@ -120,67 +113,32 @@
          "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler 
                                                       "WF2_CLAIM_STATE_INIT" 
                                                       (lambda (entity) 
-                                                        (let* ([claim-id (get entity "claim_id")]
-                                                               [thread-id (get entity "teams_thread_id")]
-                                                               [message-id (get entity "teams_message_id")])
-                                                          (cc:infof (sorted-map 
-                                                                     "claim_id" claim-id
-                                                                     "teams_thread_id" thread-id
-                                                                     "teams_message_id" message-id
-                                                                     "entity_keys" (keys entity)) 
-                                                                    "WF1 completed - chaining to WF2 via after-storage hook")
-                                                          (let* ([updated-entity (assoc entity "state" "WF2_CLAIM_STATE_INIT")]) 
-                                                            (claim-manager 'put updated-entity) 
-                                                            (trigger-connector-object claim-manager claim-id (sorted-map "claim_id" claim-id))))))
+                                                        (let* ([claim-id (get entity "claim_id")])
+                                                          (cc:infof (sorted-map  "claim_id" claim-id) "WF1 completed - chaining to WF2 via after-storage hook")
+                                                          (trigger-connector-object claim-manager claim-id ()))))
 
          ;; WF2: skip CUSTOM_VALIDATION_STATE, go directly to WF3
          "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler
                                                       "WF3_CLAIM_STATE_INVOICE_INIT"
                                                       (lambda (entity)
-                                                      (let* ([claim-id (get entity "claim_id")]
-                                                               [thread-id (get entity "teams_thread_id")]
-                                                               [message-id (get entity "teams_message_id")])
-                                                          (cc:infof (sorted-map 
-                                                                     "claim_id" claim-id
-                                                                     "teams_thread_id" thread-id
-                                                                     "teams_message_id" message-id
-                                                                     "entity_keys" (keys entity)) 
-                                                                    "WF2 completed - chaining to WF3 via after-storage hook"))
-                                                        (let* ([claim-id (get entity "claim_id")])
-                                                          (cc:infof
-                                                            (sorted-map "claim_id" claim-id)
-                                                            "WF2 completed - chaining to WF3 via after-storage hook")
+                                                      (let* ([claim-id (get entity "claim_id")])
+                                                          (cc:infof (sorted-map  "claim_id" claim-id) "WF2 completed - chaining to WF3 via after-storage hook")
                                                           ;; Update entity state to WF3's initial state, then trigger
-                                                          (let* ([updated-entity (assoc entity "state" "WF3_CLAIM_STATE_INVOICE_INIT")])
-                                                            (claim-manager 'put updated-entity)
-                                                            (trigger-connector-object 
-                                                              claim-manager 
-                                                              claim-id 
-                                                              (sorted-map "claim_id" claim-id))))))
-         ;; WF3: transition directly to WF4 init via hook
+                                                          (trigger-connector-object 
+                                                            claim-manager 
+                                                            claim-id 
+                                                            ()))))
+          ;; WF3: transition directly to WF4 init via hook
          "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler 
                                                        "WF4_CLAIM_STATE_INIT"
                                                        (lambda (entity)
-                                                       (let* ([claim-id (get entity "claim_id")]
-                                                               [thread-id (get entity "teams_thread_id")]
-                                                               [message-id (get entity "teams_message_id")])
-                                                          (cc:infof (sorted-map 
-                                                                     "claim_id" claim-id
-                                                                     "teams_thread_id" thread-id
-                                                                     "teams_message_id" message-id
-                                                                     "entity_keys" (keys entity)) 
-                                                                    "WF3 completed - chaining to WF4 via after-storage hook"))
-                                                         (let* ([claim-id (get entity "claim_id")])
-                                                           (cc:infof
-                                                             (sorted-map "claim_id" claim-id)
-                                                             "WF3 completed - chaining to WF4 via after-storage hook")
-                                                           ;; Update entity state to WF4's initial state, then trigger
-                                                           (let* ([updated-entity (assoc entity "state" "WF4_CLAIM_STATE_INIT")])
-                                                             (claim-manager 'put updated-entity)
+                                                       (let* ([claim-id (get entity "claim_id")])
+                                                          (cc:infof (sorted-map  "claim_id" claim-id) "WF3 completed - chaining to WF4 via after-storage hook")
                                                              (trigger-connector-object 
                                                                claim-manager 
                                                                claim-id 
-                                                               (sorted-map "claim_id" claim-id))))))
+                                                               ()))))
+         
          ;; WF4: transition to waiting for payment signature instead of WF5
          "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED" (wf4-servicenow-incident-created-state-handler 
                                                          "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE"

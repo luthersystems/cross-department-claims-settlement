@@ -1,3 +1,9 @@
 build
 .luther-license.yaml
 .DS_Store
+.env
+# Prevent accidental commits of files with secrets
+*connectorhub copy*.yaml
+*connectorhub copy*.env
+* copy*
+* copy *.*

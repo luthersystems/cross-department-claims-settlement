@@ -8,11 +8,12 @@
 (defun wf5-claim-init-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; Simple init - just extract claim_id
+      ;; Simple init - validate claim_id exists but don't include it in parsed
+      ;; NEVER include claim_id in parsed - it's managed by entity manager
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
-        (sorted-map "claim_id" claim-id))]
+        (sorted-map))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) ()]
      [create-events (entity parsed accessors) (vector)])
@@ -37,7 +38,6 @@
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"   claim-id
           "policy_id"  policy-id
           "payment_id" payment-id
           "status"    status

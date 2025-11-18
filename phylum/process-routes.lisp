@@ -97,11 +97,6 @@
         (set-exception-business "missing signedBy in request body"))
 
       ;; Get existing claim from unified claim-manager - error if not found
-      (cc:infof (sorted-map
-                  "claim_id" claim-id
-                  "signed_by" signed-by
-                  "verified_by" verified-by)
-                "contract_signed_handler: received signature notification")
       (let* ([claim (claim-manager 'get claim-id)]
              [_     (when (nil? claim)
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]

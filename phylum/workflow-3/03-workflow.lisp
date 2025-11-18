@@ -15,13 +15,6 @@
              [recipient-name  (or (get resp "recipient_name") (get entity "recipient_name") *wf3-default-recipient-name*)]
              [issue-date      (or (get resp "issue_date") (get entity "issue_date") *wf3-default-issue-date*)]
              [policy-id       (or (get resp "policy_id") (get entity "policy_id"))])
-        (cc:infof (sorted-map
-                    "claim_id" claim-id
-                    "teams_thread_id" teams-thread-id
-                    "teams_message_id" teams-message-id
-                    "entity_keys" (keys entity)
-                    "has_claim_id_in_entity" (not (nil? claim-id)))
-                  "WF3 INIT parse: checking claim_id and Teams IDs")
         (sorted-map
           "amount"          amount
           "signer_name"     signer-name
@@ -68,12 +61,6 @@
                        "esign_contract_id"    (get parsed "contract_id")
                        "esign_sign_page_url"  (get parsed "sign_page_url")
                        "esign_status"         (get parsed "contract_status"))])
-        (cc:infof (sorted-map
-                    "claim_id_before" claim-id-before
-                    "claim_id_in_result" (get result "claim_id")
-                    "staged_durable_keys" (keys result)
-                    "entity_keys" (keys entity))
-                  "WF3 ESIG_CREATED stage-durable: checking claim_id preservation")
         result)]
      [create-events (entity parsed accessors)
       (let* ([claim-id-in-entity (get entity "claim_id")]
@@ -82,10 +69,6 @@
                       (sorted-map
                         "contract_id"   (get parsed "contract_id")
                         "sign_page_url" (get parsed "sign_page_url")))])
-        (cc:infof (sorted-map
-                    "claim_id_in_entity" claim-id-in-entity
-                    "entity_keys" (keys entity))
-                  "WF3 ESIG_CREATED create-events: checking claim_id before event creation")
         (vector event))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"
@@ -98,25 +81,11 @@
     ([parse (resp entity) (parse-salesforce-create-record resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (let* ([claim-id-before (get entity "claim_id")]
-             [result (sorted-map "sf_record_id" (get parsed "sf_record_id"))])
-        (cc:infof (sorted-map
-                    "claim_id_before" claim-id-before
-                    "claim_id_in_result" (get result "claim_id")
-                    "staged_durable_keys" (keys result)
-                    "entity_keys" (keys entity))
-                  "WF3 SF_SYNCED stage-durable: checking claim_id preservation")
-        result)]
+      (sorted-map "sf_record_id" (get parsed "sf_record_id"))]
      [create-events (entity parsed accessors)
-      (let* ([claim-id-in-entity (get entity "claim_id")]
-             [event (mk-smtp-send-email-event
-                      entity
-                      (sorted-map "sf_record_id" (get parsed "sf_record_id")))])
-        (cc:infof (sorted-map
-                    "claim_id_in_entity" claim-id-in-entity
-                    "entity_keys" (keys entity))
-                  "WF3 SF_SYNCED create-events: checking claim_id before event creation")
-        (vector event))])
+      (vector (mk-smtp-send-email-event
+                entity
+                (sorted-map "sf_record_id" (get parsed "sf_record_id"))))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"
       :parse parse :stage-ephemeral stage-ephemeral
@@ -129,20 +98,8 @@
        (parse-smtp-send resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-       (let* ([claim-id-before (get entity "claim_id")]
-              [result (sorted-map "email_dispatched" true)])
-         (cc:infof (sorted-map
-                     "claim_id_before" claim-id-before
-                     "claim_id_in_result" (get result "claim_id")
-                     "staged_durable_keys" (keys result)
-                     "entity_keys" (keys entity))
-                   "WF3 EMAIL_DISPATCHED stage-durable: checking claim_id preservation")
-         result)]
+       (sorted-map "email_dispatched" true)]
      [create-events (entity parsed accessors)
-       (cc:infof (sorted-map
-                   "claim_id_in_entity" (get entity "claim_id")
-                   "entity_keys" (keys entity))
-                 "WF3 EMAIL_DISPATCHED create-events: checking claim_id")
        ()])
     (mk-state-handler
       :next (or next-state "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED")

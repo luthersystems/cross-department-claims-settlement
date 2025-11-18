@@ -40,16 +40,16 @@
                               "assignment_group" *wf4-default-servicenow-assignment-group*))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
+        ;; NEVER include claim_id in parsed - it's managed by entity manager
         (sorted-map
-          "claim_id"   claim-id
           "policy_id"  policy-id
           "zoho"       zoho
           "sharepoint" sharepoint
           "servicenow" servicenow))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
+      ;; NEVER include claim_id in stage-durable - it causes full entity replacement
       (sorted-map
-        "claim_id"   (get parsed "claim_id")
         "policy_id"  (get parsed "policy_id")
         "zoho"       (get parsed "zoho")
         "sharepoint" (get parsed "sharepoint")

@@ -165,11 +165,9 @@
   (labels
     ;; parse generic response (also checks for errors)
     ([parse (resp entity)
-      (cc:infof (sorted-map "raw_resp" resp) "WF1 Teams response received")
       (let* ([parsed (parse-generic-resp resp)]
              [thread-id (and parsed (get parsed "thread_id"))]
              [message-id (and parsed (get parsed "message_id"))])
-        (cc:infof (sorted-map "parsed" parsed "thread_id" thread-id "message_id" message-id) "WF1 Teams parsed")
         (when (nil? parsed)
           (set-exception-unexpected "Failed to parse Teams response"))
         (when (nil? thread-id)
@@ -185,11 +183,6 @@
              [message-id (get parsed "message_id")]
              [result (sorted-map "teams_thread_id" thread-id
                                 "teams_message_id" message-id)])
-        (cc:infof (sorted-map 
-                   "thread_id" thread-id
-                   "message_id" message-id
-                   "storing_to_entity" result)
-                  "WF1 storing Teams IDs to durable entity")
         result)]
 
 
