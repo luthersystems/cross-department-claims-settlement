@@ -4,7 +4,10 @@
     ([parse (resp entity)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
       ;; For unified process, resp is empty so falls back to entity
-      (let* ([claim-id        (or (get resp "claim_id") (get entity "claim_id") (set-exception-business "missing claim_id"))]
+      (let* ([teams-thread-id (get entity "teams_thread_id")]
+             [teams-message-id (get entity "teams_message_id")]
+             [claim-id (get entity "claim_id")]
+            ;  [claim-id        (or (get resp "claim_id") (get entity "claim_id") (set-exception-business "missing claim_id"))]
              [amount          (or (get resp "invoice_amount") (get entity "invoice_amount") (set-exception-business "missing invoice_amount"))]
              [signer-name     (or (get resp "signer_name") (get entity "signer_name") (set-exception-business "missing signer_name"))]
              [signer-email    (or (get resp "signer_email") (get entity "signer_email") (set-exception-business "missing signer_email"))]
@@ -13,7 +16,6 @@
              [issue-date      (or (get resp "issue_date") (get entity "issue_date") *wf3-default-issue-date*)]
              [policy-id       (or (get resp "policy_id") (get entity "policy_id"))])
         (sorted-map
-          "claim_id"        claim-id
           "amount"          amount
           "signer_name"     signer-name
           "signer_email"    signer-email
@@ -22,9 +24,22 @@
           "issue_date"      issue-date
           "policy_id"       policy-id))]
      [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors) parsed]
+     [stage-durable (entity parsed accessors)
+      ;; Preserve Teams IDs from entity - don't lose them when storing parsed data
+      ;; NEVER include claim_id in stage-durable - it causes full entity replacement
+      (let* ([teams-thread-id (get entity "teams_thread_id")]
+             [teams-message-id (get entity "teams_message_id")]
+             [result parsed])
+        ;; Preserve Teams IDs if they exist (but NOT claim_id)
+        (when teams-thread-id
+          (assoc! result "teams_thread_id" teams-thread-id))
+        (when teams-message-id
+          (assoc! result "teams_message_id" teams-message-id))
+        result)]
      [create-events (entity parsed accessors)
-      (vector (mk-esignature-create-contract-event parsed))])
+      ;; Use entity (which has claim_id) instead of parsed (which doesn't)
+      ;; The event creator will read fields from entity
+      (vector (mk-esignature-create-contract-event entity))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"
       :parse parse :stage-ephemeral stage-ephemeral
@@ -33,19 +48,28 @@
 ;; 2) ESIG_CREATED → SF_SYNCED
 (defun wf3-invoice-esig-created-state-handler ()
   (labels
-    ([parse (resp entity) (parse-esignature-create-contract resp)]
+    ([parse (resp entity)
+      (let* ([teams-thread-id (get entity "teams_thread_id")]
+             [teams-message-id (get entity "teams_message_id")]
+             [claim-id (get entity "claim_id")]
+             [parsed (parse-esignature-create-contract resp)])
+        parsed)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
-      (sorted-map
-        "esign_contract_id"    (get parsed "contract_id")
-        "esign_sign_page_url"  (get parsed "sign_page_url")
-        "esign_status"         (get parsed "contract_status"))]
+      (let* ([claim-id-before (get entity "claim_id")]
+             [result (sorted-map
+                       "esign_contract_id"    (get parsed "contract_id")
+                       "esign_sign_page_url"  (get parsed "sign_page_url")
+                       "esign_status"         (get parsed "contract_status"))])
+        result)]
      [create-events (entity parsed accessors)
-      (vector (mk-salesforce-create-invoice-event
-                entity
-                (sorted-map
-                  "contract_id"   (get parsed "contract_id")
-                  "sign_page_url" (get parsed "sign_page_url"))))])
+      (let* ([claim-id-in-entity (get entity "claim_id")]
+             [event (mk-salesforce-create-invoice-event
+                      entity
+                      (sorted-map
+                        "contract_id"   (get parsed "contract_id")
+                        "sign_page_url" (get parsed "sign_page_url")))])
+        (vector event))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"
       :parse parse :stage-ephemeral stage-ephemeral

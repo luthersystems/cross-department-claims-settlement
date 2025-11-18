@@ -77,3 +77,16 @@
          [sys-name "TEAMS"])
     (build-event entity req action sys-name)))
 
+(defun mk-teams-update-thread-event (entity thread-id message-id content)
+  (let* ([req (mk-connector-req
+                (sorted-map
+                  "kind"      "KIND_MICROSOFT_TEAMS"
+                  "operation" "update_thread"
+                  "args"      (sorted-map
+                                 "thread_id" thread-id
+                                 "message_id" message-id
+                                 "content"   content)))]
+         [action "update thread"]
+         [sys-name "TEAMS"])
+    (build-event entity req action sys-name)))
+

@@ -112,7 +112,8 @@
              [entity (sorted-map)]
              [parsed (funcall parse-fn resp entity)])
         (assert (not (nil? parsed)))
-        (assert (equal? (get parsed "claim_id") "CLM-4567"))
+        ;; claim_id should NOT be in parsed - it's managed by entity manager, not persisted
+        (assert (nil? (get parsed "claim_id")))
         (assert (equal? (get parsed "amount") "2500.00"))
         (assert (equal? (get parsed "signer_name") "John Doe"))
         (assert (equal? (get parsed "signer_email") "john.doe@example.com"))))

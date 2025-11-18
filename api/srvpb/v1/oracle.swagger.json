@@ -19,6 +19,80 @@
     "application/json"
   ],
   "paths": {
+    "/v1/cdcs/GetClaimState/{claimId}": {
+      "get": {
+        "operationId": "CdcsService_GetClaimState",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1GetClaimStateResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request determined by business logic",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "401": {
+            "description": "Authorization failed",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "404": {
+            "description": "Missing resource",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "500": {
+            "description": "Unexpected internal server error",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "503": {
+            "description": "Service not available",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "claimId",
+            "description": "Required: Unique identifier of the claim",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "Service"
+        ]
+      }
+    },
     "/v1/cdcs/InvokeProcess": {
       "post": {
         "operationId": "CdcsService_InvokeProcess",
@@ -550,6 +624,20 @@
       ],
       "default": "INVALID_TYPE",
       "description": "Type of exception.\n\n - INVALID_TYPE: Default for no exception.\n - BUSINESS: Business logic error.\n - SERVICE_NOT_AVAILABLE: A service was unavailable.\n - INFRASTRUCTURE: Infrastructure was down.\n - UNEXPECTED: Catch-all for all other types.\n - SECURITY_VIOLATION: Security related error."
+    },
+    "v1GetClaimStateResponse": {
+      "type": "object",
+      "properties": {
+        "claimId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "exception": {
+          "$ref": "#/definitions/v1Exception"
+        }
+      }
     },
     "v1InvokeProcessRequest": {
       "type": "object",

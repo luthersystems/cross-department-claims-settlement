@@ -164,13 +164,26 @@
 (defun wf1-teams-thread-created-state-handler (&optional next-state after-storage-hook)
   (labels
     ;; parse generic response (also checks for errors)
-    ([parse (resp entity) (parse-generic-resp resp)]
+    ([parse (resp entity)
+      (let* ([parsed (parse-generic-resp resp)]
+             [thread-id (and parsed (get parsed "thread_id"))]
+             [message-id (and parsed (get parsed "message_id"))])
+        (when (nil? parsed)
+          (set-exception-unexpected "Failed to parse Teams response"))
+        (when (nil? thread-id)
+          (set-exception-unexpected "Teams response missing thread_id"))
+        (sorted-map "thread_id" thread-id "message_id" message-id))]
 
      ;; nothing to stage here
      [stage-ephemeral (entity parsed accessors) (vector)]
 
-     ;; store reference to oracle claim
-     [stage-durable (entity parsed accessors) ()]
+     ;; store thread_id and message_id for later use
+     [stage-durable (entity parsed accessors)
+      (let* ([thread-id (get parsed "thread_id")]
+             [message-id (get parsed "message_id")]
+             [result (sorted-map "teams_thread_id" thread-id
+                                "teams_message_id" message-id)])
+        result)]
 
 
      ;; no further events

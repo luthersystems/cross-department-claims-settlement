@@ -39,9 +39,9 @@ connectors:
                       ]
                     }
     oracle_readonly:
-      connection_string: ""
-      user: ""
-      password: ""
+      connection_string: "host.docker.internal:1521/ORCLPDB1"
+      user: "app"
+      password: "${ORACLE_PASSWORD}"
 
   - name: EQUIFAX
     mock: true
@@ -70,13 +70,13 @@ connectors:
                     }
     equifax:
       host: "api.sandbox.equifax.com"
-      client_id: ""
-      client_secret: ""
-      member_number: ""
-      security_code: ""
-      customer_code: ""
+      client_id: "${EQUIFAX_CLIENT_ID}"
+      client_secret: "${EQUIFAX_CLIENT_SECRET}"
+      member_number: "${EQUIFAX_MEMBER_NUMBER}"
+      security_code: "${EQUIFAX_SECURITY_CODE}"
+      customer_code: "${EQUIFAX_CUSTOMER_CODE}"
       auth_scope: "https://api.equifax.com/business/amlc/v1/entity-screenings"
-      access_token: ""
+      access_token: "${EQUIFAX_ACCESS_TOKEN}"
 
   # 3 Teams
   - name: TEAMS
@@ -100,15 +100,16 @@ connectors:
                   response: |
                     {
                       "thread_id": "thread-12345",
+                      "message_id": "msg-12345",
                       "status": "created",
                       "timestamp": "2025-11-12T17:00:00Z"
                     }
     microsoft_teams:
-      app_id: ""
-      app_password: ""
-      tenant_id: ""
-      team_id: ""
-      channel_id: ""
+      app_id: "${TEAMS_APP_ID}"
+      app_password: "${TEAMS_APP_PASSWORD}"
+      tenant_id: "${TEAMS_TENANT_ID}"
+      team_id: "${TEAMS_TEAM_ID}"
+      channel_id: "${TEAMS_CHANNEL_ID}"
 
   #### WF2 CONNECTORS ####
   - name: OUTBOUNDGW
@@ -236,8 +237,8 @@ connectors:
       host: host.docker.internal
       port: 3306
       database: claims_db
-      username: ""
-      password: ""
+      username: "${MYSQL_USERNAME}"
+      password: "${MYSQL_PASSWORD}"
       use_ssl: false
 
   # 6 Sharepoint
@@ -268,10 +269,10 @@ connectors:
                       ]
                     }
     microsoft_sharepoint:
-      client_id: ""
-      client_secret: ""
-      tenant_id: ""
-      site_url: ""
+      client_id: "${SHAREPOINT_CLIENT_ID}"
+      client_secret: "${SHAREPOINT_CLIENT_SECRET}"
+      tenant_id: "${SHAREPOINT_TENANT_ID}"
+      site_url: "${SHAREPOINT_SITE_URL}"
 
   #### WF3 CONNECTORS ####
 
@@ -304,7 +305,7 @@ connectors:
                       }
                     }
     esignatures:
-      secret_token: ""
+      secret_token: "${ESIGNATURE_SECRET_TOKEN}"
   - name: SALESFORCE
     mock: true
     general_settings:
@@ -322,10 +323,10 @@ connectors:
                       "errors": []
                     }
     salesforce:
-      instance_url: ""
-      username: ""
-      password: ""
-      security_token: ""
+      instance_url: "${SALESFORCE_INSTANCE_URL}"
+      username: "${SALESFORCE_USERNAME}"
+      password: "${SALESFORCE_PASSWORD}"
+      security_token: "${SALESFORCE_SECURITY_TOKEN}"
   - name: EMAIL
     mock: true
     general_settings:
@@ -344,10 +345,10 @@ connectors:
                     }
     email:
       smtp_server: email-smtp.us-west-2.amazonaws.com
-      from_address: ""
+      from_address: "${EMAIL_FROM_ADDRESS}"
       port: 587
-      username: ""
-      password: ""
+      username: "${AWS_SMTP_USERNAME}"
+      password: "${AWS_SMTP_PASSWORD}"
       use_tls: true
 
 
@@ -406,19 +407,19 @@ connectors:
                       "request_id": "mock-req-abc123"
                     }
     zoho_books:
-      client_id: ""
-      client_secret: ""
-      refresh_token: ""
-      organization_id: ""
+      client_id: "${ZOHO_CLIENT_ID}"
+      client_secret: "${ZOHO_CLIENT_SECRET}"
+      refresh_token: "${ZOHO_REFRESH_TOKEN}"
+      organization_id: "${ZOHO_ORGANIZATION_ID}"
       region: "us"
 
 
   # - name: SHAREPOINT
   #   microsoft_sharepoint:
-  #     client_id: "078b4b8c-72e2-4988-8832-3bd16aac7499"
-  #     client_secret: "jT68Q~y8jOZ1MbtJf1Ys5fNeHSm02QJREGBFxcMk"
-  #     tenant_id: "a47b59dc-3c90-49c8-84bc-0c9fcaa05616"
-  #     site_url: "https://samwoodluthersystems.sharepoint.com"
+  #     client_id: "${SHAREPOINT_CLIENT_ID}"
+  #     client_secret: "${SHAREPOINT_CLIENT_SECRET}"
+  #     tenant_id: "${SHAREPOINT_TENANT_ID}"
+  #     site_url: "${SHAREPOINT_SITE_URL}"
 
   # https://medium.com/@sebasqui1995/creating-a-webhook-in-servicenow-a-step-by-step-guide-a8de37ca22f0
   - name: SERVICENOW
@@ -443,23 +444,29 @@ connectors:
                       }
                     }
     servicenow:
-      instance_url: ""
-      username: ""
-      password: ""
+      instance_url: "${SERVICENOW_INSTANCE_URL}"
+      username: "${SERVICENOW_USERNAME}"
+      password: "${SERVICENOW_PASSWORD}"
 
   #### WF5 CONNECTORS ####
   - name: ABSINBOUND
     # general_settings:
     #   use_runtime_injection: true
+    
     inbound_rest:
+      path_prefix: "/payment"
+      target_endpoint: "update_payment_status_handler"
       # Use an inline OpenAPI so this is self-contained
       openapi_spec_inline: |
         openapi: 3.0.0
         info:
           title: ABS Payment Status Hook
           version: 1.0.0
+        servers:
+          - url: http://localhost:8090/payment
+          - url: http://connectorhub_cdcs:8090/payment
         paths:
-          /allianz-business-system/update-payment-status:
+          /update-payment-status:
             post:
               operationId: absUpdatePaymentStatus
               summary: ABS tells us to generate payment for a claim
@@ -494,8 +501,113 @@ connectors:
                           received:
                             type: object
                             additionalProperties: true
-      path_prefix: /
-      target_endpoint: update_payment_status_handler
+      validate_responses: true
+      max_body_bytes: 2097152
+  - name: CONTRACTSIGNED
+    inbound_rest:
+      path_prefix: "/contract"
+      target_endpoint: "contract_signed_handler"
+      openapi_spec_inline: |
+        openapi: 3.0.0
+        info:
+          title: Contract Signed Notification
+          version: 1.0.0
+        servers:
+          - url: http://localhost:8090/contract
+          - url: http://connectorhub_cdcs:8090/contract
+        paths:
+          /contract-signed:
+            post:
+              operationId: contractSigned
+              summary: External system notifies us that a contract has been signed
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [claimID, signedBy]
+                      properties:
+                        claimID:
+                          type: string
+                          description: The claim ID to update
+                          example: "42e038ce-6578-4867-97e2-ff6f821e3c88"
+                        signedBy:
+                          type: string
+                          format: email
+                          description: Email address of the person who signed the contract
+                          example: "john.doe@example.com"
+                        verifiedBy:
+                          type: string
+                          format: email
+                          description: Email address of the person who verified the signature (optional)
+                          example: "jack.clarke@luthersystems.com"
+              responses:
+                "200":
+                  description: Contract signed notification received
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          claim_id:
+                            type: string
+                          state:
+                            type: string
+                          signed_by:
+                            type: string
+                          verified_by:
+                            type: string
+      validate_responses: true
+      max_body_bytes: 2097152
+  - name: PAYMENTSIGNED
+    inbound_rest:
+      path_prefix: "/invoice"
+      target_endpoint: "notify_invoice_signed_handler"
+      openapi_spec_inline: |
+        openapi: 3.0.0
+        info:
+          title: Payment Signature Notification
+          version: 1.0.0
+        servers:
+          - url: http://localhost:8090/invoice
+          - url: http://connectorhub_cdcs:8090/invoice
+        paths:
+          /notify-invoice-signed:
+            post:
+              operationId: notifyInvoiceSigned
+              summary: External system notifies us that invoice/payment has been signed/approved
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      required: [claimID, signedBy]
+                      properties:
+                        claimID:
+                          type: string
+                          description: The claim ID to update
+                          example: "42e038ce-6578-4867-97e2-ff6f821e3c88"
+                        signedBy:
+                          type: string
+                          format: email
+                          description: Email address of the person who signed/approved the payment
+                          example: "payments@example.com"
+              responses:
+                "200":
+                  description: Payment signature notification received
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          claim_id:
+                            type: string
+                          state:
+                            type: string
+                          signed_by:
+                            type: string
       validate_responses: true
       max_body_bytes: 2097152
   - name: SAP
@@ -518,11 +630,42 @@ connectors:
                       }
                     }
     sap_hana:
-      host: ""
+      host: "${SAP_HOST}"
       port: "443"
-      user: ""
-      password: ""
-      schema: ""
+      user: "${SAP_USER}"
+      password: "${SAP_PASSWORD}"
+      schema: "${SAP_SCHEMA}"
       connection_type: "auto"
       ssl: true
       validate_certificate: false
+
+  - name: D365FO
+    mock: true
+    general_settings:
+      mock_settings:
+        mock_settings:
+          passthrough_unmocked: false
+          mock_responses:
+            D365FO:
+              d365fo_create_entity_record:
+                __default__:
+                  response: |
+                    {
+                      "record": {
+                        "RecId": "5637144576",
+                        "Name": "DAT-AP-PAY",
+                        "Type": "Payment",
+                        "Description": "AP payments",
+                        "VoucherSeriesCode": "VOUCHER",
+                        "dataAreaId": "DAT",
+                        "status": "posted",
+                        "transaction_id": "D365FO-TXN-1001",
+                        "posting_ref": "VOUCHER",
+                        "amount": 2500.00
+                      }
+                    }
+    d365_fo:
+      base_url: "${D365FO_BASE_URL}"
+      client_id: "${D365FO_CLIENT_ID}"
+      client_secret: "${D365FO_CLIENT_SECRET}"
+      tenant_id: "${D365FO_TENANT_ID}"

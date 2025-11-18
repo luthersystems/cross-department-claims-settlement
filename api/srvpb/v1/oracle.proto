@@ -195,4 +195,13 @@ service CdcsService {
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
   }
+
+  // ------------------------------------------------------------
+  // GET CLAIM STATE
+  // ------------------------------------------------------------
+
+  rpc GetClaimState(pb.v1.GetClaimStateRequest) returns (pb.v1.GetClaimStateResponse) {
+    option (google.api.http) = {get: "/v1/cdcs/GetClaimState/{claim_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+  }
 }

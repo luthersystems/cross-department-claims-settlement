@@ -75,3 +75,8 @@ func (p *portal) InvokeProcess(ctx context.Context, req *pb.InvokeProcessRequest
 	fmt.Printf("InvokeProcess payload: %+v\n", req)
 	return oracle.Call(p.orc, ctx, "invoke_process", req, &pb.InvokeProcessResponse{}, p.defaultConfigs(ctx)...)
 }
+
+func (p *portal) GetClaimState(ctx context.Context, req *pb.GetClaimStateRequest) (*pb.GetClaimStateResponse, error) {
+	fmt.Printf("GetClaimState payload: %+v\n", req)
+	return oracle.Call(p.orc, ctx, "get_claim_state", req, &pb.GetClaimStateResponse{}, p.defaultConfigs(ctx)...)
+}

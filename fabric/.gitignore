@@ -11,3 +11,4 @@ shiroclient_phylum.yaml
 shiroclient_fast.yaml
 shiroclient.yaml
 fabric-client_template.yaml
+/connectorhub.env

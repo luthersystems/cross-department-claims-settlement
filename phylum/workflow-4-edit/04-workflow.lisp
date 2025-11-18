@@ -8,11 +8,12 @@
 (defun wf4-claim-init-simple-state-handler ()
   (labels
     ([parse (resp entity)
-      ;; Simple init - just extract claim_id
+      ;; Simple init - validate claim_id exists but don't include it in parsed
+      ;; NEVER include claim_id in parsed - it's managed by entity manager
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
-        (sorted-map "claim_id" claim-id))]
+        (sorted-map))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) ()]
      [create-events (entity parsed accessors) (vector)])
@@ -42,10 +43,7 @@
                             "is_inclusive_tax" *wf4-default-is-inclusive-tax*
                             "currency_code"    *wf4-default-currency-code*
                             "line_items"       *wf4-default-line-items*))])
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"    claim-id
           "signed_by"   signed-by
           "verified_by" verified-by
           "zoho"        zoho))]
@@ -53,7 +51,6 @@
      [stage-durable (entity parsed accessors)
       ;; Store signedBy/verifiedBy and Zoho config
       (sorted-map
-        "claim_id"    (get parsed "claim_id")
         "signed_by"   (get parsed "signed_by")
         "verified_by" (get parsed "verified_by")
         "zoho"        (get parsed "zoho"))]
@@ -97,32 +94,15 @@
                               "is_inclusive_tax" *wf4-default-is-inclusive-tax*
                               "currency_code"    *wf4-default-currency-code*
                               "line_items"       *wf4-default-line-items*))])
-        (cc:infof (sorted-map
-                    "claim_id" claim-id
-                    "current_state" (get entity "state")
-                    "has_signed_by" (not (nil? signed-by))
-                    "signed_by" signed-by
-                    "verified_by" verified-by
-                    "signed_by_source" (if (get resp "signedBy") "resp" "entity")
-                    "resp_keys" (if resp (keys resp) (vector))
-                    "entity_keys" (keys entity))
-                  "wf4-claim-contract-signed-state-handler: parse - arrived at CONTRACT_SIGNED, preparing Zoho invoice")
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"    claim-id
           "signed_by"   signed-by
           "verified_by" verified-by
           "zoho"        zoho))]
      [stage-ephemeral (entity parsed accessors)
-       (cc:infof (sorted-map
-                   "claim_id" (get entity "claim_id"))
-                 "wf4-claim-contract-signed-state-handler: stage-ephemeral")
        (vector)]
      [stage-durable (entity parsed accessors)
        ;; Store signed data and Zoho config
        (sorted-map
-         "claim_id"    (get parsed "claim_id")
          "signed_by"   (get parsed "signed_by")
          "verified_by" (get parsed "verified_by")
          "zoho"        (get parsed "zoho"))]
@@ -219,6 +199,5 @@
       :stage-durable   stage-durable
       :create-events   create-events
       :after-storage-hook after-storage-hook)))
-
 
 ;; build-event moved to substr_generic_parser.lisp

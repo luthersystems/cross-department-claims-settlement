@@ -1021,6 +1021,132 @@ type InvokeProcessResponse_Exception struct {
 
 func (*InvokeProcessResponse_Exception) isInvokeProcessResponse_Result() {}
 
+type GetClaimStateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClaimId       string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"` // Required: Unique identifier of the claim
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetClaimStateRequest) Reset() {
+	*x = GetClaimStateRequest{}
+	mi := &file_pb_v1_oracle_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetClaimStateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetClaimStateRequest) ProtoMessage() {}
+
+func (x *GetClaimStateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_v1_oracle_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetClaimStateRequest.ProtoReflect.Descriptor instead.
+func (*GetClaimStateRequest) Descriptor() ([]byte, []int) {
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetClaimStateRequest) GetClaimId() string {
+	if x != nil {
+		return x.ClaimId
+	}
+	return ""
+}
+
+type GetClaimStateResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	ClaimId string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`
+	State   string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	// Types that are valid to be assigned to Result:
+	//
+	//	*GetClaimStateResponse_Exception
+	Result        isGetClaimStateResponse_Result `protobuf_oneof:"result"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetClaimStateResponse) Reset() {
+	*x = GetClaimStateResponse{}
+	mi := &file_pb_v1_oracle_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetClaimStateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetClaimStateResponse) ProtoMessage() {}
+
+func (x *GetClaimStateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_pb_v1_oracle_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetClaimStateResponse.ProtoReflect.Descriptor instead.
+func (*GetClaimStateResponse) Descriptor() ([]byte, []int) {
+	return file_pb_v1_oracle_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetClaimStateResponse) GetClaimId() string {
+	if x != nil {
+		return x.ClaimId
+	}
+	return ""
+}
+
+func (x *GetClaimStateResponse) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *GetClaimStateResponse) GetResult() isGetClaimStateResponse_Result {
+	if x != nil {
+		return x.Result
+	}
+	return nil
+}
+
+func (x *GetClaimStateResponse) GetException() *v1.Exception {
+	if x != nil {
+		if x, ok := x.Result.(*GetClaimStateResponse_Exception); ok {
+			return x.Exception
+		}
+	}
+	return nil
+}
+
+type isGetClaimStateResponse_Result interface {
+	isGetClaimStateResponse_Result()
+}
+
+type GetClaimStateResponse_Exception struct {
+	Exception *v1.Exception `protobuf:"bytes,3,opt,name=exception,proto3,oneof"`
+}
+
+func (*GetClaimStateResponse_Exception) isGetClaimStateResponse_Result() {}
+
 var File_pb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_pb_v1_oracle_proto_rawDesc = "" +
@@ -1099,6 +1225,13 @@ const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
 	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
 	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
+	"\x06result\"1\n" +
+	"\x14GetClaimStateRequest\x12\x19\n" +
+	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"\x88\x01\n" +
+	"\x15GetClaimStateResponse\x12\x19\n" +
+	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\x124\n" +
+	"\texception\x18\x03 \x01(\v2\x14.common.v1.ExceptionH\x00R\texceptionB\b\n" +
 	"\x06resultBv\n" +
 	"\tcom.pb.v1B\vOracleProtoP\x01Z'github.com/luthersystems/cdcs/api/pb/v1\xa2\x02\x03PXX\xaa\x02\x05Pb.V1\xca\x02\x05Pb\\V1\xe2\x02\x11Pb\\V1\\GPBMetadata\xea\x02\x06Pb::V1b\x06proto3"
 
@@ -1114,7 +1247,7 @@ func file_pb_v1_oracle_proto_rawDescGZIP() []byte {
 	return file_pb_v1_oracle_proto_rawDescData
 }
 
-var file_pb_v1_oracle_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_pb_v1_oracle_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_pb_v1_oracle_proto_goTypes = []any{
 	(*UploadClaimWF1Request)(nil),  // 0: pb.v1.UploadClaimWF1Request
 	(*UploadClaimWF1Response)(nil), // 1: pb.v1.UploadClaimWF1Response
@@ -1129,21 +1262,24 @@ var file_pb_v1_oracle_proto_goTypes = []any{
 	(*UploadClaimWF5Response)(nil), // 10: pb.v1.UploadClaimWF5Response
 	(*InvokeProcessRequest)(nil),   // 11: pb.v1.InvokeProcessRequest
 	(*InvokeProcessResponse)(nil),  // 12: pb.v1.InvokeProcessResponse
-	(*v1.Exception)(nil),           // 13: common.v1.Exception
+	(*GetClaimStateRequest)(nil),   // 13: pb.v1.GetClaimStateRequest
+	(*GetClaimStateResponse)(nil),  // 14: pb.v1.GetClaimStateResponse
+	(*v1.Exception)(nil),           // 15: common.v1.Exception
 }
 var file_pb_v1_oracle_proto_depIdxs = []int32{
-	13, // 0: pb.v1.UploadClaimWF1Response.exception:type_name -> common.v1.Exception
-	13, // 1: pb.v1.UploadClaimWF2Response.exception:type_name -> common.v1.Exception
-	13, // 2: pb.v1.UploadClaimWF3Response.exception:type_name -> common.v1.Exception
+	15, // 0: pb.v1.UploadClaimWF1Response.exception:type_name -> common.v1.Exception
+	15, // 1: pb.v1.UploadClaimWF2Response.exception:type_name -> common.v1.Exception
+	15, // 2: pb.v1.UploadClaimWF3Response.exception:type_name -> common.v1.Exception
 	6,  // 3: pb.v1.UploadClaimWF4Request.line_items:type_name -> pb.v1.LineItem
-	13, // 4: pb.v1.UploadClaimWF4Response.exception:type_name -> common.v1.Exception
-	13, // 5: pb.v1.UploadClaimWF5Response.exception:type_name -> common.v1.Exception
-	13, // 6: pb.v1.InvokeProcessResponse.exception:type_name -> common.v1.Exception
-	7,  // [7:7] is the sub-list for method output_type
-	7,  // [7:7] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	15, // 4: pb.v1.UploadClaimWF4Response.exception:type_name -> common.v1.Exception
+	15, // 5: pb.v1.UploadClaimWF5Response.exception:type_name -> common.v1.Exception
+	15, // 6: pb.v1.InvokeProcessResponse.exception:type_name -> common.v1.Exception
+	15, // 7: pb.v1.GetClaimStateResponse.exception:type_name -> common.v1.Exception
+	8,  // [8:8] is the sub-list for method output_type
+	8,  // [8:8] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_pb_v1_oracle_proto_init() }
@@ -1169,13 +1305,16 @@ func file_pb_v1_oracle_proto_init() {
 	file_pb_v1_oracle_proto_msgTypes[12].OneofWrappers = []any{
 		(*InvokeProcessResponse_Exception)(nil),
 	}
+	file_pb_v1_oracle_proto_msgTypes[14].OneofWrappers = []any{
+		(*GetClaimStateResponse_Exception)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_pb_v1_oracle_proto_rawDesc), len(file_pb_v1_oracle_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

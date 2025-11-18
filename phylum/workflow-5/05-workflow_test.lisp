@@ -35,8 +35,9 @@
 ;; =============================
 ;; Test: Create SAP Event
 ;; =============================
-(test "wf5-mk-sap-store-payment-event"
+(test "wf5-mk-sap-record-payment-event"
       (let* ([entity (mk-test-entity-wf5)]
+             [d365fo-record (sorted-map "RecId" "D365FO-12345" "Name" "JOURNAL-001")]
              [sap-payload (sorted-map
                            "payment_id" "PAY-12345"
                            "invoice_id" "INV-789"
@@ -47,11 +48,11 @@
                            "payment_method" "BANK_TRANSFER"
                            "payment_date" "2024-01-20"
                            "status" "pending")]
-             [event (wf5-mk-sap-store-payment-event entity sap-payload)])
+             [event (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload)])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "SAP"))
-        (assert (equal? (get event "eng") "store sap payment"))))
+        (assert (equal? (get event "eng") "record payment in sap hana"))))
 
 ;; =============================
 ;; Test: Init State Handler Parse
@@ -59,12 +60,14 @@
 (test "wf5-claim-init-state-handler-parse"
       (let* ([handler (wf5-claim-init-state-handler)]
              [parse-fn (get handler :parse)]
-             [resp (sorted-map
-                    "policy_id" "POL-8872")]
+             [resp (sorted-map)]
              [entity (sorted-map "claim_id" "CLM-4567")]
              [parsed (funcall parse-fn resp entity)])
         (assert (not (nil? parsed)))
-        (assert (equal? (get parsed "policy_id") "POL-8872"))))
+        ;; Init handler validates claim_id exists but doesn't include it in parsed
+        ;; claim_id is managed by entity manager, not persisted in stage functions
+        (assert (nil? (get parsed "claim_id")))
+        (assert (equal? (length (keys parsed)) 0))))
 
 ;; =============================
 ;; Test: SAP Payment Stored State Handler
