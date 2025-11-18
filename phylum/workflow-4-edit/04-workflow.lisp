@@ -8,6 +8,10 @@
 (defun wf4-claim-init-simple-state-handler ()
   (labels
     ([parse (resp entity)
+      (cc:infof (sorted-map
+                  "resp" resp
+                  "entity" entity)
+                "wf4-claim-init-simple-state-handler: parse")
       ;; Simple init - just extract claim_id
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
         (when (nil? claim-id)
@@ -26,6 +30,10 @@
 (defun wf4-claim-waiting-for-signature-state-handler ()
   (labels
     ([parse (resp entity)
+      (cc:infof (sorted-map
+                  "resp" resp
+                  "entity" entity)
+                "wf4-claim-waiting-for-signature-state-handler: parse")
       ;; Waiting state - accepts signedBy/verifiedBy when external system calls /contract-signed
       ;; When external endpoint calls, resp contains signedBy/verifiedBy and we create Zoho event directly
       ;; During unified process transition, resp is empty - just wait (no events)
@@ -42,10 +50,7 @@
                             "is_inclusive_tax" *wf4-default-is-inclusive-tax*
                             "currency_code"    *wf4-default-currency-code*
                             "line_items"       *wf4-default-line-items*))])
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"    claim-id
           "signed_by"   signed-by
           "verified_by" verified-by
           "zoho"        zoho))]
@@ -53,7 +58,6 @@
      [stage-durable (entity parsed accessors)
       ;; Store signedBy/verifiedBy and Zoho config
       (sorted-map
-        "claim_id"    (get parsed "claim_id")
         "signed_by"   (get parsed "signed_by")
         "verified_by" (get parsed "verified_by")
         "zoho"        (get parsed "zoho"))]
@@ -107,22 +111,15 @@
                     "resp_keys" (if resp (keys resp) (vector))
                     "entity_keys" (keys entity))
                   "wf4-claim-contract-signed-state-handler: parse - arrived at CONTRACT_SIGNED, preparing Zoho invoice")
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"    claim-id
           "signed_by"   signed-by
           "verified_by" verified-by
           "zoho"        zoho))]
      [stage-ephemeral (entity parsed accessors)
-       (cc:infof (sorted-map
-                   "claim_id" (get entity "claim_id"))
-                 "wf4-claim-contract-signed-state-handler: stage-ephemeral")
        (vector)]
      [stage-durable (entity parsed accessors)
        ;; Store signed data and Zoho config
        (sorted-map
-         "claim_id"    (get parsed "claim_id")
          "signed_by"   (get parsed "signed_by")
          "verified_by" (get parsed "verified_by")
          "zoho"        (get parsed "zoho"))]

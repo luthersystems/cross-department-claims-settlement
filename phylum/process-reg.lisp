@@ -19,18 +19,45 @@
 ;; -----------------------------------------------------------------------------
 
 ;; Waiting state for payment signature - waits for inbound REST call
+;; Sends Teams notification when entering this state
 (defun waiting-for-payment-signature-state-handler ()
   (labels
     ([parse (resp entity)
       ;; Waiting state - accepts signedBy when external system calls payment signature endpoint
-      ;; During unified process transition, resp is empty - just wait (no events)
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
-             [signed-by   (get resp "signedBy")])  ;; Only present when called from external endpoint
+             [signed-by   (get resp "signedBy")]  ;; Only present when called from external endpoint
+             [policy-id   (get entity "policy_id")]
+             [amount      (get entity "amount")]
+             [invoice-id  (get entity "zoho_invoice_id")]
+             [thread-id   (get entity "teams_thread_id")]
+             [message-id  (get entity "teams_message_id")])
+        (cc:infof (sorted-map 
+                   "claim_id" claim-id
+                   "teams_thread_id" thread-id
+                   "teams_message_id" message-id
+                   "entity_keys" (keys entity)
+                   "has_signed_by" (not (nil? signed-by)))
+                  "Waiting for payment signature - checking Teams IDs")
         (when (nil? claim-id)
           (set-exception-business "missing claim_id"))
         (sorted-map
-          "claim_id"  claim-id
-          "signed_by" signed-by))]
+          "claim_id"    claim-id
+          "signed_by"   signed-by
+          "thread_id"   thread-id
+          "message_id"  message-id
+          "message"     (format-string
+                          "📋 **Claim Payment Request**\n\n"
+                          "**Claim ID:** {}\n"
+                          "**Policy ID:** {}\n"
+                          "**Amount:** {}\n"
+                          "**Invoice ID:** {}\n"
+                          "**Status:** Claim approved, invoice generated, contract signed\n"
+                          "⏳ **Awaiting payment approval**\n\n"
+                          "✅ Please review and approve payment for this claim."
+                          (or claim-id "N/A")
+                          (or policy-id "N/A")
+                          (or amount "N/A")
+                          (or invoice-id "N/A"))))]
      [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       ;; Store signedBy if provided (from external endpoint)
@@ -40,61 +67,38 @@
                                ())])
         durable-result)]  ;; Empty map during unified process transition
      [create-events (entity parsed accessors)
-      (vector)])  ;; No events - will pause here
-    (mk-state-handler
-      :next            "CLAIM_STATE_PAYMENT_TEAMS_NOTIFICATION"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
-
-;; Send Teams message with claim summary to payments team
-(defun payment-teams-notification-state-handler ()
-  (labels
-    ([parse (resp entity)
-      ;; Build claim summary message
-      (let* ([claim-id        (get entity "claim_id")]
-             [policy-id       (get entity "policy_id")]
-             [amount          (get entity "amount")]
-             [invoice-id      (get entity "zoho_invoice_id")]
-             [signed-by       (get entity "payment_signed_by")]
-             [thread-id       (get entity "teams_thread_id")]
-             [message-id      (get entity "teams_message_id")])
-        (sorted-map
-          "claim_id"    claim-id
-          "thread_id"   thread-id
-          "message_id"  message-id
-          "message"     (format-string
-                          "📋 **Claim Payment Request**\n\n"
-                          "**Claim ID:** {}\n"
-                          "**Policy ID:** {}\n"
-                          "**Amount:** {}\n"
-                          "**Invoice ID:** {}\n"
-                          "**Status:** Claim approved, invoice generated, contract signed, payment approved\n"
-                          "**Signed By:** {}\n\n"
-                          "✅ Please process payment for this claim."
-                          claim-id
-                          (or policy-id "N/A")
-                          (or amount "N/A")
-                          (or invoice-id "N/A")
-                          (or signed-by "N/A"))))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors)
-      ;; Update Teams thread message
-      (let* ([thread-id  (get parsed "thread_id")]
-             [message-id (get parsed "message_id")]
-             [message    (get parsed "message")])
+      ;; Send Teams notification when entering waiting state
+      ;; Get thread_id and message_id from entity (stored in WF1)
+      ;; Always send message, even if signedBy is present (external endpoint call)
+      (let* ([thread-id  (get entity "teams_thread_id")]
+             [message-id (get entity "teams_message_id")]
+             [message    (get parsed "message")]
+             [has-signature (get parsed "signed_by")])
+        (cc:infof (sorted-map "thread_id" thread-id "message_id" message-id "has_signature" has-signature) "Sending Teams message")
+        ;; Send Teams message if we have thread/message IDs
         (if (and thread-id message-id)
           (vector (mk-teams-update-thread-event entity thread-id message-id message))
-          (vector)))])  ;; No thread_id or message_id - skip Teams update
+          (vector)))])  
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_INIT"
+      :next            "CLAIM_STATE_PAYMENT_TEAM_NOTIFIED"
       :parse           parse
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
 
+(defun payment-team-notified-state-handler ()
+  (labels
+    ([parse (resp entity) (sorted-map)]
+    [stage-ephemeral (entity parsed accessors) (vector)]
+    [stage-durable (entity parsed accessors) ()]
+    [create-events (entity parsed accessors) (vector)])
+    (mk-state-handler
+      :next            "CLAIM_STATE_PAYMENT_TEAM_NOTIFIED"
+      :parse           parse
+      :stage-ephemeral stage-ephemeral
+      :stage-durable   stage-durable
+      :create-events   create-events)))
+      
 ;; Combined state spec for the entire process
 ;; Merges all workflow state specs and overrides specific handlers for chaining
 ;; Custom states can be inserted anywhere in the chain
@@ -108,7 +112,7 @@
        ;; Custom states for payment signature flow
        (sorted-map
          "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE" (waiting-for-payment-signature-state-handler)
-         "CLAIM_STATE_PAYMENT_TEAMS_NOTIFICATION"    (payment-teams-notification-state-handler))
+         "CLAIM_STATE_PAYMENT_TEAM_NOTIFIED"         (payment-team-notified-state-handler))
   
        ;; Overrides for unified process chaining using after-storage hooks
        ;; Workflows transition to their DONE states, then hooks chain to the next workflow
@@ -117,8 +121,15 @@
          "WF1_CLAIM_TEAMS_THREAD_CREATED"           (wf1-teams-thread-created-state-handler 
                                                       "WF2_CLAIM_STATE_INIT" 
                                                       (lambda (entity) 
-                                                        (let* ([claim-id (get entity "claim_id")]) 
-                                                          (cc:infof (sorted-map "claim_id" claim-id) "WF1 completed - chaining to WF2 via after-storage hook") 
+                                                        (let* ([claim-id (get entity "claim_id")]
+                                                               [thread-id (get entity "teams_thread_id")]
+                                                               [message-id (get entity "teams_message_id")])
+                                                          (cc:infof (sorted-map 
+                                                                     "claim_id" claim-id
+                                                                     "teams_thread_id" thread-id
+                                                                     "teams_message_id" message-id
+                                                                     "entity_keys" (keys entity)) 
+                                                                    "WF1 completed - chaining to WF2 via after-storage hook")
                                                           (let* ([updated-entity (assoc entity "state" "WF2_CLAIM_STATE_INIT")]) 
                                                             (claim-manager 'put updated-entity) 
                                                             (trigger-connector-object claim-manager claim-id (sorted-map "claim_id" claim-id))))))
@@ -127,6 +138,15 @@
          "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"      (wf2-claim-guidewire-approved-state-handler
                                                       "WF3_CLAIM_STATE_INVOICE_INIT"
                                                       (lambda (entity)
+                                                      (let* ([claim-id (get entity "claim_id")]
+                                                               [thread-id (get entity "teams_thread_id")]
+                                                               [message-id (get entity "teams_message_id")])
+                                                          (cc:infof (sorted-map 
+                                                                     "claim_id" claim-id
+                                                                     "teams_thread_id" thread-id
+                                                                     "teams_message_id" message-id
+                                                                     "entity_keys" (keys entity)) 
+                                                                    "WF2 completed - chaining to WF3 via after-storage hook"))
                                                         (let* ([claim-id (get entity "claim_id")])
                                                           (cc:infof
                                                             (sorted-map "claim_id" claim-id)
@@ -142,6 +162,15 @@
          "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED" (wf3-invoice-email-dispatched-state-handler 
                                                        "WF4_CLAIM_STATE_INIT"
                                                        (lambda (entity)
+                                                       (let* ([claim-id (get entity "claim_id")]
+                                                               [thread-id (get entity "teams_thread_id")]
+                                                               [message-id (get entity "teams_message_id")])
+                                                          (cc:infof (sorted-map 
+                                                                     "claim_id" claim-id
+                                                                     "teams_thread_id" thread-id
+                                                                     "teams_message_id" message-id
+                                                                     "entity_keys" (keys entity)) 
+                                                                    "WF3 completed - chaining to WF4 via after-storage hook"))
                                                          (let* ([claim-id (get entity "claim_id")])
                                                            (cc:infof
                                                              (sorted-map "claim_id" claim-id)

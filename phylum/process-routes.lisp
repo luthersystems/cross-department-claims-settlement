@@ -97,10 +97,19 @@
         (set-exception-business "missing signedBy in request body"))
 
       ;; Get existing claim from unified claim-manager - error if not found
+      (cc:infof (sorted-map
+                  "claim_id" claim-id
+                  "signed_by" signed-by
+                  "verified_by" verified-by)
+                "contract_signed_handler: received signature notification")
       (let* ([claim (claim-manager 'get claim-id)]
              [_     (when (nil? claim)
                       (set-exception-business (format-string "unknown claim_id: {}" claim-id)))]
              [claim-state-before (claim 'entity-state)])
+            ;  [teams-thread-id (get claim "teams_thread_id")]
+            ;  [teams-message-id (get claim "teams_message_id")])
+
+
 
         ;; Enforce that we're in the waiting state
         (when (not (equal? claim-state-before "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"))
@@ -121,7 +130,9 @@
                                   (sorted-map "signedBy" signed-by
                                              "verifiedBy" verified-by
                                              "claim_id" claim-id))]
-               [claim-state-after (if updated-entity (get updated-entity "state") claim-state-before)])
+               [claim-state-after (if updated-entity (get updated-entity "state") claim-state-before)]
+               [updated-teams-thread-id (if updated-entity (get updated-entity "teams_thread_id") nil)]
+               [updated-teams-message-id (if updated-entity (get updated-entity "teams_message_id") nil)])
 
           (route-success
             (sorted-map
