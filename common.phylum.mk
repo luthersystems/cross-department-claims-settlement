@@ -13,7 +13,7 @@ SOURCE_FILES=$(shell find . -name "*.lisp" | grep -v '/build')
 PHYLUM_NAME ?= ${PROJECT}.zip
 PHYLUM_PATH=build/${PROJECT}-${BUILD_VERSION}/${PHYLUM_NAME}
 
-SHIRO_TEST=${DOCKER_RUN} -it -v ${PHYLUMDIR}:/tmp -w /tmp ${SHIROTESTER_IMAGE}:${SHIROTESTER_VERSION}
+SHIRO_TEST=${DOCKER_RUN} -v ${PHYLUMDIR}:/tmp -w /tmp ${SHIROTESTER_IMAGE}:${SHIROTESTER_VERSION}
 
 # This is an unfortunate hack to get around DnD mounts which must
 # be relative to the host machine.
@@ -36,7 +36,7 @@ test: shiro-test
 
 .PHONY: shiro-test
 shiro-test: build
-	${SHIRO_TEST} unit-tests --verbose . workflow-1 workflow-2 workflow-3 workflow-4 workflow-5
+	${SHIRO_TEST} unit-tests --verbose . $(shell find . -name "*_test.lisp" -type f | grep -v '/build' | sed 's|^\./||' | tr '\n' ' ')
 
 .PHONY: repl
 repl:
@@ -45,17 +45,13 @@ repl:
 ${PHYLUM_PATH}: ${SOURCE_FILES}
 	mkdir -p $(dir $@)
 	@for file in $^; do \
-		dir=$$(dirname "$$file"); \
-		if [ "$$dir" != "." ]; then \
-			mkdir -p "$(dir $@)$$dir"; \
-			cp "$$file" "$(dir $@)$$dir/"; \
-		else \
-			cp "$$file" "$(dir $@)"; \
-		fi; \
+		dest=$(dir $@)$${file#./}; \
+		mkdir -p $$(dirname "$$dest"); \
+		cp "$$file" "$$dest"; \
 	done
 	sed -i='.orig' "s/LUTHER_PROJECT_VERSION/${VERSION}/" $(dir $@)/main.lisp
 	sed -i='.orig' "s/LUTHER_PROJECT_BUILD_ID/${BUILD_ID}/" $(dir $@)/main.lisp
-	cd $(dir $@) && find . -name "*.lisp" -type f | sort && zip -r $(notdir $@) .
+	cd $(dir $@) && find . -name "*.lisp" -type f | zip $(notdir $@) -@
 
 .PHONY: phylum-path
 phylum-path:
