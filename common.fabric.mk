@@ -414,7 +414,7 @@ start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
 start-ch-%: ccname=$(word 3,${parts}) # TODO
 start-ch-%: port=$$(( 9091 + ${idx} ))
-start-gw-%: port_fw=-p "${port}:8080"
+start-ch-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	env_file_flag=""; \
@@ -432,6 +432,7 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		-v /var/run/docker.sock:/var/run/docker.sock \
   		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		-p "8080:8080" \
 		-p "8090:8090" \
 		${CONNECTORHUB_ENV_VARS} \
 		$$env_file_flag \

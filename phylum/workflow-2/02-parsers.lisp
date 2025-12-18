@@ -8,7 +8,7 @@
 (defun mk-guidewire-get-claim-event (entity claim-id accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
-                  "kind" "KIND_OUTBOUND_REST"
+                  "kind" "KIND_HTTP_OUTBOUND_REST"
                   "operation" "getClaimDetails"     
                   "args" (sorted-map "claim_id" claim-id)))])
     (build-event entity req "get claim" "OUTBOUNDGW" (get accessors :entity-id))))
@@ -76,7 +76,7 @@
 (defun mk-guidewire-approval-update-event (entity args accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
-                  "kind" "KIND_OUTBOUND_REST"
+                  "kind" "KIND_HTTP_OUTBOUND_REST"
                   "operation" "updateClaimApproval"
                   "args" (sorted-map
                             "claimId"    (get args "claim_id")

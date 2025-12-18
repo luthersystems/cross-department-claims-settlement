@@ -136,10 +136,10 @@ connectors:
                       "approval": "ApprovedForSettlement",
                       "updated_at": "2025-11-04T12:30:00Z"
                     }
-    outbound_rest:
+    http_outbound_rest:
       api_name: "GuidewireClaimCenter"
       base_url: "https://api.guidewire.example.com"
-      auth_type: "none"
+      auth_type: "HTTP_OUTBOUND_REST_AUTH_TYPE_NONE"
       openapi_spec: |
         openapi: 3.0.0
         info:
@@ -277,7 +277,7 @@ connectors:
   #### WF3 CONNECTORS ####
 
   - name: ESIGNATURE
-    mock: true
+    mock: false
     general_settings:
       mock_settings:
         mock_settings:
@@ -411,7 +411,7 @@ connectors:
       client_secret: "${ZOHO_CLIENT_SECRET}"
       refresh_token: "${ZOHO_REFRESH_TOKEN}"
       organization_id: "${ZOHO_ORGANIZATION_ID}"
-      region: "us"
+      region: "ZOHO_BOOKS_REGION_US"
 
 
   # - name: SHAREPOINT
@@ -453,7 +453,7 @@ connectors:
     # general_settings:
     #   use_runtime_injection: true
     
-    inbound_rest:
+    http_inbound_rest:
       path_prefix: "/payment"
       target_endpoint: "update_payment_status_handler"
       # Use an inline OpenAPI so this is self-contained
@@ -504,7 +504,7 @@ connectors:
       validate_responses: true
       max_body_bytes: 2097152
   - name: CONTRACTSIGNED
-    inbound_rest:
+    http_inbound_rest:
       path_prefix: "/contract"
       target_endpoint: "contract_signed_handler"
       openapi_spec_inline: |
@@ -561,7 +561,7 @@ connectors:
       validate_responses: true
       max_body_bytes: 2097152
   - name: PAYMENTSIGNED
-    inbound_rest:
+    http_inbound_rest:
       path_prefix: "/invoice"
       target_endpoint: "notify_invoice_signed_handler"
       openapi_spec_inline: |
