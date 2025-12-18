@@ -1,13 +1,13 @@
+(in-package 'cdcs)
+
 ;; =============================
-;; 1) INIT -> MYSQL_RETRIEVED
+;; 1) INIT -> ORACLE_DETAILS_RETRIEVED
 ;; Retrieve cross‑dept claim from Oracle
 ;; =============================
 
 (defun wf1-claim-init-state-handler ()
   (labels
-    ([parse (resp entity accessors)
-      ;; Prioritize resp (explicit request) over entity (accumulated data)
-      ;; For unified process, resp is empty so falls back to entity
+    ([receive (resp entity accessors)
       (let* ([policy-id (get-from-resp-or-entity "policy_id" resp entity)]
              [gw-claim-id (or (get resp "gw_claim_id")
                               (get resp "guidewire_claim_id")
@@ -28,167 +28,197 @@
           "recipient_name"     recipient-name
           "issue_date"         issue-date))]
 
-     [stage-ephemeral (entity parsed accessors)   
-     (vector
-        (sorted-map :key "policy_id_ephem"
-                    :value (get parsed "policy_id")
-                    :drop-state "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"))]
+     [validate (received entity accessors)
+       (when (nil? (get received "policy_id")) (set-exception-business "missing policy_id"))
+       received]
 
-     [stage-durable (entity parsed accessors)
-      (sorted-map
-        "policy_id"        (get parsed "policy_id")
-        "gw_claim_id"      (get parsed "gw_claim_id")
-        "signer_email"     (get parsed "signer_email")
-        "signer_name"      (get parsed "signer_name")
-        "invoice_amount"   (get parsed "invoice_amount")
-        "originator_name"  (get parsed "originator_name")
-        "recipient_name"   (get parsed "recipient_name")
-        "issue_date"       (get parsed "issue_date"))]
+     [decide-next-state (validated entity accessors)
+       "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"]
+
+     [store-ephemeral (entity validated accessors)
+       (vector
+         (sorted-map :key "policy_id_ephem"
+                     :value (get validated "policy_id")
+                     :drop-state "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"))]
+
+     [store-durable (entity validated accessors)
+       (sorted-map
+         "policy_id"        (get validated "policy_id")
+         "gw_claim_id"      (get validated "gw_claim_id")
+         "signer_email"     (get validated "signer_email")
+         "signer_name"      (get validated "signer_name")
+         "invoice_amount"   (get validated "invoice_amount")
+         "originator_name"  (get validated "originator_name")
+         "recipient_name"   (get validated "recipient_name")
+         "issue_date"       (get validated "issue_date"))]
     
-    [create-events (entity parsed accessors)
-      (vector
-        (mk-oracle-get-claim-event entity (get parsed "policy_id") accessors))])
+     [send (entity validated accessors)
+       (vector
+         (mk-oracle-get-claim-event entity (get validated "policy_id") accessors))])
 
     (mk-state-handler
-      :next            "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 ;; =======================================================================
-;; 2) CLAIM_STATE_ORACLE_DETAILS_RETRIEVED -> CLAIM_STATE_EQUIFAX_VERIFIED
+;; 2) ORACLE_DETAILS_RETRIEVED -> EQUIFAX_VERIFIED
 ;; Validate identity of user using Equifax
 ;; =======================================================================
 
 (defun wf1-claim-oracle-details-retrieved-state-handler ()
   (labels
-    ;; parse Oracle Response
-    ([parse (resp entity accessors) (parse-oracle-get-claim-response resp)]
+    ([receive (resp entity accessors)
+       (parse-oracle-get-claim-response resp)]
 
-     ;; nothing to stage here
-     [stage-ephemeral (entity parsed accessors) (vector)]
+     [validate (received entity accessors)
+       (when (nil? (get received "claim_id")) (set-exception-business "missing claim_id in oracle response"))
+       received]
 
-     ;; store reference to oracle claim
-     [stage-durable (entity parsed accessors)
-      (sorted-map
-        "oracle_claim_id"  (format-string "claim:{}" (get parsed "claim_id"))
-        "amount"           (get parsed "amount")
-        "status"           (get parsed "status"))]
+     [decide-next-state (validated entity accessors)
+       "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"]
 
+     [store-ephemeral (entity validated accessors) (vector)]
 
-     ;; no further events
-     [create-events (entity parsed accessors)
-      (let* ([claimant (get parsed "claimant")])
-        (vector
-          (mk-equifax-verify-event
-            entity claimant accessors)))])
+     [store-durable (entity validated accessors)
+       (sorted-map
+         "oracle_claim_id"  (format-string "claim:{}" (get validated "claim_id"))
+         "amount"           (get validated "amount")
+         "status"           (get validated "status"))]
+
+     [send (entity validated accessors)
+       (let* ([claimant (get validated "claimant")])
+         (vector
+           (mk-equifax-verify-event
+             entity claimant accessors)))])
 
   (mk-state-handler
-    :next            "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"
-    :parse           parse
-    :stage-ephemeral stage-ephemeral
-    :stage-durable   stage-durable
-    :create-events   create-events)))
+    :receive           receive
+    :validate          validate
+    :decide-next-state decide-next-state
+    :store-ephemeral   store-ephemeral
+    :store-durable     store-durable
+    :send              send)))
 
 ;; ====================================================
-;; 2)  CLAIM_STATE_EQUIFAX_VERIFIED -> CLAIM_STATE_TEAMS_THREAD_CREATED
-;; Validate identity of user using Equifax
-;; ====================================================
+;; 3) EQUIFAX_VERIFIED -> TEAMS_THREAD_CREATED
+;; Notify Teams based on Equifax validation result
+;; =============================
 
 (defun wf1-claim-equifax-verified-state-handler ()
   (labels
-    ([parse (resp entity accessors)
-  (let* ([parsed (parse-equifax-verify-response resp)]
-         [validation (validate-equifax-response parsed)])
-    (sorted-map
-      "entity_id" (get parsed "entity_id")
-      "status"    (get parsed "status")
-      "comment"   (get parsed "comment")
-      "hit_value_emb" (get parsed "hit_value_emb")
-      "hit_value_pep" (get parsed "hit_value_pep")
-      "pstatus_det"   (get parsed "pstatus_det")
-      "list_matches"  (get parsed "list_matches")
-      "validation"    validation))]
+    ([receive (resp entity accessors)
+       (let* ([received (parse-equifax-verify-response resp)])
+         (sorted-map
+           "entity_id"     (get received "entity_id")
+           "status"        (get received "status")
+           "comment"       (get received "comment")
+           "hit_value_emb" (get received "hit_value_emb")
+           "hit_value_pep" (get received "hit_value_pep")
+           "pstatus_det"   (get received "pstatus_det")
+           "list_matches"  (get received "list_matches")))]
 
+     [validate (received entity accessors)
+       (let* ([entity-id (get received "entity_id")]
+              [status (get received "status")]
+              [comment (get received "comment")]
+              [hit-value-emb (or (get received "hit_value_emb") 0)]
+              [hit-value-pep (or (get received "hit_value_pep") 0)]
+              [pstatus-det (or (get received "pstatus_det") "Clear")]
+              [list-matches (or (get received "list_matches") (vector))]
+              [validation (validate-equifax-response (sorted-map
+                                                       "entity_id" entity-id
+                                                       "status" status
+                                                       "comment" comment
+                                                       "hit_value_emb" hit-value-emb
+                                                       "hit_value_pep" hit-value-pep
+                                                       "pstatus_det" pstatus-det
+                                                       "list_matches" list-matches))])
+         (when (nil? entity-id)
+           (cc:warnf (sorted-map "received" received) "validate: entity_id is missing from received")
+           (set-exception-business "missing entity_id"))
+         (when (nil? status)    (set-exception-business "missing status"))
+         (when (nil? comment)   (set-exception-business "missing comment"))
+         (when (nil? validation)    (set-exception-business "missing validation"))
+         (assoc received "validation" validation))]
 
-     [stage-ephemeral (entity parsed accessors) (vector)]
+     [decide-next-state (validated entity accessors)
+       "WF1_CLAIM_TEAMS_THREAD_CREATED"]
 
-     [stage-durable (entity parsed accessors)
-      (sorted-map
-        "equifax_status"      (get parsed "status")
-        "equifax_comment"     (get parsed "comment")
-        "equifax_hit_value_pep" (get parsed "hit_value_pep")
-        "equifax_hit_value_emb" (get parsed "hit_value_emb")
-        "equifax_pstatus_det" (get parsed "pstatus_det")
-        )]
+     [store-ephemeral (entity validated accessors) (vector)]
 
-     [create-events (entity parsed accessors)
-      (let* ([validation (get parsed "validation")]
-             [is-valid (get validation "valid")])
-        (if is-valid
-          ;; proceed to done state (optionally notify Teams)
-          (vector
-            (mk-teams-start-thread-event
-              entity
-              "Equifax Screening Passed"
-              (format-string "Claim {} successfully verified with Equifax." (get entity "claim_id"))
-              accessors))
-          ;; send alert to compliance team
-          (vector
-            (mk-teams-start-thread-event
-              entity
-              "Equifax Screening Alert"
-              (format-string
-                "Claim {} flagged for review: {}"
-                (get entity "claim_id")
-                (get validation "reason"))
-              accessors))))])
+     [store-durable (entity validated accessors)
+       (sorted-map
+         "equifax_status"      (get validated "status")
+         "equifax_comment"     (get validated "comment")
+         "equifax_hit_value_pep" (get validated "hit_value_pep")
+         "equifax_hit_value_emb" (get validated "hit_value_emb")
+         "equifax_pstatus_det" (get validated "pstatus_det"))]
+
+     [send (entity validated accessors)
+       (let* ([validation (get validated "validation")]
+              [is-valid (get validation "valid")])
+         (if is-valid
+           (vector
+             (mk-teams-start-thread-event
+               entity
+               "Equifax Screening Passed"
+               (format-string "Claim {} successfully verified with Equifax." (get entity "claim_id"))
+               accessors))
+           (vector
+             (mk-teams-start-thread-event
+               entity
+               "Equifax Screening Alert"
+               (format-string
+                 "Claim {} flagged for review: {}"
+                 (get entity "claim_id")
+                 (get validation "reason"))
+               accessors))))])
 
     (mk-state-handler
-      :next            "WF1_CLAIM_TEAMS_THREAD_CREATED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 ;; ===================
-;; 3) CLAIM_STATE_TEAMS_THREAD_CREATED
+;; 4) TEAMS_THREAD_CREATED
 ;; Create Teams thread and complete workflow
 ;; ===================
 
 (defun wf1-teams-thread-created-state-handler (&optional next-state after-storage-hook)
   (labels
-    ;; parse generic response (also checks for errors)
-    ([parse (resp entity accessors)
-      (let* ([parsed (parse-generic-resp resp)]
-             [thread-id (and parsed (get parsed "thread_id"))]
-             [message-id (and parsed (get parsed "message_id"))])
-        (when (nil? parsed)
-          (set-exception-unexpected "Failed to parse Teams response"))
-        (when (nil? thread-id)
-          (set-exception-unexpected "Teams response missing thread_id"))
-        (sorted-map "thread_id" thread-id "message_id" message-id))]
+    ([receive (resp entity accessors)
+       (let* ([parsed (parse-generic-resp resp)]
+              [thread-id (and parsed (get parsed "thread_id"))]
+              [message-id (and parsed (get parsed "message_id"))])
+         (sorted-map "thread_id" thread-id "message_id" message-id))]
 
-     ;; nothing to stage here
-     [stage-ephemeral (entity parsed accessors) (vector)]
+     [validate (received entity accessors)
+       (when (nil? (get received "thread_id")) (set-exception-unexpected "Teams response missing thread_id"))
+       received]
 
-     ;; store thread_id and message_id for later use
-     [stage-durable (entity parsed accessors)
-      (let* ([thread-id (get parsed "thread_id")]
-             [message-id (get parsed "message_id")]
-             [result (sorted-map "teams_thread_id" thread-id
-                                "teams_message_id" message-id)])
-        result)]
+     [decide-next-state (validated entity accessors)
+       (or next-state "WF1_CLAIM_TEAMS_THREAD_CREATED")]
 
+     [store-ephemeral (entity validated accessors) (vector)]
 
-     ;; no further events
-     [create-events (entity parsed accessors) (vector)])
+     [store-durable (entity validated accessors)
+       (sorted-map "teams_thread_id" (get validated "thread_id")
+                    "teams_message_id" (get validated "message_id"))]
+
+     [send (entity validated accessors) (vector)])
 
   (mk-state-handler
-    :next            (or next-state "WF1_CLAIM_TEAMS_THREAD_CREATED")
-    :parse           parse
-    :stage-ephemeral stage-ephemeral
-    :stage-durable   stage-durable
-    :create-events   create-events
+    :receive           receive
+    :validate          validate
+    :decide-next-state decide-next-state
+    :store-ephemeral   store-ephemeral
+    :store-durable     store-durable
+    :send              send
     :after-storage-hook after-storage-hook)))

@@ -4,122 +4,151 @@
 ;; State handlers for Workflow 5 (D365FO payment journal + SAP HANA recording)
 ;; -----------------------------------------------------------------------------
 
-;; Simple init handler for unified process - transitions to AWAITING_PAYMENT_UPDATE with no events
 (defun wf5-claim-init-state-handler ()
   (labels
-    ([parse (resp entity accessors)
-      ;; Simple init - validate claim_id exists but don't include it in parsed
-      ;; NEVER include claim_id in parsed - it's managed by entity manager
+    ([receive (resp entity accessors)
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
-        (sorted-map))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) (vector)])
-    (mk-state-handler
-      :next            "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+        (sorted-map "claim_id" claim-id))]
 
-;; Handler for awaiting payment update - waits for external payment status update
+     [validate (received entity accessors)
+       (when (nil? (get received "claim_id")) (set-exception-business "missing claim_id"))
+       received]
+
+     [decide-next-state (validated entity accessors)
+       "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+     [store-durable (entity validated accessors) (vector)]
+     [send (entity validated accessors) (vector)])
+
+    (mk-state-handler
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
+
 (defun wf5-claim-awaiting-payment-update-state-handler ()
   (labels
-    ([parse (resp entity accessors)
-      ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
-      ;; For unified process, resp contains payment_id/status from inbound REST, entity has accumulated data
+    ([receive (resp entity accessors)
       (let* ([claim-id  (or (get resp "claim_id") (get entity "claim_id"))]
              [policy-id (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
              [payment-id (get resp "payment_id")]
              [status (get resp "status")]
              [sap       (or (get resp "sap") (get entity "sap") (sorted-map))])
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
         (sorted-map
+          "claim_id"   claim-id
           "policy_id"  policy-id
           "payment_id" payment-id
           "status"    status
           "sap"        sap))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors)
+
+     [validate (received entity accessors)
+       (when (nil? (get received "claim_id")) (set-exception-business "missing claim_id"))
+       received]
+
+     [decide-next-state (validated entity accessors)
+       "WF5_CLAIM_STATE_D365FO_PAID"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
       (sorted-map
-        "policy_id"  (get parsed "policy_id")
-        "payment_id" (get parsed "payment_id")
-        "status"     (get parsed "status")
-        "sap"        (get parsed "sap"))]
-     [create-events (entity parsed accessors)
+        "policy_id"  (get validated "policy_id")
+        "payment_id" (get validated "payment_id")
+        "status"     (get validated "status")
+        "sap"        (get validated "sap"))]
+
+     [send (entity validated accessors)
       (vector (wf5-mk-d365fo-payment-event entity
                  (or (get entity "sap") (sorted-map))
                  accessors))])
+
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_D365FO_PAID"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 (defun wf5-claim-payment-approved-handler ()
   (labels
-    ([parse (resp entity accessors) resp]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors) (or parsed (sorted-map))]
-     [create-events (entity parsed accessors)
-      ;; Create D365FO payment journal event
+    ([receive (resp entity accessors) resp]
+     [validate (received entity accessors) received]
+     [decide-next-state (validated entity accessors) "WF5_CLAIM_STATE_D365FO_PAID"]
+     [store-ephemeral (entity validated accessors) (vector)]
+     [store-durable (entity validated accessors) (or validated (sorted-map))]
+     [send (entity validated accessors)
       (vector (wf5-mk-d365fo-payment-event entity
                  (or (get entity "sap") (sorted-map))
                  accessors))])
     (mk-state-handler
-      :next            "WF5_CLAIM_STATE_D365FO_PAID"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
-;; Handler for D365FO payment journal creation response
-;; Stores D365FO data and triggers SAP HANA recording
 (defun wf5-claim-d365fo-paid-handler ()
   (labels
-    ([parse (resp entity accessors) (wf5-parse-d365fo-payment resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      ;; Store D365FO payment journal data
+    ([receive (resp entity accessors) (wf5-parse-d365fo-payment resp)]
+
+     [validate (received entity accessors)
+       (when (nil? (get received "transaction_id")) (set-exception-business "missing transaction_id"))
+       received]
+
+     [decide-next-state (validated entity accessors) "WF5_CLAIM_STATE_SAP_PAID"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
       (sorted-map
-        "d365fo_payment_txn_id" (get parsed "transaction_id")
-        "d365fo_paid_amount"     (get parsed "amount")
-        "d365fo_posting_ref"     (get parsed "posting_ref")
-        "d365fo_status"          (get parsed "status"))]
-     [create-events (entity parsed accessors)
-      ;; Create SAP HANA recording event using D365FO record and entity SAP data
-      (let* ([d365fo-record (get parsed "d365fo_record")]
+        "d365fo_payment_txn_id" (get validated "transaction_id")
+        "d365fo_paid_amount"     (get validated "amount")
+        "d365fo_posting_ref"     (get validated "posting_ref")
+        "d365fo_status"          (get validated "status"))]
+
+     [create-events (entity validated accessors)
+      (let* ([d365fo-record (get validated "d365fo_record")]
              [sap-payload (or (get entity "sap") (sorted-map))])
         (vector (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload accessors)))])
-    (mk-state-handler
-      :next            "WF5_CLAIM_STATE_SAP_PAID"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
 
-;; Handler for SAP HANA payment recording response
+    (mk-state-handler
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              create-events)))
+
 (defun wf5-claim-sap-paid-handler ()
   (labels
-    ([parse (resp entity accessors) (wf5-parse-sap-payment resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      ;; Store SAP HANA recording data
-      (sorted-map
-        "sap_payment_txn_id" (get parsed "transaction_id")
-        "sap_paid_amount"    (get parsed "amount")
-        "sap_posting_ref"    (get parsed "posting_ref")
-        "sap_status"         (get parsed "status"))]
-     [create-events (entity parsed accessors) (vector)])
-    (mk-state-handler
-      :next            "WF5_CLAIM_STATE_SAP_PAID"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+    ([receive (resp entity accessors) (wf5-parse-sap-payment resp)]
 
-;; build-event moved to substr_generic_parser.lisp
+     [validate (received entity accessors)
+       (when (nil? (get received "transaction_id")) (set-exception-business "missing transaction_id"))
+       received]
+
+     [decide-next-state (validated entity accessors) "WF5_CLAIM_STATE_SAP_PAID"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
+      (sorted-map
+        "sap_payment_txn_id" (get validated "transaction_id")
+        "sap_paid_amount"    (get validated "amount")
+        "sap_posting_ref"    (get validated "posting_ref")
+        "sap_status"         (get validated "status"))]
+
+     [send (entity validated accessors) (vector)])
+
+    (mk-state-handler
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))

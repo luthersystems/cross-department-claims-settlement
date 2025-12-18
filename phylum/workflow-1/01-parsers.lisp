@@ -45,9 +45,12 @@
     (build-event entity req "verify claimant" "EQUIFAX" (get accessors :entity-id))))
 
 (defun parse-equifax-verify-response (resp)
-  (let* ([j-map (parse-generic-resp resp)]
-         [eqfx   (get j-map "equifax")] 
-         [response (get eqfx "entity_screening_response")]
+  (let* ([j-map (parse-generic-resp resp)])
+    (cc:infof (sorted-map "j-map" j-map) "parse-equifax-verify-response: raw parsed json")
+    (let* ([response (or (get (get j-map "equifax") "entity_screening_response")
+                       (get j-map "entity_screening_response")
+                       (get j-map "entity_screening_response_nested")
+                       j-map)]
          [matches  (and response (get response "list_matches"))])
       (sorted-map
         "entity_id"       (and response (get response "entity_id"))
@@ -56,7 +59,7 @@
         "hit_value_emb"   (and response (get response "hit_value_emb"))
         "hit_value_pep"   (and response (get response "hit_value_pep"))
         "pstatus_det"     (and response (get response "pstatus_det"))
-        "list_matches"    matches)))
+        "list_matches"    matches))))
 
 (defun validate-equifax-response (parsed)
   (let* ([status (get parsed "status")]

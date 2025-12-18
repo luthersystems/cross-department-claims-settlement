@@ -73,7 +73,10 @@
         (format-string "unhandled response error: {}" resp-err)))
     (let* ([container (and resp-body (get resp-body "generic"))]
            [text-json (and container (get container "text"))]
-           [parsed    (and text-json (json:load-string text-json))])
+           [parsed    (cond
+                        (text-json (json:load-string text-json))
+                        (resp-body resp-body)
+                        (:else (sorted-map)))])
       (when (and (not skip-inner-error-check) (sorted-map? parsed))
         (let ([inner-error (get parsed "error")])
           (when inner-error

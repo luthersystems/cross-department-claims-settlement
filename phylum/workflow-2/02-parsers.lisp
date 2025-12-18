@@ -85,9 +85,10 @@
     (build-event entity req "update approval" "OUTBOUNDGW" (get accessors :entity-id))))
 
 (defun parse-guidewire-approval-update (resp)
-  (sorted-map
-    "approval_status" (get resp "status")
-    "confirmation"    (get resp "message")))
+  (let* ([parsed (parse-generic-resp resp)])
+    (sorted-map
+      "approval_status" (or (get parsed "approval") (get parsed "status"))
+      "confirmation"    (or (get parsed "updated_at") (get parsed "message")))))
 
 ;; build-event moved to substr_generic_parser.lisp
 

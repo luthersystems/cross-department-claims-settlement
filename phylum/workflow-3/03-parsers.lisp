@@ -71,23 +71,38 @@
     (build-event entity req "create sf invoice" "SALESFORCE" (get accessors :entity-id))))
 
 ;; SMTP: send notification email
-; (defun mk-smtp-send-email-event (entity args)
-;   (let* ([sf-id        (get args "sf_record_id")]
-;          [sf-url       (if sf-id (format-string "{}/{}" *SF_BASE_URL* sf-id) "")]
-;          [subject      (string-replace *EMAIL_SUBJECT_TEMPLATE* "{{claim_id}}" (get entity "claim_id"))]
-;          [body-temp    (-> *EMAIL_BODY_TEMPLATE*
-;                            (string-replace "{{claim_id}}" (get entity "claim_id"))
-;                            (string-replace "{{signer_name}}" (get entity "signer_name"))
-;                            (string-replace "{{sf_record_url}}" sf-url))]
-;          [req (mk-connector-req
-;                 (sorted-map
-;                   "kind" "KIND_SMTP"
-;                   "operation" "send_email"
-;                   "args" (sorted-map
-;                            "to"      (get entity "signer_email")
-;                            "subject" subject
-;                            "body"    body-temp)))])
-;     (build-event entity req "dispatch invoice email" "SMTP")))
+; SMTP: send notification email
+(defun mk-smtp-send-email-event (entity args accessors)
+  (let* (
+         [sf-id   (get args "sf_record_id")]
+         [sf-url  (if sf-id
+                      (format-string "{}/{}" *wf3-default-sf-base-url* sf-id)
+                      "")]
+         [claim-id    (get entity "claim_id")]
+         [signer-name (get entity "signer_name")]
+         [signer-email (get entity "signer_email")]
+
+         ;; Build subject with variable substitution
+         [subject (format-string "Settlement Invoice {} Sent for Signature" claim-id)]
+
+         ;; Build body using string:join for clarity
+         [body (string:join
+                 (list
+                   (format-string "Hi {}," "Jack")
+                   ""
+                   (format-string
+                     "The inter-entity settlement invoice for claim {} has been generated "
+                     claim-id)
+                   "and sent for signature via eSignature."
+                   ""
+                   (format-string "View in Salesforce: {}" sf-url)
+                   ""
+                   "— ConnectorHub Automation")
+                 "\n")]
+
+         ;; Construct connector request
+         [req (mk-email-req *wf3-default-email-to* subject body)])
+    (build-event entity req "dispatch invoice email" "EMAIL" (get accessors :entity-id))))
 
 ;; eSignature: parse create_contract → {contract_id, sign_page_url, contract_status}
 (defun parse-esignature-create-contract (resp)
