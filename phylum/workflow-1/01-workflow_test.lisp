@@ -70,7 +70,7 @@
 ;; =============================
 (test "mk-oracle-get-claim-event"
       (let* ([entity (mk-test-entity-wf1)]
-             [event (mk-oracle-get-claim-event entity "POL-8872")])
+             [event (mk-oracle-get-claim-event entity "POL-8872" (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "ORACLE"))
@@ -87,7 +87,7 @@
                         "dob" "1980-05-15"
                         "address" "123 Main Street"
                         "national_id" "AB123456C")]
-             [event (mk-equifax-verify-event entity claimant)])
+             [event (mk-equifax-verify-event entity claimant (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "EQUIFAX"))

@@ -5,7 +5,7 @@
 ;; -----------------------------------------------------------------------------
 
 ;; eSignature: create contract from template
-(defun mk-esignature-create-contract-event (entity)
+(defun mk-esignature-create-contract-event (entity accessors)
   (let* ([args (sorted-map
                  "template_id"      (or (get entity "template_id") *wf3-default-esig-template-id*)
                  "title"            (or (get entity "title")
@@ -39,10 +39,10 @@
                   "kind" "KIND_ESIGNATURES"
                   "operation" "create_contract"
                   "args" args))])
-    (build-event entity req "create invoice contract" "ESIGNATURE")))
+    (build-event entity req "create invoice contract" "ESIGNATURE" (get accessors :entity-id))))
 
 ;; Salesforce: create invoice record
-(defun mk-salesforce-create-invoice-event (entity args)
+(defun mk-salesforce-create-invoice-event (entity args accessors)
   (let* ([m *wf3-default-sf-fields-map*]
          [data (sorted-map
                  (get m "name")           (format-string "Inter-Entity Invoice {}" (get entity "claim_id"))
@@ -68,7 +68,7 @@
                               "esignature_sign_page_url__c"      (get args "sign_page_url")
                               "invoice_amount__c"             (get entity "amount")
                               "signer_name__c"    (get entity "signer_name")))))])
-    (build-event entity req "create sf invoice" "SALESFORCE")))
+    (build-event entity req "create sf invoice" "SALESFORCE" (get accessors :entity-id))))
 
 ;; SMTP: send notification email
 ; (defun mk-smtp-send-email-event (entity args)

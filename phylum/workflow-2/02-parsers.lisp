@@ -5,13 +5,13 @@
 ;; -----------------------------------------------------------------------------
 
 ;; Guidewire
-(defun mk-guidewire-get-claim-event (entity claim-id)
+(defun mk-guidewire-get-claim-event (entity claim-id accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_OUTBOUND_REST"
                   "operation" "getClaimDetails"     
                   "args" (sorted-map "claim_id" claim-id)))])
-    (build-event entity req "get claim" "OUTBOUNDGW")))
+    (build-event entity req "get claim" "OUTBOUNDGW" (get accessors :entity-id))))
 
 (defun parse-guidewire-claim (resp)
   (if (nil? resp)
@@ -24,7 +24,7 @@
 
 ;;; mysql
 
-(defun mk-mysql-check-policy-event (entity args)
+(defun mk-mysql-check-policy-event (entity args accessors)
   (let* ([sql (format-string
                 "SELECT POLICY_ID, STATUS, COVERAGE_LIMIT FROM policies WHERE POLICY_ID='{}' AND STATUS='Active' LIMIT 1"
                 (get args "policy_id"))]
@@ -33,7 +33,7 @@
                   "kind" "KIND_MYSQL"
                   "operation" "mysql_query"
                   "args" (sorted-map "sql" sql)))])
-    (build-event entity req "check policy" "MYSQL")))
+    (build-event entity req "check policy" "MYSQL" (get accessors :entity-id))))
 
 (defun parse-mysql-policy (resp)
   "Parse MySQL MCP response for policy status and coverage."
@@ -46,7 +46,7 @@
       "coverage_limit" (get row "COVERAGE_LIMIT"))))
 
 ;; sharepoint
-(defun wf2-mk-sharepoint-get-id-doc-event (entity args)
+(defun wf2-mk-sharepoint-get-id-doc-event (entity args accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind"      "KIND_MICROSOFT_SHAREPOINT"
@@ -56,7 +56,7 @@
                             "drive_id" (get args "drive_id")
                             "item_id"  (get args "item_id")
                             "filename" (get args "filename"))))])
-    (build-event entity req "get id-verification content" "SHAREPOINT")))
+    (build-event entity req "get id-verification content" "SHAREPOINT" (get accessors :entity-id))))
 
 
 (defun wf2-parse-sharepoint-docs (resp)
@@ -73,7 +73,7 @@
 
 ;;;; guidewire (end)
 
-(defun mk-guidewire-approval-update-event (entity args)
+(defun mk-guidewire-approval-update-event (entity args accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_OUTBOUND_REST"
@@ -82,7 +82,7 @@
                             "claimId"    (get args "claim_id")
                             "approval"   (get args "approval")
                             "approvedBy" (get args "approved_by"))))])
-    (build-event entity req "update approval" "OUTBOUNDGW")))
+    (build-event entity req "update approval" "OUTBOUNDGW" (get accessors :entity-id))))
 
 (defun parse-guidewire-approval-update (resp)
   (sorted-map

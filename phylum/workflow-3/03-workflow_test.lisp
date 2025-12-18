@@ -74,7 +74,7 @@
 ;; =============================
 (test "mk-esignature-create-contract-event"
       (let* ([entity (mk-test-entity-wf3)]
-             [event (mk-esignature-create-contract-event entity)])
+             [event (mk-esignature-create-contract-event entity (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "ESIGNATURE"))
@@ -89,7 +89,7 @@
              [args (sorted-map
                     "contract_id" "contract-abc123"
                     "sign_page_url" "https://esign.example.com/sign/abc123")]
-             [event (mk-salesforce-create-invoice-event entity args)])
+             [event (mk-salesforce-create-invoice-event entity args (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "SALESFORCE"))

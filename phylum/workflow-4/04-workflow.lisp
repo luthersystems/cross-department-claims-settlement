@@ -6,7 +6,7 @@
 
 (defun wf4-claim-init-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
       ;; For unified process, resp is empty so falls back to entity
       (let* ([claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
@@ -55,7 +55,7 @@
         "sharepoint" (get parsed "sharepoint")
         "servicenow" (get parsed "servicenow"))]
      [create-events (entity parsed accessors)
-      (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))])
+      (vector (mk-zoho-create-invoice-event entity (get parsed "zoho") accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
       :parse           parse
@@ -65,7 +65,7 @@
 
 (defun wf4-zoho-invoice-created-state-handler ()
   (labels
-    ([parse (resp entity) (parse-zoho-create-invoice resp)]
+    ([parse (resp entity accessors) (parse-zoho-create-invoice resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       (sorted-map
@@ -78,7 +78,7 @@
         "zoho_customer_id"     (get parsed "customer_id")
         "zoho_customer_name"   (get parsed "customer_name"))]
      [create-events (entity parsed accessors)
-      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity "sharepoint")))])
+      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity "sharepoint") accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
       :parse           parse
@@ -88,14 +88,14 @@
 
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       (let* ([documents (wf4-parse-sharepoint-docs resp)])
         (assoc documents "retrieved_at" "2025-11-11"))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       (sorted-map "sharepoint_documents" parsed)]
      [create-events (entity parsed accessors)
-      (vector (mk-servicenow-create-incident-event entity (get entity "servicenow")))])
+      (vector (mk-servicenow-create-incident-event entity (get entity "servicenow") accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"
       :parse           parse
@@ -105,7 +105,7 @@
 
 (defun wf4-servicenow-incident-created-state-handler (&optional next-state)
   (labels
-    ([parse (resp entity) (parse-servicenow-create-incident resp)]
+    ([parse (resp entity accessors) (parse-servicenow-create-incident resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       (sorted-map

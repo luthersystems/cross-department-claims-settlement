@@ -54,7 +54,7 @@
 ;; =============================
 (test "mk-guidewire-get-claim-event"
       (let* ([entity (mk-test-entity-wf2)]
-             [event (mk-guidewire-get-claim-event entity "GW-CLM-12345")])
+             [event (mk-guidewire-get-claim-event entity "GW-CLM-12345" (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "OUTBOUNDGW"))
@@ -66,7 +66,7 @@
 (test "mk-mysql-check-policy-event"
       (let* ([entity (mk-test-entity-wf2)]
              [args (sorted-map "policy_id" "POL-8872")]
-             [event (mk-mysql-check-policy-event entity args)])
+             [event (mk-mysql-check-policy-event entity args (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "MYSQL"))

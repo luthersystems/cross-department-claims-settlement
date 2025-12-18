@@ -4,13 +4,13 @@
 ;; Parsers and Event Creators for Workflow 1 (Oracle → Equifax → Teams)
 ;; -----------------------------------------------------------------------------
 
-(defun mk-oracle-get-claim-event (entity policy-id) 
+(defun mk-oracle-get-claim-event (entity policy-id accessors) 
   (let* ([sql (format-string 
                 "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = '{}'" 
                 policy-id)] 
          [req (mk-connector-req 
           (sorted-map "kind" "KIND_ORACLE_READONLY" "operation" "execute_query" "args" (sorted-map "query" sql)))]) 
-        (build-event entity req "get claim" "ORACLE")))
+        (build-event entity req "get claim" "ORACLE" (get accessors :entity-id))))
 
 (defun parse-oracle-get-claim-response (resp)
   (let* ([j-map (parse-generic-resp resp)]
@@ -28,7 +28,7 @@
                     "address"     (get row "CLAIMANT_ADDRESS")
                     "national_id" (get row "CLAIMANT_NATIONAL_ID")))))
 
-(defun mk-equifax-verify-event (entity claimant)
+(defun mk-equifax-verify-event (entity claimant accessors)
   (let* ([req (sorted-map
                 "equifax"
                 (sorted-map
@@ -42,7 +42,7 @@
                     "postal_code" *wf1-default-postal-code*
                     "address_country_code" *wf1-default-address-country-code*
                     "federal_id" (get claimant "national_id"))))])
-    (build-event entity req "verify claimant" "EQUIFAX")))
+    (build-event entity req "verify claimant" "EQUIFAX" (get accessors :entity-id))))
 
 (defun parse-equifax-verify-response (resp)
   (let* ([j-map (parse-generic-resp resp)]
@@ -65,7 +65,7 @@
          [status-str (if (list? status) (first status) status)])
          (sorted-map "valid" true "reason" "Non-critical match or manual review passed")))
 
-(defun mk-teams-start-thread-event (entity title content)
+(defun mk-teams-start-thread-event (entity title content accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind"      "KIND_MICROSOFT_TEAMS"
@@ -75,9 +75,9 @@
                                  "content" content)))]
          [action "start thread"]
          [sys-name "TEAMS"])
-    (build-event entity req action sys-name)))
+    (build-event entity req action sys-name (get accessors :entity-id))))
 
-(defun mk-teams-update-thread-event (entity thread-id message-id content)
+(defun mk-teams-update-thread-event (entity thread-id message-id content accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind"      "KIND_MICROSOFT_TEAMS"
@@ -88,5 +88,4 @@
                                  "content"   content)))]
          [action "update thread"]
          [sys-name "TEAMS"])
-    (build-event entity req action sys-name)))
-
+    (build-event entity req action sys-name (get accessors :entity-id))))

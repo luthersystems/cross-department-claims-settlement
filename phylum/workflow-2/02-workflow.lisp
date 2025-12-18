@@ -1,6 +1,6 @@
 (defun wf2-claim-init-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Prioritize resp (explicit request) over entity (accumulated data)
       ;; For unified process, resp is empty so falls back to entity
       (let* ([guidewire-claim-id (or (get resp "guidewire_claim_id")
@@ -27,7 +27,7 @@
           "recipient_name"      recipient-name
           "issue_date"          issue-date))]
 
-     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-ephemeral (entity parsed accessors) (vector)]
 
      [stage-durable (entity parsed accessors)
       ;; Store all fields including optional ones for WF3
@@ -43,7 +43,7 @@
         "issue_date"          (get parsed "issue_date"))]
 
      [create-events (entity parsed accessors)
-      (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id")))])
+      (vector (mk-guidewire-get-claim-event entity (get parsed "guidewire_claim_id") accessors))])
 
     (mk-state-handler
       :next            "WF2_CLAIM_STATE_GUIDEWIRE_SNAPSHOTTED"
@@ -58,14 +58,12 @@
 ;; =============================
 (defun wf2-claim-guidewire-snapshotted-state-handler ()
   (labels
-    ([parse (resp entity) (parse-guidewire-claim (parse-generic-resp resp))] ; create
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) (parse-guidewire-claim (parse-generic-resp resp))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map "guidewire_status" (get parsed "status"))]
      [create-events (entity parsed accessors)
-      (vector (mk-mysql-check-policy-event entity ; create
-                (sorted-map "policy_id" *wf2-default-policy-id*
-                            "claim_id"  *wf2-default-claim-id*)))])
+      (vector (mk-mysql-check-policy-event entity (sorted-map "policy_id" (get entity "policy_id")) accessors))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_MYSQL_VALIDATED"
     :parse           parse
@@ -80,10 +78,9 @@
 ;; =============================
 (defun wf2-claim-mysql-validated-state-handler ()
   (labels
-    ([parse (resp entity) 
-        (parse-mysql-policy (parse-generic-resp resp))
-      ] ; create
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) 
+        (parse-mysql-policy (parse-generic-resp resp))]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
         "policy_status"  (get parsed "status")
@@ -96,7 +93,8 @@
         "site_id"  *wf2-default-sharepoint-site-id*
         "drive_id" *wf2-default-sharepoint-drive-id*
         "item_id"  *wf2-default-sharepoint-item-id*
-        "filename" *wf2-default-sharepoint-filename*)))])
+        "filename" *wf2-default-sharepoint-filename*)
+      accessors))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_SP_DOCS_COLLECTED"
     :parse           parse
@@ -112,14 +110,11 @@
 
 (defun wf2-claim-sp-docs-collected-state-handler ()
   (labels
-    ([parse (resp entity) (wf2-parse-sharepoint-docs resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) (wf2-parse-sharepoint-docs resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors) (sorted-map "sp_docs" (get parsed "documents"))]
      [create-events (entity parsed accessors)
-        (vector (mk-guidewire-approval-update-event entity  ; create
-                 (sorted-map "claim_id" (get entity "claim_id")
-                             "approval" "approved"
-                             "approved_by" (get entity "handler"))))] )
+        (vector (mk-guidewire-approval-update-event entity (sorted-map "claim_id" (get entity "claim_id") "approval" "Approved" "approved_by" "Handler") accessors))])
   (mk-state-handler
     :next            "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED"
     :parse           parse
@@ -134,8 +129,8 @@
 ;; =============================
 (defun wf2-claim-guidewire-approved-state-handler (&optional next-state after-storage-hook)
   (labels
-    ([parse (resp entity) (parse-guidewire-approval-update resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) (parse-guidewire-approval-update resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
         "approval_status" (get parsed "approval_status")

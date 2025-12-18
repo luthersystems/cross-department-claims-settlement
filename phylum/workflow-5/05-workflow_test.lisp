@@ -48,7 +48,7 @@
                            "payment_method" "BANK_TRANSFER"
                            "payment_date" "2024-01-20"
                            "status" "pending")]
-             [event (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload)])
+             [event (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "SAP"))

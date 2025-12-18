@@ -4,13 +4,13 @@
 ;; Parsers and Event Creators for Workflow 4 (Zoho → SharePoint → ServiceNow)
 ;; -----------------------------------------------------------------------------
 
-(defun mk-zoho-create-invoice-event (entity payload)
+(defun mk-zoho-create-invoice-event (entity payload accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_ZOHO_BOOKS"
                   "operation" "create_invoice"
                   "args" (sorted-map "json_data" payload)))])
-    (build-event entity req "create invoice" "ZOHO")))
+    (build-event entity req "create invoice" "ZOHO" (get accessors :entity-id))))
 
 (defun parse-zoho-create-invoice (resp)
   (let* ([parsed (parse-generic-resp resp)]
@@ -30,13 +30,13 @@
       "url"             (or (get invoice "url") (get invoice "invoice_url"))
       "line_items"      (get invoice "line_items"))))
 
-(defun wf4-mk-sharepoint-get-id-doc-event (entity args)
+(defun wf4-mk-sharepoint-get-id-doc-event (entity args accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_MICROSOFT_SHAREPOINT"
                   "operation" "get_document_content"
                   "args" args))])
-    (build-event entity req "get sharepoint doc" "SHAREPOINT")))
+    (build-event entity req "get sharepoint doc" "SHAREPOINT" (get accessors :entity-id))))
 
 (defun wf4-parse-sharepoint-docs (resp)
   (let* ([parsed (parse-generic-resp resp)]
@@ -47,13 +47,13 @@
       "web_url"    (get item "webUrl")
       "download_url" (get item "@microsoft.graph.downloadUrl"))))
 
-(defun mk-servicenow-create-incident-event (entity payload)
+(defun mk-servicenow-create-incident-event (entity payload accessors)
   (let* ([req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_SERVICENOW"
                   "operation" "create_incident"
                   "args" payload))])
-    (build-event entity req "create incident" "SERVICENOW")))
+    (build-event entity req "create incident" "SERVICENOW" (get accessors :entity-id))))
 
 (defun parse-servicenow-create-incident (resp)
   (let* ([parsed (parse-generic-resp resp)]

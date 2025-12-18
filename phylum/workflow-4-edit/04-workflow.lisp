@@ -7,7 +7,7 @@
 
 (defun wf4-claim-init-simple-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Simple init - validate claim_id exists but don't include it in parsed
       ;; NEVER include claim_id in parsed - it's managed by entity manager
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
@@ -26,7 +26,7 @@
 
 (defun wf4-claim-waiting-for-signature-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Waiting state - accepts signedBy/verifiedBy when external system calls /contract-signed
       ;; When external endpoint calls, resp contains signedBy/verifiedBy and we create Zoho event directly
       ;; During unified process transition, resp is empty - just wait (no events)
@@ -61,7 +61,7 @@
              [has-signature (not (nil? signed-by))])
         (if has-signature
           ;; External endpoint called - create Zoho event and transition to ZOHO_INVOICE_CREATED
-          (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))
+          (vector (mk-zoho-create-invoice-event entity (get parsed "zoho") accessors))
           ;; Unified process transition - no events, will pause here
           (vector)))])
     (mk-state-handler
@@ -70,9 +70,10 @@
       :stage-ephemeral stage-ephemeral
       :stage-durable   stage-durable
       :create-events   create-events)))
+
 (defun wf4-claim-contract-signed-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Parse contract signed data and prepare Zoho invoice data
       ;; signedBy and verifiedBy come from the request body (inbound) or entity (unified process)
       ;; Zoho data comes from entity (if already set) or defaults
@@ -111,7 +112,7 @@
        (cc:infof (sorted-map
                    "claim_id" (get entity "claim_id"))
                  "wf4-claim-contract-signed-state-handler: create-events - creating Zoho invoice event")
-       (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))])
+       (vector (mk-zoho-create-invoice-event entity (get parsed "zoho") accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
       :parse           parse
@@ -122,8 +123,8 @@
 
 (defun wf4-zoho-invoice-created-state-handler ()
   (labels
-    ([parse (resp entity) (parse-zoho-create-invoice resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) (parse-zoho-create-invoice resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
         "zoho_invoice_id"      (get parsed "invoice_id")
@@ -143,7 +144,7 @@
                                   "drive_id" *wf4-default-sharepoint-drive-id*
                                   "item_id"  *wf4-default-sharepoint-item-id*
                                   "filename" *wf4-default-sharepoint-filename*))])
-        (vector (wf4-mk-sharepoint-get-id-doc-event entity sharepoint-args)))])
+        (vector (wf4-mk-sharepoint-get-id-doc-event entity sharepoint-args accessors)))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
       :parse           parse
@@ -153,10 +154,10 @@
 
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       (let* ([documents (wf4-parse-sharepoint-docs resp)])
         (assoc documents "retrieved_at" "2025-11-11"))]
-     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map "sharepoint_documents" parsed)]
      [create-events (entity parsed accessors)
@@ -172,7 +173,7 @@
                                   "impact"           *wf4-default-servicenow-impact*
                                   "urgency"          *wf4-default-servicenow-urgency*
                                   "assignment_group" *wf4-default-servicenow-assignment-group*))])
-        (vector (mk-servicenow-create-incident-event entity servicenow-args)))])
+        (vector (mk-servicenow-create-incident-event entity servicenow-args accessors)))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"
       :parse           parse
@@ -182,8 +183,8 @@
 
 (defun wf4-servicenow-incident-created-state-handler (&optional next-state after-storage-hook)
   (labels
-    ([parse (resp entity) (parse-servicenow-create-incident resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) (parse-servicenow-create-incident resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map
         "servicenow_incident_id"     (get parsed "incident_id")
@@ -191,7 +192,7 @@
         "servicenow_state"           (get parsed "state")
         "servicenow_url"             (get parsed "url")
         "servicenow_short_description" (get parsed "short_description"))]
-     [create-events (entity parsed accessors) ()])
+     [create-events (entity parsed accessors) (vector)])
     (mk-state-handler
       :next            (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")
       :parse           parse

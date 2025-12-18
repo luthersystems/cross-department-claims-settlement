@@ -4,9 +4,8 @@
 ;; ---------------- Convenience: generic parser helper ----------------
 
 ;; Build a connector event from entity, request, action, and system name
-(defun build-event (entity req action sys-name)
-  (let* ([claim-id (get entity "claim_id")]
-         [oid claim-id]
+(defun build-event (entity req action sys-name entity-id)
+  (let* ([oid entity-id]
          [result (sorted-map
                    "oid" oid
                    "key" (mk-uuid)
@@ -15,19 +14,17 @@
                    "sys" sys-name
                    "eng" action
                    "req" req)])
-    (when (nil? claim-id)
+    (when (nil? entity-id)
       (cc:warnf (sorted-map
                   "action" action
                   "sys_name" sys-name
-                  "entity_keys" (keys entity)
-                  "has_claim_id" false)
-                "build-event: entity missing claim_id, oid will be nil"))
+                  "has_entity_id" false)
+                "build-event: entity-id is nil, oid will be nil"))
     (cc:infof (sorted-map
                 "action" action
                 "sys_name" sys-name
-                "claim_id" claim-id
-                "oid" oid
-                "entity_keys" (keys entity))
+                "entity_id" entity-id
+                "oid" oid)
               "build-event: creating event")
     result))
 

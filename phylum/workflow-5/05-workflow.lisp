@@ -7,7 +7,7 @@
 ;; Simple init handler for unified process - transitions to AWAITING_PAYMENT_UPDATE with no events
 (defun wf5-claim-init-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Simple init - validate claim_id exists but don't include it in parsed
       ;; NEVER include claim_id in parsed - it's managed by entity manager
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
@@ -27,7 +27,7 @@
 ;; Handler for awaiting payment update - waits for external payment status update
 (defun wf5-claim-awaiting-payment-update-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
       ;; For unified process, resp contains payment_id/status from inbound REST, entity has accumulated data
       (let* ([claim-id  (or (get resp "claim_id") (get entity "claim_id"))]
@@ -51,7 +51,8 @@
         "sap"        (get parsed "sap"))]
      [create-events (entity parsed accessors)
       (vector (wf5-mk-d365fo-payment-event entity
-                 (or (get entity "sap") (sorted-map))))])
+                 (or (get entity "sap") (sorted-map))
+                 accessors))])
     (mk-state-handler
       :next            "WF5_CLAIM_STATE_D365FO_PAID"
       :parse           parse
@@ -61,13 +62,14 @@
 
 (defun wf5-claim-payment-approved-handler ()
   (labels
-    ([parse (resp entity) resp]
+    ([parse (resp entity accessors) resp]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors) (or parsed (sorted-map))]
      [create-events (entity parsed accessors)
       ;; Create D365FO payment journal event
       (vector (wf5-mk-d365fo-payment-event entity
-                 (or (get entity "sap") (sorted-map))))])
+                 (or (get entity "sap") (sorted-map))
+                 accessors))])
     (mk-state-handler
       :next            "WF5_CLAIM_STATE_D365FO_PAID"
       :parse           parse
@@ -79,7 +81,7 @@
 ;; Stores D365FO data and triggers SAP HANA recording
 (defun wf5-claim-d365fo-paid-handler ()
   (labels
-    ([parse (resp entity) (wf5-parse-d365fo-payment resp)]
+    ([parse (resp entity accessors) (wf5-parse-d365fo-payment resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       ;; Store D365FO payment journal data
@@ -92,7 +94,7 @@
       ;; Create SAP HANA recording event using D365FO record and entity SAP data
       (let* ([d365fo-record (get parsed "d365fo_record")]
              [sap-payload (or (get entity "sap") (sorted-map))])
-        (vector (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload)))])
+        (vector (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload accessors)))])
     (mk-state-handler
       :next            "WF5_CLAIM_STATE_SAP_PAID"
       :parse           parse
@@ -103,7 +105,7 @@
 ;; Handler for SAP HANA payment recording response
 (defun wf5-claim-sap-paid-handler ()
   (labels
-    ([parse (resp entity) (wf5-parse-sap-payment resp)]
+    ([parse (resp entity accessors) (wf5-parse-sap-payment resp)]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       ;; Store SAP HANA recording data

@@ -1,7 +1,7 @@
 ;; 1) INIT → ESIG_CREATED
 (defun wf3-invoice-init-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
       ;; For unified process, resp is empty so falls back to entity
       (let* ([teams-thread-id (get entity "teams_thread_id")]
@@ -23,7 +23,7 @@
           "recipient_name"  recipient-name
           "issue_date"      issue-date
           "policy_id"       policy-id))]
-     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       ;; Preserve Teams IDs from entity - don't lose them when storing parsed data
       ;; NEVER include claim_id in stage-durable - it causes full entity replacement
@@ -39,7 +39,7 @@
      [create-events (entity parsed accessors)
       ;; Use entity (which has claim_id) instead of parsed (which doesn't)
       ;; The event creator will read fields from entity
-      (vector (mk-esignature-create-contract-event entity))])
+      (vector (mk-esignature-create-contract-event entity accessors))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_ESIG_CREATED"
       :parse parse :stage-ephemeral stage-ephemeral
@@ -48,13 +48,13 @@
 ;; 2) ESIG_CREATED → SF_SYNCED
 (defun wf3-invoice-esig-created-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       (let* ([teams-thread-id (get entity "teams_thread_id")]
              [teams-message-id (get entity "teams_message_id")]
              [claim-id (get entity "claim_id")]
              [parsed (parse-esignature-create-contract resp)])
         parsed)]
-     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (let* ([claim-id-before (get entity "claim_id")]
              [result (sorted-map
@@ -68,7 +68,8 @@
                       entity
                       (sorted-map
                         "contract_id"   (get parsed "contract_id")
-                        "sign_page_url" (get parsed "sign_page_url")))])
+                        "sign_page_url" (get parsed "sign_page_url"))
+                      accessors)])
         (vector event))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_SF_SYNCED"
@@ -78,14 +79,15 @@
 ;; 3) SF_SYNCED → EMAIL_DISPATCHED
 (defun wf3-invoice-sf-synced-state-handler ()
   (labels
-    ([parse (resp entity) (parse-salesforce-create-record resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
+    ([parse (resp entity accessors) (parse-salesforce-create-record resp)]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
       (sorted-map "sf_record_id" (get parsed "sf_record_id"))]
      [create-events (entity parsed accessors)
       (vector (mk-smtp-send-email-event
                 entity
-                (sorted-map "sf_record_id" (get parsed "sf_record_id"))))])
+                (sorted-map "sf_record_id" (get parsed "sf_record_id"))
+                accessors))])
     (mk-state-handler
       :next "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED"
       :parse parse :stage-ephemeral stage-ephemeral
@@ -94,13 +96,13 @@
 ;; 4) EMAIL_DISPATCHED → DONE (or WF4_INIT if chained)
 (defun wf3-invoice-email-dispatched-state-handler (&optional next-state after-storage-hook)
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
        (parse-smtp-send resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
+     [stage-ephemeral (entity parsed accessors) (vector)]
      [stage-durable (entity parsed accessors)
        (sorted-map "email_dispatched" true)]
      [create-events (entity parsed accessors)
-       ()])
+       (vector)])
     (mk-state-handler
       :next (or next-state "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED")
       :parse parse :stage-ephemeral stage-ephemeral
@@ -127,7 +129,7 @@
     "\n"))
 
 ;; SMTP: send notification email
-(defun mk-smtp-send-email-event (entity args)
+(defun mk-smtp-send-email-event (entity args accessors)
   (let* (
          [sf-id   (get args "sf_record_id")]
          [sf-url  (if sf-id
@@ -157,4 +159,4 @@
 
          ;; Construct connector request
          [req (mk-email-req *wf3-default-email-to* subject body)])
-    (build-event entity req "dispatch invoice email" "EMAIL")))
+    (build-event entity req "dispatch invoice email" "EMAIL" (get accessors :entity-id))))

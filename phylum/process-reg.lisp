@@ -22,7 +22,7 @@
 ;; Sends Teams notification when entering this state
 (defun waiting-for-payment-signature-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       ;; Waiting state - accepts signedBy when external system calls payment signature endpoint
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
              [signed-by   (get resp "signedBy")]  ;; Only present when called from external endpoint
@@ -69,7 +69,7 @@
              [has-signature (get parsed "signed_by")])
         ;; Send Teams message if we have thread/message IDs
         (if (and thread-id message-id)
-          (vector (mk-teams-update-thread-event entity thread-id message-id message))
+          (vector (mk-teams-update-thread-event entity thread-id message-id message accessors))
           (vector)))])  
     (mk-state-handler
       :next            "CLAIM_STATE_PAYMENT_TEAM_NOTIFIED"
@@ -80,7 +80,7 @@
 
 (defun payment-team-notified-state-handler ()
   (labels
-    ([parse (resp entity) (sorted-map)]
+    ([parse (resp entity accessors) (sorted-map)]
     [stage-ephemeral (entity parsed accessors) (vector)]
     [stage-durable (entity parsed accessors) ()]
     [create-events (entity parsed accessors) (vector)])
@@ -162,4 +162,3 @@
 
 ;; Register workflow for easy invocation
 (register-workflow "process" claim-manager)
-

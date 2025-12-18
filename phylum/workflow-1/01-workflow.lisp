@@ -5,10 +5,7 @@
 
 (defun wf1-claim-init-state-handler ()
   (labels
-    ([parse (resp entity)
-      ; resp is ch resp
-      ; entity is the entity object e.g. claim in this case.
-      ; we essentially just parse the incoming request here.
+    ([parse (resp entity accessors)
       ;; Prioritize resp (explicit request) over entity (accumulated data)
       ;; For unified process, resp is empty so falls back to entity
       (let* ([policy-id (get-from-resp-or-entity "policy_id" resp entity)]
@@ -50,7 +47,7 @@
     
     [create-events (entity parsed accessors)
       (vector
-        (mk-oracle-get-claim-event entity (get parsed "policy_id")))])
+        (mk-oracle-get-claim-event entity (get parsed "policy_id") accessors))])
 
     (mk-state-handler
       :next            "WF1_CLAIM_STATE_ORACLE_DETAILS_RETRIEVED"
@@ -64,11 +61,10 @@
 ;; Validate identity of user using Equifax
 ;; =======================================================================
 
-;; mk-equifax-verify-event
 (defun wf1-claim-oracle-details-retrieved-state-handler ()
   (labels
     ;; parse Oracle Response
-    ([parse (resp entity) (parse-oracle-get-claim-response resp)]
+    ([parse (resp entity accessors) (parse-oracle-get-claim-response resp)]
 
      ;; nothing to stage here
      [stage-ephemeral (entity parsed accessors) (vector)]
@@ -86,7 +82,7 @@
       (let* ([claimant (get parsed "claimant")])
         (vector
           (mk-equifax-verify-event
-            entity claimant)))])
+            entity claimant accessors)))])
 
   (mk-state-handler
     :next            "WF1_CLAIM_STATE_EQUIFAX_VERIFIED"
@@ -102,7 +98,7 @@
 
 (defun wf1-claim-equifax-verified-state-handler ()
   (labels
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
   (let* ([parsed (parse-equifax-verify-response resp)]
          [validation (validate-equifax-response parsed)])
     (sorted-map
@@ -125,8 +121,6 @@
         "equifax_hit_value_pep" (get parsed "hit_value_pep")
         "equifax_hit_value_emb" (get parsed "hit_value_emb")
         "equifax_pstatus_det" (get parsed "pstatus_det")
-
-        ; "equifax_validation"    (and validation (get validation "reason"))
         )]
 
      [create-events (entity parsed accessors)
@@ -138,7 +132,8 @@
             (mk-teams-start-thread-event
               entity
               "Equifax Screening Passed"
-              (format-string "Claim {} successfully verified with Equifax." (get entity "claim_id"))))
+              (format-string "Claim {} successfully verified with Equifax." (get entity "claim_id"))
+              accessors))
           ;; send alert to compliance team
           (vector
             (mk-teams-start-thread-event
@@ -147,7 +142,8 @@
               (format-string
                 "Claim {} flagged for review: {}"
                 (get entity "claim_id")
-                (get validation "reason"))))))])
+                (get validation "reason"))
+              accessors))))])
 
     (mk-state-handler
       :next            "WF1_CLAIM_TEAMS_THREAD_CREATED"
@@ -164,7 +160,7 @@
 (defun wf1-teams-thread-created-state-handler (&optional next-state after-storage-hook)
   (labels
     ;; parse generic response (also checks for errors)
-    ([parse (resp entity)
+    ([parse (resp entity accessors)
       (let* ([parsed (parse-generic-resp resp)]
              [thread-id (and parsed (get parsed "thread_id"))]
              [message-id (and parsed (get parsed "message_id"))])
@@ -187,7 +183,7 @@
 
 
      ;; no further events
-     [create-events (entity parsed accessors) ()])
+     [create-events (entity parsed accessors) (vector)])
 
   (mk-state-handler
     :next            (or next-state "WF1_CLAIM_TEAMS_THREAD_CREATED")

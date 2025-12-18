@@ -133,30 +133,27 @@
 ;; Step runner (no process-local ephemeral; uses staged ephemerals API)
 ;; -----------------------------------------------------------------------------
 (defun run-state-step (entity-name entity-key instance resp states)
-  (let* ([state   (get instance "state")]
-         [spec    (lookup-state-spec state states)]
-
-         ;; 1) parse
-         [parsed  ((spec-parse spec) resp instance)]
-
-         ;; Look ahead to next state (constant per spec)
+  (let* ([state      (get instance "state")]
+         [spec       (lookup-state-spec state states)]
          [next-state (spec-next spec)]
+         [entity-id  (get instance entity-key)]
 
-          ;; Prepare ctx for handlers that need ephems/id/state/next
-         [entity-id0 (get instance entity-key)]
+         ;; Unified Accessors map
          [accessors (sorted-map
-                :state     state
-                :next      next-state
-                :entity-id entity-id0
-                :get-ephem (lambda (k) (ephem-get entity-name entity-id0 k)))]
+                :state      state
+                :next       next-state
+                :entity-id  entity-id
+                :entity-key entity-key
+                :get-ephem  (lambda (k) (ephem-get entity-name entity-id k)))]
 
-          ;; 2) stage-ephemeral (pure; can use ctx for dynamic drop-state/reads)
+         ;; 1) parse - now receives accessors
+         [parsed  ((spec-parse spec) resp instance accessors)]
+
+         ;; 2) stage-ephemeral
          [staged-ephemeral ((spec-stage-ephemeral spec) instance parsed accessors)]
 
-         ;; 3) stage-durable (pure)
-         [staged-durable   ((spec-stage-durable   spec) instance parsed accessors)]
-
-         ;; Merge durable updates into the current entity.
+         ;; 3) stage-durable (returns diff or full entity)
+         [staged-durable ((spec-stage-durable spec) instance parsed accessors)]
          [durable-entity
            (cond
              ((and (sorted-map? staged-durable)
@@ -207,7 +204,7 @@
     :after-storage-hook (or after-storage-hook false)))
 
 ;; safe defaults
-(defun _noop-parse (resp entity) resp)
+(defun _noop-parse (resp entity accessors) resp)
 
 ;; return a vector of ephemeral intents (empty by default)
 (defun _noop-stage-ephemeral (entity parsed accessors) (vector))
