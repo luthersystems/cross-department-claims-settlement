@@ -100,7 +100,7 @@
 ;; =============================
 (test "wf3-invoice-init-state-handler-parse"
       (let* ([handler (wf3-invoice-init-state-handler)]
-             [parse-fn (get handler :parse)]
+             [receive-fn (get handler :receive)]
              [resp (sorted-map
                     "claim_id" "CLM-4567"
                     "invoice_amount" "2500.00"
@@ -110,7 +110,7 @@
                     "recipient_name" "Accounts Payable"
                     "issue_date" "2024-01-15")]
              [entity (sorted-map)]
-             [parsed (funcall parse-fn resp entity)])
+             [parsed (funcall receive-fn resp entity (sorted-map))])
         (assert (not (nil? parsed)))
         ;; claim_id should NOT be in parsed - it's managed by entity manager, not persisted
         (assert (nil? (get parsed "claim_id")))
@@ -123,13 +123,15 @@
 ;; =============================
 (test "wf3-esignature-contract-created-state-handler"
       (let* ([handler (wf3-invoice-esig-created-state-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
+             [validate-fn (get handler :validate)]
              [resp (mk-test-esignature-response)]
              [entity (mk-test-entity-wf3)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
-        (assert (not (nil? parsed)))
+             [received (funcall receive-fn resp entity (sorted-map))]
+             [validated (funcall validate-fn received entity (sorted-map))]
+             [durable (funcall store-durable-fn entity validated (sorted-map))])
+        (assert (not (nil? validated)))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "esign_contract_id") "contract-abc123"))
         (assert (equal? (get durable "esign_status") "sent"))
@@ -140,13 +142,15 @@
 ;; =============================
 (test "wf3-salesforce-invoice-created-state-handler"
       (let* ([handler (wf3-invoice-sf-synced-state-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
+             [validate-fn (get handler :validate)]
              [resp (mk-test-salesforce-response)]
              [entity (mk-test-entity-wf3)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
-        (assert (not (nil? parsed)))
+             [received (funcall receive-fn resp entity (sorted-map))]
+             [validated (funcall validate-fn received entity (sorted-map))]
+             [durable (funcall store-durable-fn entity validated (sorted-map))])
+        (assert (not (nil? validated)))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "sf_record_id") "a0X5g000000ABC123"))))
 
@@ -155,13 +159,15 @@
 ;; =============================
 (test "wf3-invoice-email-dispatched-state-handler"
       (let* ([handler (wf3-invoice-email-dispatched-state-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
+             [validate-fn (get handler :validate)]
              [resp (mk-test-smtp-response)]
              [entity (mk-test-entity-wf3)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
-        (assert (not (nil? parsed)))
+             [received (funcall receive-fn resp entity (sorted-map))]
+             [validated (funcall validate-fn received entity (sorted-map))]
+             [durable (funcall store-durable-fn entity validated (sorted-map))])
+        (assert (not (nil? validated)))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "email_dispatched") true)
                 "Email dispatched flag should be set")))

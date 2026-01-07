@@ -59,28 +59,29 @@
 ;; =============================
 (test "wf5-claim-init-state-handler-parse"
       (let* ([handler (wf5-claim-init-state-handler)]
-             [parse-fn (get handler :parse)]
+             [receive-fn (get handler :receive)]
              [resp (sorted-map)]
              [entity (sorted-map "claim_id" "CLM-4567")]
-             [parsed (funcall parse-fn resp entity)])
+             [parsed (funcall receive-fn resp entity (sorted-map))])
         (assert (not (nil? parsed)))
-        ;; Init handler validates claim_id exists but doesn't include it in parsed
-        ;; claim_id is managed by entity manager, not persisted in stage functions
-        (assert (nil? (get parsed "claim_id")))
-        (assert (equal? (length (keys parsed)) 0))))
+        ;; Init handler receives claim_id for validation
+        (assert (equal? (get parsed "claim_id") "CLM-4567"))
+        (assert (equal? (length (keys parsed)) 1))))
 
 ;; =============================
 ;; Test: SAP Payment Stored State Handler
 ;; =============================
 (test "wf5-sap-payment-stored-state-handler"
       (let* ([handler (wf5-claim-sap-paid-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
+             [validate-fn (get handler :validate)]
              [resp (mk-test-sap-response)]
              [entity (mk-test-entity-wf5)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
-        (assert (not (nil? parsed)))
+             [received (funcall receive-fn resp entity (sorted-map))]
+             [validated (funcall validate-fn received entity (sorted-map))]
+             [durable (funcall store-durable-fn entity validated (sorted-map))])
+        (assert (not (nil? validated)))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "sap_payment_txn_id") "TXN-789"))
         (assert (equal? (get durable "sap_status") "posted"))))

@@ -98,7 +98,7 @@
 ;; =============================
 (test "wf1-claim-init-state-handler-parse"
       (let* ([handler (wf1-claim-init-state-handler)]
-             [parse-fn (get handler :parse)]
+             [receive-fn (get handler :receive)]
              [resp (sorted-map
                     "policy_id" "POL-8872"
                     "gw_claim_id" "GW-CLM-12345"
@@ -109,7 +109,7 @@
                     "recipient_name" "Accounts"
                     "issue_date" "2024-01-15")]
              [entity (sorted-map)]
-             [parsed (funcall parse-fn resp entity)])
+             [parsed (funcall receive-fn resp entity (sorted-map))])
         (assert (not (nil? parsed)))
         (assert (equal? (get parsed "policy_id") "POL-8872"))
         (assert (equal? (get parsed "gw_claim_id") "GW-CLM-12345"))
@@ -120,13 +120,15 @@
 ;; =============================
 (test "wf1-claim-oracle-details-retrieved-state-handler"
       (let* ([handler (wf1-claim-oracle-details-retrieved-state-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
+             [validate-fn (get handler :validate)]
              [resp (mk-test-oracle-response)]
              [entity (mk-test-entity-wf1)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
-        (assert (not (nil? parsed)))
+             [received (funcall receive-fn resp entity (sorted-map))]
+             [validated (funcall validate-fn received entity (sorted-map))]
+             [durable (funcall store-durable-fn entity validated (sorted-map))])
+        (assert (not (nil? validated)))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "oracle_claim_id") "claim:CLM-4567"))
         (assert (= (get durable "amount") 2500.00))))
@@ -136,14 +138,16 @@
 ;; =============================
 (test "wf1-claim-equifax-verified-state-handler"
       (let* ([handler (wf1-claim-equifax-verified-state-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
+             [validate-fn (get handler :validate)]
              [resp (mk-test-equifax-response)]
              [entity (mk-test-entity-wf1)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
-        (assert (not (nil? parsed)))
-        (assert (equal? (get parsed "status") "Pass"))
+             [received (funcall receive-fn resp entity (sorted-map))]
+             [validated (funcall validate-fn received entity (sorted-map))]
+             [durable (funcall store-durable-fn entity validated (sorted-map))])
+        (assert (not (nil? validated)))
+        (assert (equal? (get validated "status") "Pass"))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "equifax_status") "Pass"))
         (assert (= (get durable "equifax_hit_value_pep") 0))))

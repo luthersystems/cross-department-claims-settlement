@@ -77,12 +77,12 @@
 ;; =============================
 (test "wf2-claim-init-state-handler-parse"
       (let* ([handler (wf2-claim-init-state-handler)]
-             [parse-fn (get handler :parse)]
+             [receive-fn (get handler :receive)]
              [resp (sorted-map
                     "policy_id" "POL-8872"
                     "guidewire_claim_id" "GW-CLM-12345")]
              [entity (sorted-map)]
-             [parsed (funcall parse-fn resp entity)])
+             [parsed (funcall receive-fn resp entity (sorted-map))])
         (assert (not (nil? parsed)))
         (assert (equal? (get parsed "policy_id") "POL-8872"))
         (assert (equal? (get parsed "guidewire_claim_id") "GW-CLM-12345"))))

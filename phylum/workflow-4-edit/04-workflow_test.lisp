@@ -115,7 +115,7 @@
              [parse-fn (get handler :parse)]
              [resp (sorted-map
                     "policy_id" "POL-8872"
-                    "zoho" (sorted-map
+                    *connector-id-zoho* (sorted-map
                             "customer_id" "CUST-12345"
                             "reference_number" "CLM-4567"
                             "due_date" "2024-02-15"
