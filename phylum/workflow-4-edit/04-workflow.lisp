@@ -3,39 +3,40 @@
 ;; -----------------------------------------------------------------------------
 ;; State handlers for Workflow 4 (Zoho → SharePoint → ServiceNow)
 ;; -----------------------------------------------------------------------------
-;; Simple init handler for unified process - transitions to WAITING_FOR_SIGNATURE with no events
 
 (defun wf4-claim-init-simple-state-handler ()
   (labels
-    ([parse (resp entity)
-      ;; Simple init - validate claim_id exists but don't include it in parsed
-      ;; NEVER include claim_id in parsed - it's managed by entity manager
+    ([receive (resp entity accessors)
       (let* ([claim-id (or (get resp "claim_id") (get entity "claim_id"))])
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
-        (sorted-map))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors) ()]
-     [create-events (entity parsed accessors) (vector)])
+        (sorted-map "claim_id" claim-id))]
+
+     [validate (received entity accessors)
+       (when (nil? (get received "claim_id")) (set-exception-business "missing claim_id"))
+       received]
+
+     [decide-next-state (validated entity accessors)
+       "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+     [store-durable (entity validated accessors) (sorted-map)]
+     [send (entity validated accessors) (vector)])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 (defun wf4-claim-waiting-for-signature-state-handler ()
   (labels
-    ([parse (resp entity)
-      ;; Waiting state - accepts signedBy/verifiedBy when external system calls /contract-signed
-      ;; When external endpoint calls, resp contains signedBy/verifiedBy and we create Zoho event directly
-      ;; During unified process transition, resp is empty - just wait (no events)
+    ([receive (resp entity accessors)
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
-             [signed-by   (get resp "signedBy")]  ;; Only present when called from external endpoint
+             [signed-by   (get resp "signedBy")]
              [verified-by (or (get resp "verifiedBy") "jack.clarke@luthersystems.com")]
-             ;; Zoho data: use existing from entity or defaults
-             [zoho       (or (get resp "zoho")
-                          (get entity "zoho")
+             [zoho       (or (get resp *connector-id-zoho*)
+                          (get entity *connector-id-zoho*)
                           (sorted-map
                             "customer_id"      *wf4-default-customer-id*
                             "reference_number" (or claim-id "WF4-CLAIM-001")
@@ -46,47 +47,44 @@
         (sorted-map
           "signed_by"   signed-by
           "verified_by" verified-by
-          "zoho"        zoho))]
-     [stage-ephemeral (entity parsed accessors) (vector)]
-     [stage-durable (entity parsed accessors)
-      ;; Store signedBy/verifiedBy and Zoho config
+          *connector-id-zoho*        zoho))]
+
+     [validate (received entity accessors)
+       received]
+
+     [decide-next-state (validated entity accessors)
+       "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
       (sorted-map
-        "signed_by"   (get parsed "signed_by")
-        "verified_by" (get parsed "verified_by")
-        "zoho"        (get parsed "zoho"))]
-     [create-events (entity parsed accessors)
-      ;; Create Zoho invoice event directly when signedBy is present (from external endpoint)
-      ;; During unified process transition, signedBy will be nil, so no events (will pause)
-      (let* ([signed-by (get parsed "signed_by")]
-             [has-signature (not (nil? signed-by))])
-        (if has-signature
-          ;; External endpoint called - create Zoho event and transition to ZOHO_INVOICE_CREATED
-          (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))
-          ;; Unified process transition - no events, will pause here
+        "signed_by"   (get validated "signed_by")
+        "verified_by" (get validated "verified_by")
+        *connector-id-zoho*        (get validated *connector-id-zoho*))]
+
+     [send (entity validated accessors)
+      (let* ([signed-by (get validated "signed_by")])
+        (if (not (nil? signed-by))
+          (vector (mk-zoho-create-invoice-event entity (get validated *connector-id-zoho*) accessors))
           (vector)))])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
+
 (defun wf4-claim-contract-signed-state-handler ()
   (labels
-    ([parse (resp entity)
-      ;; Parse contract signed data and prepare Zoho invoice data
-      ;; signedBy and verifiedBy come from the request body (inbound) or entity (unified process)
-      ;; Zoho data comes from entity (if already set) or defaults
+    ([receive (resp entity accessors)
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
-             ;; signedBy comes from resp (external endpoint) or entity (stored by WAITING_FOR_SIGNATURE)
-             ;; During unified process transition, resp is empty, so get from entity
-             [signed-by   (or (get resp "signedBy")
-                              (get entity "signed_by"))]
-             [verified-by (or (get resp "verifiedBy")
-                              (get entity "verified_by")
-                              "jack.clarke@luthersystems.com")]
-             ;; Zoho data: use existing from entity or defaults
-             [zoho       (or (get resp "zoho")
-                            (get entity "zoho")
+             [signed-by   (or (get resp "signedBy") (get entity "signed_by"))]
+             [verified-by (or (get resp "verifiedBy") (get entity "verified_by") "jack.clarke@luthersystems.com")]
+             [zoho       (or (get resp *connector-id-zoho*)
+                            (get entity *connector-id-zoho*)
                             (sorted-map
                               "customer_id"      *wf4-default-customer-id*
                               "reference_number" (or claim-id "WF4-CLAIM-001")
@@ -97,72 +95,93 @@
         (sorted-map
           "signed_by"   signed-by
           "verified_by" verified-by
-          "zoho"        zoho))]
-     [stage-ephemeral (entity parsed accessors)
-       (vector)]
-     [stage-durable (entity parsed accessors)
-       ;; Store signed data and Zoho config
+          *connector-id-zoho*        zoho))]
+
+     [validate (received entity accessors)
+       (when (nil? (get received "signed_by")) (set-exception-business "missing signature"))
+       received]
+
+     [decide-next-state (validated entity accessors)
+       "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
        (sorted-map
-         "signed_by"   (get parsed "signed_by")
-         "verified_by" (get parsed "verified_by")
-         "zoho"        (get parsed "zoho"))]
-     [create-events (entity parsed accessors)
-       ;; Create Zoho invoice event to transition to ZOHO_INVOICE_CREATED
-       (cc:infof (sorted-map
-                   "claim_id" (get entity "claim_id"))
-                 "wf4-claim-contract-signed-state-handler: create-events - creating Zoho invoice event")
-       (vector (mk-zoho-create-invoice-event entity (get parsed "zoho")))])
+         "signed_by"   (get validated "signed_by")
+         "verified_by" (get validated "verified_by")
+         *connector-id-zoho*        (get validated *connector-id-zoho*))]
+
+     [send (entity validated accessors)
+       (vector (mk-zoho-create-invoice-event entity (get validated *connector-id-zoho*) accessors))])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 
 (defun wf4-zoho-invoice-created-state-handler ()
   (labels
-    ([parse (resp entity) (parse-zoho-create-invoice resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
+    ([receive (resp entity accessors)
+       (parse-zoho-create-invoice resp)]
+
+     [validate (received entity accessors)
+       (when (nil? (get received "invoice_id")) (set-exception-business "missing invoice_id"))
+       received]
+
+     [decide-next-state (validated entity accessors)
+       "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
       (sorted-map
-        "zoho_invoice_id"      (get parsed "invoice_id")
-        "zoho_invoice_number"  (get parsed "invoice_number")
-        "zoho_invoice_status"  (get parsed "status")
-        "zoho_invoice_url"     (get parsed "url")
-        "zoho_invoice_total"   (get parsed "total")
-        "zoho_invoice_balance" (get parsed "balance")
-        "zoho_customer_id"     (get parsed "customer_id")
-        "zoho_customer_name"   (get parsed "customer_name"))]
-     [create-events (entity parsed accessors)
-      ;; Get SharePoint data from entity or use defaults
-      (let* ([sharepoint-raw (get entity "sharepoint")]
+        "zoho_invoice_id"      (get validated "invoice_id")
+        "zoho_invoice_number"  (get validated "invoice_number")
+        "zoho_invoice_status"  (get validated "status")
+        "zoho_invoice_url"     (get validated "url")
+        "zoho_invoice_total"   (get validated "total")
+        "zoho_invoice_balance" (get validated "balance")
+        "zoho_customer_id"     (get validated "customer_id")
+        "zoho_customer_name"   (get validated "customer_name"))]
+
+     [send (entity validated accessors)
+      (let* ([sharepoint-raw (get entity *connector-id-sharepoint*)]
              [sharepoint-args (or sharepoint-raw
                                 (sorted-map
                                   "site_id"  *wf4-default-sharepoint-site-id*
                                   "drive_id" *wf4-default-sharepoint-drive-id*
                                   "item_id"  *wf4-default-sharepoint-item-id*
                                   "filename" *wf4-default-sharepoint-filename*))])
-        (vector (wf4-mk-sharepoint-get-id-doc-event entity sharepoint-args)))])
+        (vector (wf4-mk-sharepoint-get-id-doc-event entity sharepoint-args accessors)))])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
-    ([parse (resp entity)
-      (let* ([documents (wf4-parse-sharepoint-docs resp)])
-        (assoc documents "retrieved_at" "2025-11-11"))]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      (sorted-map "sharepoint_documents" parsed)]
-     [create-events (entity parsed accessors)
-      ;; Get ServiceNow data from entity or use defaults
+    ([receive (resp entity accessors) (wf4-parse-sharepoint-docs resp)]
+     [validate (received entity accessors) received]
+     [decide-next-state (validated entity accessors)
+       "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
+      (sorted-map "sharepoint_documents" validated)]
+
+     [send (entity validated accessors)
       (let* ([claim-id (get entity "claim_id")]
-             [servicenow-raw (get entity "servicenow")]
+             [servicenow-raw (get entity *connector-id-servicenow*)]
              [servicenow-args (or servicenow-raw
                                 (sorted-map
                                   "short_description" (format-string "Create incident for claim {}" (or claim-id "WF4-CLAIM-001"))
@@ -172,32 +191,45 @@
                                   "impact"           *wf4-default-servicenow-impact*
                                   "urgency"          *wf4-default-servicenow-urgency*
                                   "assignment_group" *wf4-default-servicenow-assignment-group*))])
-        (vector (mk-servicenow-create-incident-event entity servicenow-args)))])
+        (vector (mk-servicenow-create-incident-event entity servicenow-args accessors)))])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 (defun wf4-servicenow-incident-created-state-handler (&optional next-state after-storage-hook)
   (labels
-    ([parse (resp entity) (parse-servicenow-create-incident resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      (sorted-map
-        "servicenow_incident_id"     (get parsed "incident_id")
-        "servicenow_incident_number" (get parsed "incident_number")
-        "servicenow_state"           (get parsed "state")
-        "servicenow_url"             (get parsed "url")
-        "servicenow_short_description" (get parsed "short_description"))]
-     [create-events (entity parsed accessors) ()])
-    (mk-state-handler
-      :next            (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
-      :after-storage-hook after-storage-hook)))
+    ([receive (resp entity accessors)
+       (parse-servicenow-create-incident resp)]
 
-;; build-event moved to substr_generic_parser.lisp
+     [validate (received entity accessors)
+       (when (nil? (get received "incident_id")) (set-exception-business "missing incident_id"))
+       received]
+
+     [decide-next-state (validated entity accessors)
+       (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
+      (sorted-map
+        "servicenow_incident_id"     (get validated "incident_id")
+        "servicenow_incident_number" (get validated "incident_number")
+        "servicenow_state"           (get validated "state")
+        "servicenow_url"             (get validated "url")
+        "servicenow_short_description" (get validated "short_description"))]
+
+     [send (entity validated accessors) (vector)])
+
+    (mk-state-handler
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send
+      :after-storage-hook after-storage-hook)))

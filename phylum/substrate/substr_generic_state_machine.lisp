@@ -2,51 +2,25 @@
 ; 
 
 ;; -----------------------------------------------------------------------------
-;; CDCS Entity State Machine Framework
+;; CDCS Entity State Machine Framework (6-step lifecycle)
 ;; -----------------------------------------------------------------------------
 ;;
 ;; Core runtime + ephemeral storage layer for declarative state machines.
 ;;
 ;; Per-step flow:
-;;   parse(resp, entity)
-;;   → stage-ephemeral(entity, parsed)   ; vector of ephemeral intents
-;;   → stage-durable(entity, parsed)     ; partial or full durable updates
-;;   → create-events(entity, parsed)     ; emit connector events (no mutation)
-;;   → persist ephemerals (default drop-state = :next)
-;;   → advance durable entity state to :next
-;;   → purge ephemerals scheduled for the state we just entered
+;;   receive(resp, entity, accessors)           -> received (parsed response)
+;;   validate(received, entity, accessors)      -> validated (checked/enriched map)
+;;   decide-next-state(validated, entity, acc)  -> next-state (string)
+;;   store-ephemeral(entity, validated, acc)    -> vector of ephemeral intents
+;;   store-durable(entity, validated, acc)      -> partial or full durable updates
+;;   send(entity, validated, acc)               -> vector of connector events
 ;;
-;; Ephemeral storage in SideDB:
-;;   cdcs:<entity>:ephem:bucket:<entityId>:<dropState>  ; value buckets (map key→value)
-;;   cdcs:<entity>:ephem:router:<entityId>:<key>        ; router key → dropState
-;;   cdcs:<entity>:ephem:index:<entityId>:<dropState>   ; list of keys for drop-state
-;;
-;; Each ephemeral intent is a map:
-;;   { :key <string> :value <any> :drop-state <string-STATE> }
-;; Data survives until the entity enters that drop-state; then it's purged.
-;;
-;; State specs (registered in global `state-spec`) are built with (mk-state-handler)
-;; and define: :parse, :stage-ephemeral, :stage-durable, :create-events, and :next.
 ;; -----------------------------------------------------------------------------
 
 
 ;; -----------------------------------------------------------------------------
 ;; Entity Manager
 ;; -----------------------------------------------------------------------------
-;; Builds a manager for a domain entity to create/load/save/delete instances.
-;;
-;; API (returned closure):
-;;   ('name)                 -> entity-name
-;;   ('new)                  -> transition map { "put": entity, "events": [...] }
-;;   ('get  <id>)            -> entity-instance | ()
-;;   ('put  <entity-map>)    -> ()
-;;   ('del  <id>)            -> ()
-;;
-;; Parameters:
-;;   entity-name: Name of the entity type (e.g., "claim_wf2")
-;;   entity-key: Primary key field name (e.g., "claim_id")
-;;   initial-state: Starting state for new entities
-;;   states: Map of state-name -> state-handler
 (defun mk-entity-manager (entity-name entity-key initial-state states)
   (lambda ()
     (labels
@@ -92,10 +66,6 @@
 ;; -----------------------------------------------------------------------------
 ;; Entity Instance
 ;; -----------------------------------------------------------------------------
-;; Instance with:
-;;   ('init)   -> { "put": entity, "events": [] }
-;;   ('handle) -> advance one step given a connector response
-;;
 (defun mk-entity-instance (entity-name entity-key initial-state states entity)
   (labels
     ([init ()
@@ -104,7 +74,6 @@
        (sorted-map "put" entity "events" (vector))]
 
      [handle (resp &optional ctx)
-      ;; Optional guard before running the FSM
       (let* ([required-state (get ctx "required_state")]
             [current-state  (get entity "state")])
         (when (and required-state (not (equal? current-state required-state)))
@@ -117,8 +86,6 @@
                 (format-string
                   "entity not in required state (have {}, expected {})"
                   current-state required-state)))
-      ;; Proceed with FSM transition
-      ; step 2 run invoked here with
       (run-state-step entity-name entity-key entity resp states))])
 
 
@@ -130,33 +97,35 @@
 
 
 ;; -----------------------------------------------------------------------------
-;; Step runner (no process-local ephemeral; uses staged ephemerals API)
+;; Step runner (Unified Accessor Context)
 ;; -----------------------------------------------------------------------------
 (defun run-state-step (entity-name entity-key instance resp states)
-  (let* ([state   (get instance "state")]
-         [spec    (lookup-state-spec state states)]
+  (let* ([state      (get instance "state")]
+         [spec       (lookup-state-spec state states)]
+         [entity-id  (get instance entity-key)]
 
-         ;; 1) parse
-         [parsed  ((spec-parse spec) resp instance)]
-
-         ;; Look ahead to next state (constant per spec)
-         [next-state (spec-next spec)]
-
-          ;; Prepare ctx for handlers that need ephems/id/state/next
-         [entity-id0 (get instance entity-key)]
+         ;; Unified Accessors map (built early)
          [accessors (sorted-map
-                :state     state
-                :next      next-state
-                :entity-id entity-id0
-                :get-ephem (lambda (k) (ephem-get entity-name entity-id0 k)))]
+                :state      state
+                :entity-id  entity-id
+                :entity-key entity-key
+                :get-ephem  (lambda (k) (ephem-get entity-name entity-id k)))]
 
-          ;; 2) stage-ephemeral (pure; can use ctx for dynamic drop-state/reads)
-         [staged-ephemeral ((spec-stage-ephemeral spec) instance parsed accessors)]
+         ;; 1) receive - parses raw response
+         [received  ((spec-receive spec) resp instance accessors)]
 
-         ;; 3) stage-durable (pure)
-         [staged-durable   ((spec-stage-durable   spec) instance parsed accessors)]
+         ;; 2) validate - business logic / enrichment
+         [validated ((spec-validate spec) received instance accessors)]
 
-         ;; Merge durable updates into the current entity.
+         ;; 3) decide-next-state
+         [next-state ((spec-decide-next-state spec) validated instance accessors)]
+         [_          (assoc! accessors :next next-state)]
+
+         ;; 4) store-ephemeral
+         [staged-ephemeral ((spec-store-ephemeral spec) instance validated accessors)]
+
+         ;; 5) store-durable (returns diff or full entity)
+         [staged-durable ((spec-store-durable spec) instance validated accessors)]
          [durable-entity
            (cond
              ((and (sorted-map? staged-durable)
@@ -164,26 +133,22 @@
              ((sorted-map? staged-durable) (make-mergemap instance staged-durable)) ; diff
              (:else instance))]
 
-          ;; 4) events (pure; may read ephems via ctx)
-         [events ((spec-create-events spec) durable-entity parsed accessors)]
+          ;; 6) send - emits events
+         [events ((spec-send spec) durable-entity validated accessors)]
 
-         [next-state (spec-next spec)]
-         [entity-id  (get durable-entity entity-key)])
+         [entity-id-final (get durable-entity entity-key)])
 
-    ;; persist staged ephemerals for the default drop-state = next-state
-    (when (and entity-id (> (length staged-ephemeral) 0))
-      (ephem-persist-staged! entity-name entity-id next-state staged-ephemeral states))
+    ;; persist staged ephemerals
+    (when (and entity-id-final (> (length staged-ephemeral) 0))
+      (ephem-persist-staged! entity-name entity-id-final next-state staged-ephemeral states))
 
-    ;; advance state on the durable entity
+    ;; advance durable state
     (assoc! durable-entity "state" next-state)
 
-    ;; purge ephemerals scheduled for the state we just entered
-    (when entity-id
-      (ephem-purge-for-state! entity-name entity-id next-state))
+    ;; purge ephemerals for entered state
+    (when entity-id-final
+      (ephem-purge-for-state! entity-name entity-id-final next-state))
 
-    ;; Build transition result with hook from current handler spec
-    ;; Hook will be called by do-transition after storage but before events
-    ;; Use hooks to trigger next state transitions instead of immediate processing
     (let* ([after-storage-hook (spec-after-storage-hook spec)]
            [events-vector (if (vector? events) events (vector))]
            [result (sorted-map
@@ -195,38 +160,34 @@
 
 
 
-;; ---------------- Spec builder + defaults + accessors ----------------
+;; ---------------- Spec builder + defaults ----------------
 
-(defun mk-state-handler (&key next parse stage-durable stage-ephemeral create-events after-storage-hook)
+(defun mk-state-handler (&key receive validate decide-next-state store-ephemeral store-durable send next after-storage-hook)
   (sorted-map
-    :next            (or next "STATE_UNKNOWN")
-    :parse           (or parse _noop-parse)
-    :stage-durable   (or stage-durable _noop-stage-durable)
-    :stage-ephemeral (or stage-ephemeral _noop-stage-ephemeral)
-    :create-events   (or create-events _noop-create-events)
+    :receive           (or receive _noop-receive)
+    :validate          (or validate _noop-validate)
+    :decide-next-state (or decide-next-state (lambda (v e a) (or next "STATE_UNKNOWN")))
+    :store-ephemeral   (or store-ephemeral _noop-store-ephemeral)
+    :store-durable     (or store-durable _noop-store-durable)
+    :send              (or send _noop-send)
     :after-storage-hook (or after-storage-hook false)))
 
 ;; safe defaults
-(defun _noop-parse (resp entity) resp)
-
-;; return a vector of ephemeral intents (empty by default)
-(defun _noop-stage-ephemeral (entity parsed accessors) (vector))
-
-;; no durable changes by default
-(defun _noop-stage-durable (entity parsed accessors) ())
-
-;; no events by default
-(defun _noop-create-events (entity parsed accessors) (vector))
+(defun _noop-receive (resp entity accessors) resp)
+(defun _noop-validate (received entity accessors) received)
+(defun _noop-store-ephemeral (entity validated accessors) (vector))
+(defun _noop-store-durable (entity validated accessors) ())
+(defun _noop-send (entity validated accessors) (vector))
 
 ;; registry / lookup
-;; states parameter is the state spec map passed from the entity manager
 (defun lookup-state-spec (state states)
   (or (get states state) (sorted-map)))
 
-;; accessors (with fallbacks)
-(defun spec-next (spec)              (or (get spec :next) "STATE_UNKNOWN"))
-(defun spec-parse (spec)             (or (get spec :parse) _noop-parse))
-(defun spec-stage-ephemeral (spec)   (or (get spec :stage-ephemeral) _noop-stage-ephemeral))
-(defun spec-stage-durable (spec)     (or (get spec :stage-durable) _noop-stage-durable))
-(defun spec-create-events (spec)     (or (get spec :create-events) _noop-create-events))
-(defun spec-after-storage-hook (spec)  (or (get spec :after-storage-hook) false))
+;; accessors
+(defun spec-receive (spec)           (or (get spec :receive) _noop-receive))
+(defun spec-validate (spec)          (or (get spec :validate) _noop-validate))
+(defun spec-decide-next-state (spec) (or (get spec :decide-next-state) (lambda (v e a) "STATE_UNKNOWN")))
+(defun spec-store-ephemeral (spec)   (or (get spec :store-ephemeral) _noop-store-ephemeral))
+(defun spec-store-durable (spec)     (or (get spec :store-durable) _noop-store-durable))
+(defun spec-send (spec)              (or (get spec :send) _noop-send))
+(defun spec-after-storage-hook (spec) (or (get spec :after-storage-hook) false))

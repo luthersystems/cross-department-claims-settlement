@@ -54,10 +54,10 @@
 ;; =============================
 (test "mk-guidewire-get-claim-event"
       (let* ([entity (mk-test-entity-wf2)]
-             [event (mk-guidewire-get-claim-event entity "GW-CLM-12345")])
+             [event (mk-guidewire-get-claim-event entity "GW-CLM-12345" (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "OUTBOUNDGW"))
+        (assert (equal? (get event "sys") "outboundgw"))
         (assert (equal? (get event "eng") "get claim"))))
 
 ;; =============================
@@ -66,10 +66,10 @@
 (test "mk-mysql-check-policy-event"
       (let* ([entity (mk-test-entity-wf2)]
              [args (sorted-map "policy_id" "POL-8872")]
-             [event (mk-mysql-check-policy-event entity args)])
+             [event (mk-mysql-check-policy-event entity args (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "MYSQL"))
+        (assert (equal? (get event "sys") "mysql"))
         (assert (equal? (get event "eng") "check policy"))))
 
 ;; =============================
@@ -77,12 +77,12 @@
 ;; =============================
 (test "wf2-claim-init-state-handler-parse"
       (let* ([handler (wf2-claim-init-state-handler)]
-             [parse-fn (get handler :parse)]
+             [receive-fn (get handler :receive)]
              [resp (sorted-map
                     "policy_id" "POL-8872"
                     "guidewire_claim_id" "GW-CLM-12345")]
              [entity (sorted-map)]
-             [parsed (funcall parse-fn resp entity)])
+             [parsed (funcall receive-fn resp entity (sorted-map))])
         (assert (not (nil? parsed)))
         (assert (equal? (get parsed "policy_id") "POL-8872"))
         (assert (equal? (get parsed "guidewire_claim_id") "GW-CLM-12345"))))

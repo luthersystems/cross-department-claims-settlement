@@ -8,9 +8,9 @@
 ;; Supports direct route invocation or chained workflow handoffs.
 ;; Minimal required fields: customer_id, reference_number, due_date, is_inclusive_tax, line_items
 (defun build-wf4-inputs (req)
-  (let* ([zoho-raw       (or (get req "zoho") (sorted-map))]
-         [sharepoint-raw (or (get req "sharepoint") (sorted-map))]
-         [servicenow-raw (or (get req "servicenow") (sorted-map))]
+  (let* ([zoho-raw       (or (get req *connector-id-zoho*) (sorted-map))]
+         [sharepoint-raw (or (get req *connector-id-sharepoint*) (sorted-map))]
+         [servicenow-raw (or (get req *connector-id-servicenow*) (sorted-map))]
          ;; Extract claim_id from reference_number if not provided
          [claim-id (or (get req "claim_id")
                        (get req "reference_number")
@@ -88,9 +88,9 @@
     (sorted-map
       "claim_id"   claim-id
       "policy_id"  policy-id
-      "zoho"       zoho
-      "sharepoint" sharepoint
-      "servicenow" servicenow)))
+      *connector-id-zoho*       zoho
+      *connector-id-sharepoint* sharepoint
+      *connector-id-servicenow* servicenow)))
 
 (defendpoint "upload_claim_wf4" (req)
   (let* ([inputs (build-wf4-inputs req)]

@@ -19,6 +19,9 @@
 (set 'build-id "LUTHER_PROJECT_BUILD_ID")  ; overridden during build
 (set 'service-version (format-string "{} ({})" version build-id))
 
+;; Load connector ID constants (must be loaded before parsers that use them)
+(load-file "connector-ids.lisp")
+
 ;; Load all route definitions and core business logic for this phylum.
 (load-file "routes.lisp")
 

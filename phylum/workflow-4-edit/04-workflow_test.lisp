@@ -88,7 +88,7 @@
              [event (mk-zoho-create-invoice-event entity payload)])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "ZOHO"))
+        (assert (equal? (get event "sys") "zoho"))
         (assert (equal? (get event "eng") "create invoice"))))
 
 ;; =============================
@@ -104,7 +104,7 @@
              [event (mk-servicenow-create-incident-event entity payload)])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "SERVICENOW"))
+        (assert (equal? (get event "sys") "servicenow"))
         (assert (equal? (get event "eng") "create incident"))))
 
 ;; =============================
@@ -115,7 +115,7 @@
              [parse-fn (get handler :parse)]
              [resp (sorted-map
                     "policy_id" "POL-8872"
-                    "zoho" (sorted-map
+                    *connector-id-zoho* (sorted-map
                             "customer_id" "CUST-12345"
                             "reference_number" "CLM-4567"
                             "due_date" "2024-02-15"

@@ -5,7 +5,7 @@ services:
       file: common.yaml
       service: cdcs_oracle
     ports:
-    - "8080:8080" # expose this for testing purposes
+    - "8082:8080" # expose this for testing purposes
     - "9600:9600" # expose this for testing purposes
     environment:
     - CDCS_ORACLE_EMULATE_CC=false

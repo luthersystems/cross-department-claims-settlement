@@ -5,7 +5,7 @@
 ;; -----------------------------------------------------------------------------
 
 ;; Create D365FO payment journal event
-(defun wf5-mk-d365fo-payment-event (entity sap-payload)
+(defun wf5-mk-d365fo-payment-event (entity sap-payload accessors)
   (cc:infof (sorted-map
               "entity" entity
               "sap-payload" sap-payload)
@@ -38,10 +38,10 @@
                            "data" d365fo-data
                            "return_record" true
                            "profile" "default")))])
-    (build-event entity req "create d365fo payment journal" "D365FO")))
+    (build-event entity req "create d365fo payment journal" "D365FO" (get accessors :entity-id))))
 
 ;; Create SAP HANA recording event (after D365FO payment is created)
-(defun wf5-mk-sap-record-payment-event (entity d365fo-record sap-payload)
+(defun wf5-mk-sap-record-payment-event (entity d365fo-record sap-payload accessors)
   (let* ([payment-id   (or (get sap-payload "payment_id") *wf5-default-sap-payment-id*)]
          [invoice-id   (or (get sap-payload "invoice_id") *wf5-default-sap-invoice-id*)]
          [reference    (or (get sap-payload "reference") *wf5-default-sap-reference*)]
@@ -64,7 +64,7 @@
                   "kind" "KIND_SAP_HANA"
                   "operation" "hana_execute_query"
                   "args" (sorted-map "query" query)))])
-    (build-event entity req "record payment in sap hana" "SAP")))
+    (build-event entity req "record payment in sap hana" *connector-id-sap* (get accessors :entity-id))))
 
 ;; Parse D365FO payment journal response
 (defun wf5-parse-d365fo-payment (resp)
@@ -102,4 +102,3 @@
       "amount"         (or (get payment "amount") *wf5-default-sap-amount*)
       "posting_ref"    (or (get payment "posting_ref") *wf5-default-sap-posting-ref*)
       "status"         (or (get payment "status") *wf5-default-sap-posted-status*))))
-

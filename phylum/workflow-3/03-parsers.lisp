@@ -5,7 +5,7 @@
 ;; -----------------------------------------------------------------------------
 
 ;; eSignature: create contract from template
-(defun mk-esignature-create-contract-event (entity)
+(defun mk-esignature-create-contract-event (entity accessors)
   (let* ([args (sorted-map
                  "template_id"      (or (get entity "template_id") *wf3-default-esig-template-id*)
                  "title"            (or (get entity "title")
@@ -39,10 +39,10 @@
                   "kind" "KIND_ESIGNATURES"
                   "operation" "create_contract"
                   "args" args))])
-    (build-event entity req "create invoice contract" "ESIGNATURE")))
+    (build-event entity req "create invoice contract" *connector-id-esignature* (get accessors :entity-id))))
 
 ;; Salesforce: create invoice record
-(defun mk-salesforce-create-invoice-event (entity args)
+(defun mk-salesforce-create-invoice-event (entity args accessors)
   (let* ([m *wf3-default-sf-fields-map*]
          [data (sorted-map
                  (get m "name")           (format-string "Inter-Entity Invoice {}" (get entity "claim_id"))
@@ -68,26 +68,41 @@
                               "esignature_sign_page_url__c"      (get args "sign_page_url")
                               "invoice_amount__c"             (get entity "amount")
                               "signer_name__c"    (get entity "signer_name")))))])
-    (build-event entity req "create sf invoice" "SALESFORCE")))
+    (build-event entity req "create sf invoice" *connector-id-salesforce* (get accessors :entity-id))))
 
 ;; SMTP: send notification email
-; (defun mk-smtp-send-email-event (entity args)
-;   (let* ([sf-id        (get args "sf_record_id")]
-;          [sf-url       (if sf-id (format-string "{}/{}" *SF_BASE_URL* sf-id) "")]
-;          [subject      (string-replace *EMAIL_SUBJECT_TEMPLATE* "{{claim_id}}" (get entity "claim_id"))]
-;          [body-temp    (-> *EMAIL_BODY_TEMPLATE*
-;                            (string-replace "{{claim_id}}" (get entity "claim_id"))
-;                            (string-replace "{{signer_name}}" (get entity "signer_name"))
-;                            (string-replace "{{sf_record_url}}" sf-url))]
-;          [req (mk-connector-req
-;                 (sorted-map
-;                   "kind" "KIND_SMTP"
-;                   "operation" "send_email"
-;                   "args" (sorted-map
-;                            "to"      (get entity "signer_email")
-;                            "subject" subject
-;                            "body"    body-temp)))])
-;     (build-event entity req "dispatch invoice email" "SMTP")))
+; SMTP: send notification email
+(defun mk-smtp-send-email-event (entity args accessors)
+  (let* (
+         [sf-id   (get args "sf_record_id")]
+         [sf-url  (if sf-id
+                      (format-string "{}/{}" *wf3-default-sf-base-url* sf-id)
+                      "")]
+         [claim-id    (get entity "claim_id")]
+         [signer-name (get entity "signer_name")]
+         [signer-email (get entity "signer_email")]
+
+         ;; Build subject with variable substitution
+         [subject (format-string "Settlement Invoice {} Sent for Signature" claim-id)]
+
+         ;; Build body using string:join for clarity
+         [body (string:join
+                 (list
+                   (format-string "Hi {}," "Jack")
+                   ""
+                   (format-string
+                     "The inter-entity settlement invoice for claim {} has been generated "
+                     claim-id)
+                   "and sent for signature via eSignature."
+                   ""
+                   (format-string "View in Salesforce: {}" sf-url)
+                   ""
+                   "— ConnectorHub Automation")
+                 "\n")]
+
+         ;; Construct connector request
+         [req (mk-email-req *wf3-default-email-to* subject body)])
+    (build-event entity req "dispatch invoice email" *connector-id-email* (get accessors :entity-id))))
 
 ;; eSignature: parse create_contract → {contract_id, sign_page_url, contract_status}
 (defun parse-esignature-create-contract (resp)
