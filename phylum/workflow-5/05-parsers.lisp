@@ -64,7 +64,7 @@
                   "kind" "KIND_SAP_HANA"
                   "operation" "hana_execute_query"
                   "args" (sorted-map "query" query)))])
-    (build-event entity req "record payment in sap hana" "sap" (get accessors :entity-id))))
+    (build-event entity req "record payment in sap hana" *connector-id-sap* (get accessors :entity-id))))
 
 ;; Parse D365FO payment journal response
 (defun wf5-parse-d365fo-payment (resp)

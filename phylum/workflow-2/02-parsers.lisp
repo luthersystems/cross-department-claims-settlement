@@ -11,7 +11,7 @@
                   "kind" "KIND_HTTP_OUTBOUND_REST"
                   "operation" "getClaimDetails"     
                   "args" (sorted-map "claim_id" claim-id)))])
-    (build-event entity req "get claim" "outboundgw" (get accessors :entity-id))))
+    (build-event entity req "get claim" *connector-id-outboundgw* (get accessors :entity-id))))
 
 (defun parse-guidewire-claim (resp)
   (if (nil? resp)
@@ -33,7 +33,7 @@
                   "kind" "KIND_MYSQL"
                   "operation" "mysql_query"
                   "args" (sorted-map "sql" sql)))])
-    (build-event entity req "check policy" "mysql" (get accessors :entity-id))))
+    (build-event entity req "check policy" *connector-id-mysql* (get accessors :entity-id))))
 
 (defun parse-mysql-policy (resp)
   "Parse MySQL MCP response for policy status and coverage."
@@ -56,7 +56,7 @@
                             "drive_id" (get args "drive_id")
                             "item_id"  (get args "item_id")
                             "filename" (get args "filename"))))])
-    (build-event entity req "get id-verification content" "sharepoint" (get accessors :entity-id))))
+    (build-event entity req "get id-verification content" *connector-id-sharepoint* (get accessors :entity-id))))
 
 
 (defun wf2-parse-sharepoint-docs (resp)
@@ -82,7 +82,7 @@
                             "claimId"    (get args "claim_id")
                             "approval"   (get args "approval")
                             "approvedBy" (get args "approved_by"))))])
-    (build-event entity req "update approval" "outboundgw" (get accessors :entity-id))))
+    (build-event entity req "update approval" *connector-id-outboundgw* (get accessors :entity-id))))
 
 (defun parse-guidewire-approval-update (resp)
   (let* ([parsed (parse-generic-resp resp)])

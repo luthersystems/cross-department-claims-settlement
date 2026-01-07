@@ -12,8 +12,8 @@
       (let* ([claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
              [policy-id  (or (get resp "policy_id") (get entity "policy_id") *wf4-default-policy-id*)]
              ;; Hardcode defaults for now
-             [zoho       (or (get resp "zoho")
-                            (get entity "zoho")
+             [zoho       (or (get resp *connector-id-zoho*)
+                            (get entity *connector-id-zoho*)
                             (sorted-map
                               "customer_id"      *wf4-default-customer-id*
                               "reference_number" (or claim-id "WF4-CLAIM-001")
@@ -21,15 +21,15 @@
                               "is_inclusive_tax" *wf4-default-is-inclusive-tax*
                               "currency_code"    *wf4-default-currency-code*
                               "line_items"       *wf4-default-line-items*))]
-             [sharepoint (or (get resp "sharepoint")
-                            (get entity "sharepoint")
+             [sharepoint (or (get resp *connector-id-sharepoint*)
+                            (get entity *connector-id-sharepoint*)
                             (sorted-map
                               "site_id"  *wf4-default-sharepoint-site-id*
                               "drive_id" *wf4-default-sharepoint-drive-id*
                               "item_id"  *wf4-default-sharepoint-item-id*
                               "filename" *wf4-default-sharepoint-filename*))]
-             [servicenow (or (get resp "servicenow")
-                            (get entity "servicenow")
+             [servicenow (or (get resp *connector-id-servicenow*)
+                            (get entity *connector-id-servicenow*)
                             (sorted-map
                               "short_description" (format-string "Create incident for claim {}" (or claim-id "WF4-CLAIM-001"))
                               "description"      *wf4-default-servicenow-description*
@@ -43,19 +43,19 @@
         ;; NEVER include claim_id in parsed - it's managed by entity manager
         (sorted-map
           "policy_id"  policy-id
-          "zoho"       zoho
-          "sharepoint" sharepoint
-          "servicenow" servicenow))]
+          *connector-id-zoho*       zoho
+          *connector-id-sharepoint* sharepoint
+          *connector-id-servicenow* servicenow))]
      [stage-ephemeral (entity parsed accessors) ()]
      [stage-durable (entity parsed accessors)
       ;; NEVER include claim_id in stage-durable - it causes full entity replacement
       (sorted-map
         "policy_id"  (get parsed "policy_id")
-        "zoho"       (get parsed "zoho")
-        "sharepoint" (get parsed "sharepoint")
-        "servicenow" (get parsed "servicenow"))]
+        *connector-id-zoho*       (get parsed *connector-id-zoho*)
+        *connector-id-sharepoint* (get parsed *connector-id-sharepoint*)
+        *connector-id-servicenow* (get parsed *connector-id-servicenow*))]
      [create-events (entity parsed accessors)
-      (vector (mk-zoho-create-invoice-event entity (get parsed "zoho") accessors))])
+      (vector (mk-zoho-create-invoice-event entity (get parsed *connector-id-zoho*) accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
       :parse           parse
@@ -78,7 +78,7 @@
         "zoho_customer_id"     (get parsed "customer_id")
         "zoho_customer_name"   (get parsed "customer_name"))]
      [create-events (entity parsed accessors)
-      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity "sharepoint") accessors))])
+      (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity *connector-id-sharepoint*) accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
       :parse           parse
@@ -95,7 +95,7 @@
      [stage-durable (entity parsed accessors)
       (sorted-map "sharepoint_documents" parsed)]
      [create-events (entity parsed accessors)
-      (vector (mk-servicenow-create-incident-event entity (get entity "servicenow") accessors))])
+      (vector (mk-servicenow-create-incident-event entity (get entity *connector-id-servicenow*) accessors))])
     (mk-state-handler
       :next            "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"
       :parse           parse

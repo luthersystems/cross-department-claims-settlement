@@ -35,8 +35,8 @@
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
              [signed-by   (get resp "signedBy")]
              [verified-by (or (get resp "verifiedBy") "jack.clarke@luthersystems.com")]
-             [zoho       (or (get resp "zoho")
-                          (get entity "zoho")
+             [zoho       (or (get resp *connector-id-zoho*)
+                          (get entity *connector-id-zoho*)
                           (sorted-map
                             "customer_id"      *wf4-default-customer-id*
                             "reference_number" (or claim-id "WF4-CLAIM-001")
@@ -47,7 +47,7 @@
         (sorted-map
           "signed_by"   signed-by
           "verified_by" verified-by
-          "zoho"        zoho))]
+          *connector-id-zoho*        zoho))]
 
      [validate (received entity accessors)
        received]
@@ -61,12 +61,12 @@
       (sorted-map
         "signed_by"   (get validated "signed_by")
         "verified_by" (get validated "verified_by")
-        "zoho"        (get validated "zoho"))]
+        *connector-id-zoho*        (get validated *connector-id-zoho*))]
 
      [send (entity validated accessors)
       (let* ([signed-by (get validated "signed_by")])
         (if (not (nil? signed-by))
-          (vector (mk-zoho-create-invoice-event entity (get validated "zoho") accessors))
+          (vector (mk-zoho-create-invoice-event entity (get validated *connector-id-zoho*) accessors))
           (vector)))])
 
     (mk-state-handler
@@ -83,8 +83,8 @@
       (let* ([claim-id    (or (get resp "claim_id") (get entity "claim_id"))]
              [signed-by   (or (get resp "signedBy") (get entity "signed_by"))]
              [verified-by (or (get resp "verifiedBy") (get entity "verified_by") "jack.clarke@luthersystems.com")]
-             [zoho       (or (get resp "zoho")
-                            (get entity "zoho")
+             [zoho       (or (get resp *connector-id-zoho*)
+                            (get entity *connector-id-zoho*)
                             (sorted-map
                               "customer_id"      *wf4-default-customer-id*
                               "reference_number" (or claim-id "WF4-CLAIM-001")
@@ -95,7 +95,7 @@
         (sorted-map
           "signed_by"   signed-by
           "verified_by" verified-by
-          "zoho"        zoho))]
+          *connector-id-zoho*        zoho))]
 
      [validate (received entity accessors)
        (when (nil? (get received "signed_by")) (set-exception-business "missing signature"))
@@ -110,10 +110,10 @@
        (sorted-map
          "signed_by"   (get validated "signed_by")
          "verified_by" (get validated "verified_by")
-         "zoho"        (get validated "zoho"))]
+         *connector-id-zoho*        (get validated *connector-id-zoho*))]
 
      [send (entity validated accessors)
-       (vector (mk-zoho-create-invoice-event entity (get validated "zoho") accessors))])
+       (vector (mk-zoho-create-invoice-event entity (get validated *connector-id-zoho*) accessors))])
 
     (mk-state-handler
       :receive           receive
@@ -150,7 +150,7 @@
         "zoho_customer_name"   (get validated "customer_name"))]
 
      [send (entity validated accessors)
-      (let* ([sharepoint-raw (get entity "sharepoint")]
+      (let* ([sharepoint-raw (get entity *connector-id-sharepoint*)]
              [sharepoint-args (or sharepoint-raw
                                 (sorted-map
                                   "site_id"  *wf4-default-sharepoint-site-id*
@@ -181,7 +181,7 @@
 
      [send (entity validated accessors)
       (let* ([claim-id (get entity "claim_id")]
-             [servicenow-raw (get entity "servicenow")]
+             [servicenow-raw (get entity *connector-id-servicenow*)]
              [servicenow-args (or servicenow-raw
                                 (sorted-map
                                   "short_description" (format-string "Create incident for claim {}" (or claim-id "WF4-CLAIM-001"))

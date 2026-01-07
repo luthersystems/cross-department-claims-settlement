@@ -10,7 +10,7 @@
          [new-claim (and (nil? existing-claim-id) (new-connector-object claim-manager-wf5))]
          [claim-id (or existing-claim-id (get new-claim "claim_id"))]
          [_ (when new-claim (claim-manager-wf5 'put (assoc new-claim "policy_id" policy-id)))]
-         [sap-overrides (or (get req "sap") (sorted-map))]
+         [sap-overrides (or (get req *connector-id-sap*) (sorted-map))]
          [sap (sorted-map
                 "payment_id"     (or (get sap-overrides "payment_id") *wf5-default-sap-payment-id*)
                 "invoice_id"     (or (get sap-overrides "invoice_id") *wf5-default-sap-invoice-id*)
@@ -24,7 +24,7 @@
     (sorted-map
       "claim_id"    claim-id
       "policy_id"   policy-id
-      "sap"         sap)))
+      *connector-id-sap*         sap)))
 
 (defendpoint "upload_claim_wf5" (req)
   (let* ([inputs (build-wf5-inputs req)]

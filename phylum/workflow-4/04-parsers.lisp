@@ -10,7 +10,7 @@
                   "kind" "KIND_ZOHO_BOOKS"
                   "operation" "create_invoice"
                   "args" (sorted-map "json_data" payload)))])
-    (build-event entity req "create invoice" "zoho" (get accessors :entity-id))))
+    (build-event entity req "create invoice" *connector-id-zoho* (get accessors :entity-id))))
 
 (defun parse-zoho-create-invoice (resp)
   (let* ([parsed (parse-generic-resp resp)]
@@ -36,7 +36,7 @@
                   "kind" "KIND_MICROSOFT_SHAREPOINT"
                   "operation" "get_document_content"
                   "args" args))])
-    (build-event entity req "get sharepoint doc" "sharepoint" (get accessors :entity-id))))
+    (build-event entity req "get sharepoint doc" *connector-id-sharepoint* (get accessors :entity-id))))
 
 (defun wf4-parse-sharepoint-docs (resp)
   (let* ([parsed (parse-generic-resp resp)]
@@ -53,7 +53,7 @@
                   "kind" "KIND_SERVICENOW"
                   "operation" "create_incident"
                   "args" payload))])
-    (build-event entity req "create incident" "servicenow" (get accessors :entity-id))))
+    (build-event entity req "create incident" *connector-id-servicenow* (get accessors :entity-id))))
 
 (defun parse-servicenow-create-incident (resp)
   (let* ([parsed (parse-generic-resp resp)]

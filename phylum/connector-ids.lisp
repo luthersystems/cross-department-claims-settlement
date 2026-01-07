@@ -17,7 +17,7 @@
 (set '*connector-id-sharepoint* "sharepoint")
 
 ;; Workflow 3 connectors
-(set '*connector-id-esignature* "esignat-ure")  ; from "E_signat  ure" -> lowercase, spaces/underscores -> hyphens
+(set '*connector-id-esignature* "esignature")  
 (set '*connector-id-salesforce* "salesforce")
 (set '*connector-id-email* "email")
 

@@ -36,13 +36,13 @@
              [policy-id (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
              [payment-id (get resp "payment_id")]
              [status (get resp "status")]
-             [sap       (or (get resp "sap") (get entity "sap") (sorted-map))])
+             [sap       (or (get resp *connector-id-sap*) (get entity *connector-id-sap*) (sorted-map))]))
         (sorted-map
           "claim_id"   claim-id
           "policy_id"  policy-id
           "payment_id" payment-id
           "status"    status
-          "sap"        sap))]
+          *connector-id-sap*        sap)]
 
      [validate (received entity accessors)
        (when (nil? (get received "claim_id")) (set-exception-business "missing claim_id"))
@@ -58,11 +58,11 @@
         "policy_id"  (get validated "policy_id")
         "payment_id" (get validated "payment_id")
         "status"     (get validated "status")
-        "sap"        (get validated "sap"))]
+        *connector-id-sap*        (get validated *connector-id-sap*))]
 
      [send (entity validated accessors)
       (vector (wf5-mk-d365fo-payment-event entity
-                 (or (get entity "sap") (sorted-map))
+                 (or (get entity *connector-id-sap*) (sorted-map))
                  accessors))])
 
     (mk-state-handler
@@ -82,7 +82,7 @@
      [store-durable (entity validated accessors) (or validated (sorted-map))]
      [send (entity validated accessors)
       (vector (wf5-mk-d365fo-payment-event entity
-                 (or (get entity "sap") (sorted-map))
+                 (or (get entity *connector-id-sap*) (sorted-map))
                  accessors))])
     (mk-state-handler
       :receive           receive
@@ -113,7 +113,7 @@
 
      [create-events (entity validated accessors)
       (let* ([d365fo-record (get validated "d365fo_record")]
-             [sap-payload (or (get entity "sap") (sorted-map))])
+             [sap-payload (or (get entity *connector-id-sap*) (sorted-map))])
         (vector (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload accessors)))])
 
     (mk-state-handler

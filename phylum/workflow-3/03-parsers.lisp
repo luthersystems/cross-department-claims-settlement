@@ -39,7 +39,7 @@
                   "kind" "KIND_ESIGNATURES"
                   "operation" "create_contract"
                   "args" args))])
-    (build-event entity req "create invoice contract" "esignature" (get accessors :entity-id))))
+    (build-event entity req "create invoice contract" *connector-id-esignature* (get accessors :entity-id))))
 
 ;; Salesforce: create invoice record
 (defun mk-salesforce-create-invoice-event (entity args accessors)
@@ -68,7 +68,7 @@
                               "esignature_sign_page_url__c"      (get args "sign_page_url")
                               "invoice_amount__c"             (get entity "amount")
                               "signer_name__c"    (get entity "signer_name")))))])
-    (build-event entity req "create sf invoice" "salesforce" (get accessors :entity-id))))
+    (build-event entity req "create sf invoice" *connector-id-salesforce* (get accessors :entity-id))))
 
 ;; SMTP: send notification email
 ; SMTP: send notification email
@@ -102,7 +102,7 @@
 
          ;; Construct connector request
          [req (mk-email-req *wf3-default-email-to* subject body)])
-    (build-event entity req "dispatch invoice email" "email" (get accessors :entity-id))))
+    (build-event entity req "dispatch invoice email" *connector-id-email* (get accessors :entity-id))))
 
 ;; eSignature: parse create_contract → {contract_id, sign_page_url, contract_status}
 (defun parse-esignature-create-contract (resp)
