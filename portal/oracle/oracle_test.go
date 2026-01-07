@@ -5,7 +5,7 @@
 package oracle
 
 // phylumRelPath is the path to the phylum dir relative to this file.
-const phylumRelPath = "../../phylum"
+// const phylumRelPath = "../../phylum"
 
 // func makeTestServerFrom(t *testing.T, b []byte) (*portal, func()) {
 // 	t.Helper()
