@@ -51,7 +51,7 @@
              [event (wf5-mk-sap-record-payment-event entity d365fo-record sap-payload (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "SAP"))
+        (assert (equal? (get event "sys") "sap"))
         (assert (equal? (get event "eng") "record payment in sap hana"))))
 
 ;; =============================

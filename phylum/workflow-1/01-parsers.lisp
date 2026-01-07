@@ -10,7 +10,7 @@
                 policy-id)] 
          [req (mk-connector-req 
           (sorted-map "kind" "KIND_ORACLE_READONLY" "operation" "execute_query" "args" (sorted-map "query" sql)))]) 
-        (build-event entity req "get claim" "ORACLE" (get accessors :entity-id))))
+        (build-event entity req "get claim" "oracle" (get accessors :entity-id))))
 
 (defun parse-oracle-get-claim-response (resp)
   (let* ([j-map (parse-generic-resp resp)]
@@ -42,7 +42,7 @@
                     "postal_code" *wf1-default-postal-code*
                     "address_country_code" *wf1-default-address-country-code*
                     "federal_id" (get claimant "national_id"))))])
-    (build-event entity req "verify claimant" "EQUIFAX" (get accessors :entity-id))))
+    (build-event entity req "verify claimant" "equifax" (get accessors :entity-id))))
 
 (defun parse-equifax-verify-response (resp)
   (let* ([j-map (parse-generic-resp resp)])
@@ -77,7 +77,7 @@
                                  "title"   title
                                  "content" content)))]
          [action "start thread"]
-         [sys-name "TEAMS"])
+         [sys-name "teams"])
     (build-event entity req action sys-name (get accessors :entity-id))))
 
 (defun mk-teams-update-thread-event (entity thread-id message-id content accessors)
@@ -90,5 +90,5 @@
                                  "message_id" message-id
                                  "content"   content)))]
          [action "update thread"]
-         [sys-name "TEAMS"])
+         [sys-name "teams"])
     (build-event entity req action sys-name (get accessors :entity-id))))

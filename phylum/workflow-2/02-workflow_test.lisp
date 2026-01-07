@@ -57,7 +57,7 @@
              [event (mk-guidewire-get-claim-event entity "GW-CLM-12345" (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "OUTBOUNDGW"))
+        (assert (equal? (get event "sys") "outboundgw"))
         (assert (equal? (get event "eng") "get claim"))))
 
 ;; =============================
@@ -69,7 +69,7 @@
              [event (mk-mysql-check-policy-event entity args (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "MYSQL"))
+        (assert (equal? (get event "sys") "mysql"))
         (assert (equal? (get event "eng") "check policy"))))
 
 ;; =============================

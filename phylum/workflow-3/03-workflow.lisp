@@ -125,7 +125,6 @@
        (parse-smtp-send resp)]
 
      [validate (received entity accessors)
-       (when (nil? (get received "status")) (set-exception-business "missing status in smtp response"))
        received]
 
      [decide-next-state (validated entity accessors)

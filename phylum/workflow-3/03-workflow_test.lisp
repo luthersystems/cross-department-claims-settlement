@@ -77,7 +77,7 @@
              [event (mk-esignature-create-contract-event entity (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "ESIGNATURE"))
+        (assert (equal? (get event "sys") "esignature"))
         (assert (equal? (get event "eng") "create invoice contract"))
         (assert (not (nil? (get event "req"))))))
 
@@ -92,7 +92,7 @@
              [event (mk-salesforce-create-invoice-event entity args (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "SALESFORCE"))
+        (assert (equal? (get event "sys") "salesforce"))
         (assert (equal? (get event "eng") "create sf invoice"))))
 
 ;; =============================

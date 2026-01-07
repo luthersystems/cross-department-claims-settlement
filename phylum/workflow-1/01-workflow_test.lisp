@@ -73,7 +73,7 @@
              [event (mk-oracle-get-claim-event entity "POL-8872" (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "ORACLE"))
+        (assert (equal? (get event "sys") "oracle"))
         (assert (equal? (get event "eng") "get claim"))))
 
 ;; =============================
@@ -90,7 +90,7 @@
              [event (mk-equifax-verify-event entity claimant (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "EQUIFAX"))
+        (assert (equal? (get event "sys") "equifax"))
         (assert (equal? (get event "eng") "verify claimant"))))
 
 ;; =============================

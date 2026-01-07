@@ -88,7 +88,7 @@
              [event (mk-zoho-create-invoice-event entity payload)])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "ZOHO"))
+        (assert (equal? (get event "sys") "zoho"))
         (assert (equal? (get event "eng") "create invoice"))))
 
 ;; =============================
@@ -104,7 +104,7 @@
              [event (mk-servicenow-create-incident-event entity payload)])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
-        (assert (equal? (get event "sys") "SERVICENOW"))
+        (assert (equal? (get event "sys") "servicenow"))
         (assert (equal? (get event "eng") "create incident"))))
 
 ;; =============================

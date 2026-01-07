@@ -169,14 +169,8 @@
 
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
-    ([receive (resp entity accessors)
-      (let* ([documents (wf4-parse-sharepoint-docs resp)])
-        (assoc documents "retrieved_at" "2025-11-11"))]
-
-     [validate (received entity accessors)
-       (when (nil? (get received "item_id")) (set-exception-business "missing item_id"))
-       received]
-
+    ([receive (resp entity accessors) (wf4-parse-sharepoint-docs resp)]
+     [validate (received entity accessors) received]
      [decide-next-state (validated entity accessors)
        "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"]
 
