@@ -6,7 +6,7 @@
 
 (defun wf4-claim-init-state-handler ()
   (labels
-    ([parse (resp entity accessors)
+    ([receive (resp entity accessors)
       ;; Prioritize resp (explicit request) over entity (accumulated data), then defaults
       ;; For unified process, resp is empty so falls back to entity
       (let* ([claim-id   (or (get resp "claim_id") (get entity "claim_id"))]
@@ -38,87 +38,137 @@
                               "impact"           *wf4-default-servicenow-impact*
                               "urgency"          *wf4-default-servicenow-urgency*
                               "assignment_group" *wf4-default-servicenow-assignment-group*))])
-        (when (nil? claim-id)
-          (set-exception-business "missing claim_id"))
-        ;; NEVER include claim_id in parsed - it's managed by entity manager
+        ;; NEVER include claim_id in received - it's managed by entity manager
         (sorted-map
           "policy_id"  policy-id
           *connector-id-zoho*       zoho
           *connector-id-sharepoint* sharepoint
           *connector-id-servicenow* servicenow))]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      ;; NEVER include claim_id in stage-durable - it causes full entity replacement
+
+     [validate (received entity accessors)
+       (let* ([claim-id (or (get entity "claim_id"))])
+         (when (nil? claim-id)
+           (set-exception-business "missing claim_id"))
+         received)]
+
+     [decide-next-state (validated entity accessors)
+       "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
+      ;; NEVER include claim_id in store-durable - it causes full entity replacement
       (sorted-map
-        "policy_id"  (get parsed "policy_id")
-        *connector-id-zoho*       (get parsed *connector-id-zoho*)
-        *connector-id-sharepoint* (get parsed *connector-id-sharepoint*)
-        *connector-id-servicenow* (get parsed *connector-id-servicenow*))]
-     [create-events (entity parsed accessors)
-      (vector (mk-zoho-create-invoice-event entity (get parsed *connector-id-zoho*) accessors))])
+        "policy_id"  (get validated "policy_id")
+        *connector-id-zoho*       (get validated *connector-id-zoho*)
+        *connector-id-sharepoint* (get validated *connector-id-sharepoint*)
+        *connector-id-servicenow* (get validated *connector-id-servicenow*))]
+
+     [send (entity validated accessors)
+      (vector (mk-zoho-create-invoice-event entity (get validated *connector-id-zoho*) accessors))])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_ZOHO_INVOICE_CREATED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 (defun wf4-zoho-invoice-created-state-handler ()
   (labels
-    ([parse (resp entity accessors) (parse-zoho-create-invoice resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
+    ([receive (resp entity accessors)
+      (parse-zoho-create-invoice resp)]
+
+     [validate (received entity accessors)
+      (when (nil? (get received "invoice_id")) (set-exception-business "missing invoice_id"))
+      received]
+
+     [decide-next-state (validated entity accessors)
+      "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
       (sorted-map
-        "zoho_invoice_id"      (get parsed "invoice_id")
-        "zoho_invoice_number"  (get parsed "invoice_number")
-        "zoho_invoice_status"  (get parsed "status")
-        "zoho_invoice_url"     (get parsed "url")
-        "zoho_invoice_total"   (get parsed "total")
-        "zoho_invoice_balance" (get parsed "balance")
-        "zoho_customer_id"     (get parsed "customer_id")
-        "zoho_customer_name"   (get parsed "customer_name"))]
-     [create-events (entity parsed accessors)
+        "zoho_invoice_id"      (get validated "invoice_id")
+        "zoho_invoice_number"  (get validated "invoice_number")
+        "zoho_invoice_status"  (get validated "status")
+        "zoho_invoice_url"     (get validated "url")
+        "zoho_invoice_total"   (get validated "total")
+        "zoho_invoice_balance" (get validated "balance")
+        "zoho_customer_id"     (get validated "customer_id")
+        "zoho_customer_name"   (get validated "customer_name"))]
+
+     [send (entity validated accessors)
       (vector (wf4-mk-sharepoint-get-id-doc-event entity (get entity *connector-id-sharepoint*) accessors))])
+
     (mk-state-handler
-      :next            "WF4_CLAIM_STATE_SHAREPOINT_DOC_RETRIEVED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
 
 (defun wf4-sharepoint-doc-retrieved-state-handler ()
   (labels
-    ([parse (resp entity accessors)
+    ([receive (resp entity accessors)
       (let* ([documents (wf4-parse-sharepoint-docs resp)])
         (assoc documents "retrieved_at" "2025-11-11"))]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      (sorted-map "sharepoint_documents" parsed)]
-     [create-events (entity parsed accessors)
-      (vector (mk-servicenow-create-incident-event entity (get entity *connector-id-servicenow*) accessors))])
-    (mk-state-handler
-      :next            "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events)))
 
-(defun wf4-servicenow-incident-created-state-handler (&optional next-state)
-  (labels
-    ([parse (resp entity accessors) (parse-servicenow-create-incident resp)]
-     [stage-ephemeral (entity parsed accessors) ()]
-     [stage-durable (entity parsed accessors)
-      (sorted-map
-        "servicenow_incident_id"     (get parsed "incident_id")
-        "servicenow_incident_number" (get parsed "incident_number")
-        "servicenow_state"           (get parsed "state")
-        "servicenow_url"             (get parsed "url")
-        "servicenow_short_description" (get parsed "short_description"))]
-     [create-events (entity parsed accessors) ()])
+     [validate (received entity accessors)
+      (when (nil? (get received "documents")) (set-exception-business "missing documents in sharepoint response"))
+      received]
+
+     [decide-next-state (validated entity accessors)
+      "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED"]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
+      (sorted-map "sharepoint_documents" validated)]
+
+     [send (entity validated accessors)
+      (vector (mk-servicenow-create-incident-event entity (get entity *connector-id-servicenow*) accessors))])
+
     (mk-state-handler
-      :next            (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")
-      :parse           parse
-      :stage-ephemeral stage-ephemeral
-      :stage-durable   stage-durable
-      :create-events   create-events
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send)))
+
+(defun wf4-servicenow-incident-created-state-handler (&optional next-state after-storage-hook)
+  (labels
+    ([receive (resp entity accessors)
+      (parse-servicenow-create-incident resp)]
+
+     [validate (received entity accessors)
+      (when (nil? (get received "incident_id")) (set-exception-business "missing incident_id"))
+      received]
+
+     [decide-next-state (validated entity accessors)
+      (or next-state "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED")]
+
+     [store-ephemeral (entity validated accessors) (vector)]
+
+     [store-durable (entity validated accessors)
+      (sorted-map
+        "servicenow_incident_id"     (get validated "incident_id")
+        "servicenow_incident_number" (get validated "incident_number")
+        "servicenow_state"           (get validated "state")
+        "servicenow_url"             (get validated "url")
+        "servicenow_short_description" (get validated "short_description"))]
+
+     [send (entity validated accessors) (vector)])
+
+    (mk-state-handler
+      :receive           receive
+      :validate          validate
+      :decide-next-state decide-next-state
+      :store-ephemeral   store-ephemeral
+      :store-durable     store-durable
+      :send              send
       :after-storage-hook after-storage-hook)))
