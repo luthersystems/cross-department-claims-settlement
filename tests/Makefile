@@ -39,6 +39,24 @@ build: ${POSTMAN_JSON}
 test-docker:
 	${TESTS_DIR}/run-postman-collections-docker.sh ${LOCAL_POSTMAN_ENVIRONMENT}
 
+# Filter Martin tests by filename pattern
+# Usage: make test-martin FILTER=workflow    (runs all workflow*.martin_collection.yaml)
+#        make test-martin FILTER=workflow5   (runs all workflow5*.martin_collection.yaml)
+.PHONY: test-martin
+test-martin:
+	@if [ -z "${FILTER}" ]; then \
+		echo "Error: FILTER is required. Usage: make test-martin FILTER=workflow"; \
+		exit 1; \
+	fi
+	@FILTERED_FILES=$$(find . -name "*${FILTER}*.martin_collection.yaml" -type f | sort | tr '\n' ' ' | sed 's/ $$//'); \
+	if [ -z "$$FILTERED_FILES" ]; then \
+		echo "No Martin test files found matching pattern: *${FILTER}*.martin_collection.yaml"; \
+		exit 1; \
+	fi; \
+	echo "Running Martin tests matching pattern: *${FILTER}*.martin_collection.yaml"; \
+	echo "Files: $$FILTERED_FILES"; \
+	${TESTS_DIR}/run-postman-collections-docker.sh ${LOCAL_POSTMAN_ENVIRONMENT} "$$FILTERED_FILES"
+
 ${POSTMAN_JSON}: ${POSTMAN_SOURCE_FILES}
 	cd ../ && ./tests/cat-postman-collections-docker.sh > tests/$@
 

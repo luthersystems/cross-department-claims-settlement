@@ -125,6 +125,18 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 
 service CdcsService {
   // ------------------------------------------------------------
+  // UNIFIED UPLOAD CLAIM (routes by workflow_name)
+  // ------------------------------------------------------------
+
+  rpc UploadClaim(pb.v1.UploadClaimRequest) returns (pb.v1.UploadClaimResponse) {
+    option (google.api.http) = {
+      post: "/v1/cdcs/UploadClaim"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+  }
+
+  // ------------------------------------------------------------
   // WORKFLOW 1
   // ------------------------------------------------------------
 

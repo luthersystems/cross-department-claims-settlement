@@ -86,6 +86,13 @@
             "in": "path",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "workflowName",
+            "description": "Required: \"wf1\", \"wf2\", \"wf3\", \"wf4\", \"wf5\", or \"process\"\nUsed to select which workflow manager to query.",
+            "in": "query",
+            "required": false,
+            "type": "string"
           }
         ],
         "tags": [
@@ -160,6 +167,82 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1InvokeProcessRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Service"
+        ]
+      }
+    },
+    "/v1/cdcs/UploadClaim": {
+      "post": {
+        "operationId": "CdcsService_UploadClaim",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1UploadClaimResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request determined by business logic",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "401": {
+            "description": "Authorization failed",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "404": {
+            "description": "Missing resource",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "500": {
+            "description": "Unexpected internal server error",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "503": {
+            "description": "Service not available",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "Unified request for uploading a claim to any workflow.\nThe server routes by workflow_name to the corresponding workflow manager.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UploadClaimRequest"
             }
           }
         ],
@@ -710,6 +793,90 @@
         }
       },
       "title": "Line item for Zoho invoice"
+    },
+    "v1UploadClaimRequest": {
+      "type": "object",
+      "properties": {
+        "workflowName": {
+          "type": "string",
+          "title": "Required: \"wf1\", \"wf2\", \"wf3\", \"wf4\", \"wf5\", or \"process\""
+        },
+        "policyId": {
+          "type": "string",
+          "title": "Common fields (used by multiple workflows)"
+        },
+        "claimId": {
+          "type": "string",
+          "title": "Used by WF3, WF4, WF5"
+        },
+        "guidewireClaimId": {
+          "type": "string",
+          "title": "WF2 fields"
+        },
+        "gwClaimId": {
+          "type": "string",
+          "title": "Alternative to guidewire_claim_id"
+        },
+        "invoiceAmount": {
+          "type": "string",
+          "title": "WF3 fields"
+        },
+        "signerName": {
+          "type": "string"
+        },
+        "signerEmail": {
+          "type": "string"
+        },
+        "originatorName": {
+          "type": "string"
+        },
+        "recipientName": {
+          "type": "string"
+        },
+        "issueDate": {
+          "type": "string",
+          "title": "YYYY-MM-DD"
+        },
+        "customerId": {
+          "type": "string",
+          "title": "WF4 fields"
+        },
+        "referenceNumber": {
+          "type": "string"
+        },
+        "dueDate": {
+          "type": "string",
+          "title": "YYYY-MM-DD"
+        },
+        "isInclusiveTax": {
+          "type": "boolean"
+        },
+        "lineItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/v1LineItem"
+          }
+        },
+        "currencyCode": {
+          "type": "string"
+        }
+      },
+      "description": "Unified request for uploading a claim to any workflow.\nThe server routes by workflow_name to the corresponding workflow manager."
+    },
+    "v1UploadClaimResponse": {
+      "type": "object",
+      "properties": {
+        "claimId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "exception": {
+          "$ref": "#/definitions/v1Exception"
+        }
+      }
     },
     "v1UploadClaimWF1Request": {
       "type": "object",

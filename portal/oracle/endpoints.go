@@ -46,6 +46,11 @@ func (p *portal) defaultConfigs(_ context.Context) []shiroclient.Config {
 // 	return oracle.Call(p.orc, ctx, "get_claim", req, &pb.GetClaimResponse{})
 // }
 
+func (p *portal) UploadClaim(ctx context.Context, req *pb.UploadClaimRequest) (*pb.UploadClaimResponse, error) {
+	fmt.Printf("UploadClaim payload: %+v\n", req)
+	return oracle.Call(p.orc, ctx, "upload_claim", req, &pb.UploadClaimResponse{}, p.defaultConfigs(ctx)...)
+}
+
 func (p *portal) UploadClaimWF1(ctx context.Context, req *pb.UploadClaimWF1Request) (*pb.UploadClaimWF1Response, error) {
 	fmt.Printf("ProcessInvoiceWF1 payload: %+v\n", req)
 	return oracle.Call(p.orc, ctx, "upload_claim_wf1", req, &pb.UploadClaimWF1Response{}, p.defaultConfigs(ctx)...)

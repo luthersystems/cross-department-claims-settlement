@@ -36,13 +36,13 @@
              [policy-id (or (get resp "policy_id") (get entity "policy_id") "POL-8872")]
              [payment-id (get resp "payment_id")]
              [status (get resp "status")]
-             [sap       (or (get resp *connector-id-sap*) (get entity *connector-id-sap*) (sorted-map))]))
+             [sap       (or (get resp *connector-id-sap*) (get entity *connector-id-sap*) (sorted-map))])
         (sorted-map
           "claim_id"   claim-id
           "policy_id"  policy-id
           "payment_id" payment-id
           "status"    status
-          *connector-id-sap*        sap)]
+          *connector-id-sap*        sap))]
 
      [validate (received entity accessors)
        (when (nil? (get received "claim_id")) (set-exception-business "missing claim_id"))

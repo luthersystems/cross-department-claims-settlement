@@ -1,0 +1,167 @@
+name: "Cdcs: Workflow 4 - Zoho/SharePoint/ServiceNow"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Initiate Workflow 4"
+    method: POST
+    path: "v1/cdcs/UploadClaim"
+    body: |
+      {
+        "workflow_name": "wf4",
+        "policy_id": "POL-8872",
+        "customer_id": "7533684000000109011",
+        "reference_number": "CLM-4567",
+        "due_date": "2025-11-15",
+        "is_inclusive_tax": true,
+        "line_items": [
+          {
+            "name": "Inter-Entity Settlement",
+            "rate": 1250.0,
+            "quantity": 1
+          }
+        ]
+      }
+    test_script: |
+      pm.test("ok", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.response.to.have.status(200);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data).to.have.property("claim_id");
+          pm.expect(data).to.have.property("state");
+          pm.environment.set("CLAIM_ID_WF4", data.claim_id);
+      });
+
+  - name: "Wait up to 60s for WF4 WAITING_FOR_SIGNATURE"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF4}}?workflow_name=wf4"
+    test_script: |
+      pm.test("Wait up to 60s for WF4 WAITING_FOR_SIGNATURE", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID_WF4");
+          let targetState = "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE";
+
+          let maxAttempts = 30; // 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=wf4";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {}
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF4_LAST_WAIT_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF4_LAST_WAIT_STATE", lastState);
+                      return done();
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF4 reached WAITING_FOR_SIGNATURE"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF4}}?workflow_name=wf4"
+    test_script: |
+      pm.test("WF4 reaches WAITING_FOR_SIGNATURE", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE");
+      });
+
+  - name: "WF4: Contract Signed - External System Notifies Signature"
+    method: POST
+    path: "contract/contract-signed"
+    setup_script: |
+      pm.environment.set("OLD_SERVER", pm.environment.get("SERVER"));
+      pm.environment.set("OLD_SCHEME", pm.environment.get("SCHEME"));
+      pm.environment.set("SERVER", pm.environment.get("CONNECTORHUB_SERVER") || "connectorhub_cdcs:8090");
+      pm.environment.set("SCHEME", "http");
+    body: |
+      {
+        "workflow_name": "wf4",
+        "claimID": "{{CLAIM_ID_WF4}}",
+        "signedBy": "john.doe@example.com",
+        "verifiedBy": "jack.clarke@luthersystems.com"
+      }
+    test_script: |
+      pm.test("Contract signed notification received", () => {
+          pm.response.to.have.status(200);
+          pm.environment.set("SERVER", pm.environment.get("OLD_SERVER"));
+          pm.environment.set("SCHEME", pm.environment.get("OLD_SCHEME"));
+      });
+
+  - name: "Wait up to 60s for WF4 final state"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF4}}?workflow_name=wf4"
+    test_script: |
+      pm.test("Wait up to 60s for WF4 final state", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID_WF4");
+          let targetState = "WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED";
+
+          let maxAttempts = 30; // 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=wf4";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {}
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF4_LAST_FINAL_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF4_LAST_FINAL_STATE", lastState);
+                      return done();
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF4 final state"
+    method: GET
+    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF4}}?workflow_name=wf4"
+    test_script: |
+      pm.test("WF4 reaches final state", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF4_CLAIM_STATE_SERVICENOW_INCIDENT_CREATED");
+      });
+
