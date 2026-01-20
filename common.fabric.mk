@@ -25,7 +25,8 @@ NETWORK_BUILDER_TARGET ?= docker-pull/${NETWORK_BUILDER_IMAGE}\:${NETWORK_BUILDE
 NETWORK_BUILDER=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION} --chown "${DOCKER_CHOWN_USER}"
 
 SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
-CONNECTORHUB_IMAGE ?= luthersystems/connectorhub-local
+# Override CONNECTORHUB_IMAGE from common.mk to use the full Docker Hub path
+CONNECTORHUB_IMAGE = luthersystems/connectorhub-local
 
 # CONNECTORHUB_REPO is the path to the ConnectorHub repository for local builds.
 # Default assumes it's a sibling directory to the project root.
