@@ -266,6 +266,7 @@ start-gw-%: ${SHIROCLIENT_TARGET} build/volume/msp build/volume/enroll_user
 # If the image doesn't exist locally or on Docker Hub, automatically falls back
 # to building from source using build-connectorhub-local.
 #
+# Set SKIP_CONNECTORHUB_LOCAL_BUILD=1 to skip the local build fallback (useful in CI).
 # This is the default behavior - you typically don't need to call this directly.
 # It's automatically invoked when you run targets that need ConnectorHub.
 .PHONY: docker-pull-connectorhub
@@ -273,8 +274,13 @@ docker-pull-connectorhub:
 	@echo "📥 Pulling connectorhub-local from Docker Hub..."
 	@docker image inspect ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} >/dev/null 2>&1 || \
 		(docker pull ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} || \
-		 (echo "⚠️  Image not found on Docker Hub, building from source..." && \
-		  $(MAKE) build-connectorhub-local))
+		 (if [ -z "$$SKIP_CONNECTORHUB_LOCAL_BUILD" ]; then \
+			echo "⚠️  Image not found on Docker Hub, building from source..." && \
+			$(MAKE) build-connectorhub-local; \
+		  else \
+			echo "❌ Image ${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} not found and SKIP_CONNECTORHUB_LOCAL_BUILD is set"; \
+			exit 1; \
+		  fi))
 
 # build-connectorhub-local: Builds ConnectorHub image from source.
 # Requires the ConnectorHub repository to be available at ${CONNECTORHUB_REPO}.
