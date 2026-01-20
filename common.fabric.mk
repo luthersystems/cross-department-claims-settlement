@@ -319,6 +319,7 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		exit 1; \
 	fi
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
 	env_file_flag=""; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
@@ -326,6 +327,9 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
+	fi; \
+	if [ -f "$$connectorhub_env" ]; then \
+		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
 	fi; \
 	${DOCKER_RUN} --rm -t \
 		-v "${CURDIR}:/tmp/fabric:ro" \
@@ -364,6 +368,7 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		exit 1; \
 	fi
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
 	env_file_flag=""; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
@@ -371,6 +376,9 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
+	fi; \
+	if [ -f "$$connectorhub_env" ]; then \
+		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
 	fi; \
 	${DOCKER_RUN} --rm -t \
 		-v "${CURDIR}:/tmp/fabric:ro" \
@@ -417,6 +425,7 @@ start-ch-%: port=$$(( 9091 + ${idx} ))
 start-ch-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
 	env_file_flag=""; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
@@ -424,6 +433,9 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
+	fi; \
+	if [ -f "$$connectorhub_env" ]; then \
+		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
 	fi; \
 	${DOCKER_RUN} -d --name ${name} \
 		-v "${CURDIR}:/tmp/fabric:ro" \

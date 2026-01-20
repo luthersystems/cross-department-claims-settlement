@@ -277,7 +277,7 @@ connectors:
   #### WF3 CONNECTORS ####
 
   - name: ESIGNATURE
-    mock: false
+    mock: true
     general_settings:
       mock_settings:
         mock_settings:
@@ -476,7 +476,7 @@ connectors:
                   application/json:
                     schema:
                       type: object
-                      required: [claimID, paymentID, status]
+                      required: [claimID, paymentID, status, workflow_name]
                       properties:
                         claimID:
                           type: string
@@ -486,8 +486,13 @@ connectors:
                           example: P67890
                         status:
                           type: string
-                          enum: [approved, rejected, pending]
-                          example: approved
+                          enum: [approved, rejected, pending, APPROVED, REJECTED, PENDING]
+                          example: APPROVED
+                        workflow_name:
+                          type: string
+                          description: Workflow name (wf5 or process)
+                          enum: [wf5, process]
+                          example: wf5
               responses:
                 "200":
                   description: Acknowledged
@@ -526,7 +531,7 @@ connectors:
                   application/json:
                     schema:
                       type: object
-                      required: [claimID, signedBy]
+                      required: [claimID, signedBy, workflow_name]
                       properties:
                         claimID:
                           type: string
@@ -542,6 +547,11 @@ connectors:
                           format: email
                           description: Email address of the person who verified the signature (optional)
                           example: "jack.clarke@luthersystems.com"
+                        workflow_name:
+                          type: string
+                          description: Workflow name (wf4 or process)
+                          enum: [wf4, process]
+                          example: wf4
               responses:
                 "200":
                   description: Contract signed notification received
@@ -583,7 +593,7 @@ connectors:
                   application/json:
                     schema:
                       type: object
-                      required: [claimID, signedBy]
+                      required: [claimID, signedBy, workflow_name]
                       properties:
                         claimID:
                           type: string
@@ -594,6 +604,11 @@ connectors:
                           format: email
                           description: Email address of the person who signed/approved the payment
                           example: "payments@example.com"
+                        workflow_name:
+                          type: string
+                          description: Workflow name (must be process for this endpoint)
+                          enum: [process]
+                          example: process
               responses:
                 "200":
                   description: Payment signature notification received

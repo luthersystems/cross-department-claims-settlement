@@ -5,11 +5,11 @@ headers:
 tests:
   - name: "Initiate Workflow 2"
     method: POST
-    path: "v1/cdcs/UploadClaimWF2"
+    path: "v1/cdcs/workflows/wf2/claims"
     body: |
       {
         "policy_id": "POL-8872",
-        "guidewire_claim_id": "GW-CLM-12345"
+        "guidewire_claim_id": "GW-1001"
       }
     test_script: |
       pm.test("ok", () => {
@@ -19,8 +19,60 @@ tests:
           pm.expect(data).to.not.have.property("exception");
           pm.expect(data).to.have.property("claim_id");
           pm.expect(data).to.have.property("state");
-          if (!pm.environment.get("CLAIM_ID")) {
-              pm.environment.set("CLAIM_ID", data.claim_id);
-          }
+          pm.environment.set("CLAIM_ID", data.claim_id);
       });
 
+  - name: "Wait up to 60s for WF2 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf2/claims/{{CLAIM_ID}}/state"
+    test_script: |
+      pm.test("Wait up to 60s for workflow 2", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID");
+          let targetState = "WF2_CLAIM_STATE_GUIDEWIRE_APPROVED";
+
+          let maxAttempts = 30; // 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf2/claims/" + claimId + "/state";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {}
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF2_LAST_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF2_LAST_STATE", lastState);
+                      return done();
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF2 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf2/claims/{{CLAIM_ID}}/state"
+    test_script: |
+      pm.test("WF2 reaches final state", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF2_CLAIM_STATE_GUIDEWIRE_APPROVED");
+      });

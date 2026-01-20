@@ -1,0 +1,155 @@
+name: "Cdcs: Workflow 5 - D365FO Payment Journal"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Initiate Workflow 5"
+    method: POST
+    path: "v1/cdcs/workflows/wf5/claims"
+    body: |
+      {
+        "policy_id": "POL-8872"
+      }
+    test_script: |
+      pm.test("ok", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.response.to.have.status(200);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data).to.have.property("claim_id");
+          pm.expect(data).to.have.property("state");
+          pm.environment.set("CLAIM_ID_WF5", data.claim_id);
+      });
+
+  - name: "Wait up to 60s for WF5 AWAITING_PAYMENT_UPDATE"
+    method: GET
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
+    test_script: |
+      pm.test("Wait up to 60s for WF5 AWAITING_PAYMENT_UPDATE", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID_WF5");
+          let targetState = "WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE";
+
+          let maxAttempts = 30; // 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf5/claims/" + claimId + "/state";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {}
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF5_LAST_WAIT_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF5_LAST_WAIT_STATE", lastState);
+                      return done();
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF5 reached AWAITING_PAYMENT_UPDATE"
+    method: GET
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
+    test_script: |
+      pm.test("WF5 reaches AWAITING_PAYMENT_UPDATE", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF5_CLAIM_STATE_AWAITING_PAYMENT_UPDATE");
+      });
+
+  - name: "WF5: Payment Status Update - External System Notifies Payment"
+    method: POST
+    path: "payment/update-payment-status"
+    setup_script: |
+      pm.environment.set("OLD_SERVER", pm.environment.get("SERVER"));
+      pm.environment.set("OLD_SCHEME", pm.environment.get("SCHEME"));
+      pm.environment.set("SERVER", pm.environment.get("CONNECTORHUB_SERVER") || "connectorhub_cdcs:8090");
+      pm.environment.set("SCHEME", "http");
+    body: |
+      {
+        "workflow_name": "wf5",
+        "claimID": "{{CLAIM_ID_WF5}}",
+        "paymentID": "PAY-12345",
+        "status": "APPROVED"
+      }
+    test_script: |
+      pm.test("Payment status notification received", () => {
+          pm.response.to.have.status(200);
+          pm.environment.set("SERVER", pm.environment.get("OLD_SERVER"));
+          pm.environment.set("SCHEME", pm.environment.get("OLD_SCHEME"));
+      });
+
+  - name: "Wait up to 60s for WF5 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
+    test_script: |
+      pm.test("Wait up to 60s for WF5 final state", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID_WF5");
+          let targetState = "WF5_CLAIM_STATE_SAP_PAID";
+
+          let maxAttempts = 30; // 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf5/claims/" + claimId + "/state";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {}
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF5_LAST_FINAL_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF5_LAST_FINAL_STATE", lastState);
+                      return done();
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF5 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
+    test_script: |
+      pm.test("WF5 reaches final state", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF5_CLAIM_STATE_SAP_PAID");
+      });
+

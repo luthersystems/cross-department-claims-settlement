@@ -5,7 +5,7 @@ headers:
 tests:
   - name: "Initiate Workflow 3"
     method: POST
-    path: "v1/cdcs/UploadClaimWF3"
+    path: "v1/cdcs/workflows/wf3/claims"
     body: |
       {
         "claim_id": "{{CLAIM_ID}}",
@@ -24,5 +24,61 @@ tests:
           pm.expect(data).to.not.have.property("exception");
           pm.expect(data).to.have.property("claim_id");
           pm.expect(data).to.have.property("state");
+          pm.environment.set("CLAIM_ID_WF3", data.claim_id);
+      });
+
+  - name: "Wait up to 60s for WF3 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf3/claims/{{CLAIM_ID_WF3}}/state"
+    test_script: |
+      pm.test("Wait up to 60s for workflow 3", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID_WF3");
+          let targetState = "WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED";
+
+          let maxAttempts = 30; // 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf3/claims/" + claimId + "/state";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {}
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF3_LAST_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF3_LAST_STATE", lastState);
+                      return done();
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF3 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf3/claims/{{CLAIM_ID_WF3}}/state"
+    test_script: |
+      pm.test("WF3 reaches final state", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF3_CLAIM_STATE_INVOICE_EMAIL_DISPATCHED");
       });
 

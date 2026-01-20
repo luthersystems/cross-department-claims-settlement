@@ -38,7 +38,7 @@
                            "data" d365fo-data
                            "return_record" true
                            "profile" "default")))])
-    (build-event entity req "create d365fo payment journal" "D365FO" (get accessors :entity-id))))
+    (build-event entity req "create d365fo payment journal" *connector-id-d365fo* (get accessors :entity-id))))
 
 ;; Create SAP HANA recording event (after D365FO payment is created)
 (defun wf5-mk-sap-record-payment-event (entity d365fo-record sap-payload accessors)

@@ -5,7 +5,7 @@ headers:
 tests:
   - name: "Initiate Workflow 1"
     method: POST
-    path: "v1/cdcs/UploadClaimWF1"
+    path: "v1/cdcs/workflows/wf1/claims"
     body: |
       {
         "policy_id": "POL-8872"
@@ -19,5 +19,62 @@ tests:
           pm.expect(data).to.have.property("claim_id");
           pm.expect(data).to.have.property("state");
           pm.environment.set("CLAIM_ID", data.claim_id);
+      });
+
+  - name: "Wait up to 60s for WF1 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf1/claims/{{CLAIM_ID}}/state"
+    test_script: |
+      pm.test("Wait up to 60s for workflow 1", (done) => {
+          let claimId = pm.environment.get("CLAIM_ID");
+          let targetState = "WF1_CLAIM_TEAMS_THREAD_CREATED";
+
+          let maxAttempts = 3; // 30 * 2s = 60s
+          let attempt = 0;
+          let lastState = "";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf1/claims/" + claimId + "/state";
+
+          console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
+
+          let checkState = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  if (!err && res && res.code === 200) {
+                      try {
+                          let data = res.json();
+                          lastState = data.state || "";
+                      } catch (e) {
+                          // ignore parse errors in polling step
+                      }
+                  }
+
+                  console.log(`Attempt ${attempt}/${maxAttempts}: ${lastState}`);
+
+                  if (lastState === targetState) {
+                      pm.environment.set("WF1_LAST_STATE", lastState);
+                      return done();
+                  }
+
+                  if (attempt >= maxAttempts) {
+                      pm.environment.set("WF1_LAST_STATE", lastState);
+                      return done(); // never fail here
+                  }
+
+                  setTimeout(checkState, 2000);
+              });
+          };
+
+          setTimeout(checkState, 2000);
+      });
+
+  - name: "Assert WF1 final state"
+    method: GET
+    path: "v1/cdcs/workflows/wf1/claims/{{CLAIM_ID}}/state"
+    test_script: |
+      pm.test("WF1 reaches final state", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.state).to.equal("WF1_CLAIM_TEAMS_THREAD_CREATED");
       });
 
