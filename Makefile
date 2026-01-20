@@ -152,6 +152,9 @@ unit-other: phylumtest
 # The `down` wouldn't execute without this syntax
 integrationcitest:
 	$(MAKE) up
+	@echo "⏳ Waiting 2 minutes for services to fully boot up..."
+	@sleep 120
+	@echo "✅ Starting integration tests..."
 	$(MAKE) integration
 	$(MAKE) down
 

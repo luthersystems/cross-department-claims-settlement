@@ -16,5 +16,13 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.1
+      - name: Configure DockerHub
+        uses: ./.github/actions/configure-dockerhub
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
       - name: Run CI tests
+        env:
+          CONNECTORHUB_VERSION: ${{ vars.CONNECTORHUB_VERSION || 'latest' }}
+          SKIP_CONNECTORHUB_LOCAL_BUILD: 1
         run: script -q -e -c "make citest"
