@@ -31,10 +31,10 @@ var File_srvpb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_srvpb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
-	"\x15srvpb/v1/oracle.proto\x12\bsrvpb.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x12pb/v1/oracle.proto\x1a.protoc-gen-openapiv2/options/annotations.proto2\xfa\a\n" +
-	"\vCdcsService\x12q\n" +
-	"\vUploadClaim\x12\x19.pb.v1.UploadClaimRequest\x1a\x1a.pb.v1.UploadClaimResponse\"+\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/cdcs/UploadClaim\x12}\n" +
+	"\x15srvpb/v1/oracle.proto\x12\bsrvpb.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x12pb/v1/oracle.proto\x1a.protoc-gen-openapiv2/options/annotations.proto2\xa9\b\n" +
+	"\vCdcsService\x12\x86\x01\n" +
+	"\vUploadClaim\x12\x19.pb.v1.UploadClaimRequest\x1a\x1a.pb.v1.UploadClaimResponse\"@\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02.:\x01*\")/v1/cdcs/workflows/{workflow_name}/claims\x12}\n" +
 	"\x0eUploadClaimWF1\x12\x1c.pb.v1.UploadClaimWF1Request\x1a\x1d.pb.v1.UploadClaimWF1Response\".\x92A\t\n" +
 	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF1\x12}\n" +
 	"\x0eUploadClaimWF2\x12\x1c.pb.v1.UploadClaimWF2Request\x1a\x1d.pb.v1.UploadClaimWF2Response\".\x92A\t\n" +
@@ -46,9 +46,9 @@ const file_srvpb_v1_oracle_proto_rawDesc = "" +
 	"\x0eUploadClaimWF5\x12\x1c.pb.v1.UploadClaimWF5Request\x1a\x1d.pb.v1.UploadClaimWF5Response\".\x92A\t\n" +
 	"\aService\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/v1/cdcs/UploadClaimWF5\x12y\n" +
 	"\rInvokeProcess\x12\x1b.pb.v1.InvokeProcessRequest\x1a\x1c.pb.v1.InvokeProcessResponse\"-\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/cdcs/InvokeProcess\x12\x81\x01\n" +
-	"\rGetClaimState\x12\x1b.pb.v1.GetClaimStateRequest\x1a\x1c.pb.v1.GetClaimStateResponse\"5\x92A\t\n" +
-	"\aService\x82\xd3\xe4\x93\x02#\x12!/v1/cdcs/GetClaimState/{claim_id}B\xa4\x05\x92A\x9d\x04\x12\x0f\n" +
+	"\aService\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/cdcs/InvokeProcess\x12\x9a\x01\n" +
+	"\rGetClaimState\x12\x1b.pb.v1.GetClaimStateRequest\x1a\x1c.pb.v1.GetClaimStateResponse\"N\x92A\t\n" +
+	"\aService\x82\xd3\xe4\x93\x02<\x12:/v1/cdcs/workflows/{workflow_name}/claims/{claim_id}/stateB\xa4\x05\x92A\x9d\x04\x12\x0f\n" +
 	"\bCdcs API2\x031.0*\x01\x022\x10application/json:\x10application/jsonRS\n" +
 	"\x03400\x12L\n" +
 	"(Bad request determined by business logic\x12 \n" +

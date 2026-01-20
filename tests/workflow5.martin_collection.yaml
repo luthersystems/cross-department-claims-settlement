@@ -5,10 +5,9 @@ headers:
 tests:
   - name: "Initiate Workflow 5"
     method: POST
-    path: "v1/cdcs/UploadClaim"
+    path: "v1/cdcs/workflows/wf5/claims"
     body: |
       {
-        "workflow_name": "wf5",
         "policy_id": "POL-8872"
       }
     test_script: |
@@ -24,7 +23,7 @@ tests:
 
   - name: "Wait up to 60s for WF5 AWAITING_PAYMENT_UPDATE"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF5}}?workflow_name=wf5"
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
     test_script: |
       pm.test("Wait up to 60s for WF5 AWAITING_PAYMENT_UPDATE", (done) => {
           let claimId = pm.environment.get("CLAIM_ID_WF5");
@@ -33,7 +32,7 @@ tests:
           let maxAttempts = 30; // 60s
           let attempt = 0;
           let lastState = "";
-          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=wf5";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf5/claims/" + claimId + "/state";
 
           console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
 
@@ -68,7 +67,7 @@ tests:
 
   - name: "Assert WF5 reached AWAITING_PAYMENT_UPDATE"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF5}}?workflow_name=wf5"
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
     test_script: |
       pm.test("WF5 reaches AWAITING_PAYMENT_UPDATE", () => {
           pm.response.to.have.status(200);
@@ -101,7 +100,7 @@ tests:
 
   - name: "Wait up to 60s for WF5 final state"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF5}}?workflow_name=wf5"
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
     test_script: |
       pm.test("Wait up to 60s for WF5 final state", (done) => {
           let claimId = pm.environment.get("CLAIM_ID_WF5");
@@ -110,7 +109,7 @@ tests:
           let maxAttempts = 30; // 60s
           let attempt = 0;
           let lastState = "";
-          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=wf5";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf5/claims/" + claimId + "/state";
 
           console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
 
@@ -145,7 +144,7 @@ tests:
 
   - name: "Assert WF5 final state"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF5}}?workflow_name=wf5"
+    path: "v1/cdcs/workflows/wf5/claims/{{CLAIM_ID_WF5}}/state"
     test_script: |
       pm.test("WF5 reaches final state", () => {
           pm.response.to.have.status(200);

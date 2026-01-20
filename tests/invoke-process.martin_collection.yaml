@@ -36,7 +36,7 @@ tests:
 
   - name: "Wait up to 60s for WF4 WAITING_FOR_SIGNATURE"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}?workflow_name=process"
+    path: "v1/cdcs/workflows/process/claims/{{CLAIM_ID}}/state"
     test_script: |
       pm.test("Wait up to 60s for process to reach WF4 WAITING_FOR_SIGNATURE", (done) => {
           let maxAttempts = 30; // 60s
@@ -44,7 +44,7 @@ tests:
           let claimId = pm.environment.get("CLAIM_ID");
           let targetState = "WF4_CLAIM_STATE_WAITING_FOR_SIGNATURE";
           let lastState = "";
-          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=process";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/process/claims/" + claimId + "/state";
 
           console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
 
@@ -79,7 +79,7 @@ tests:
 
   - name: "Assert process reached WF4 WAITING_FOR_SIGNATURE"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}?workflow_name=process"
+    path: "v1/cdcs/workflows/process/claims/{{CLAIM_ID}}/state"
     test_script: |
       pm.test("Process reaches WF4 WAITING_FOR_SIGNATURE", () => {
           pm.response.to.have.status(200);
@@ -112,7 +112,7 @@ tests:
 
   - name: "Wait up to 60s for WAITING_FOR_PAYMENT_SIGNATURE"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}?workflow_name=process"
+    path: "v1/cdcs/workflows/process/claims/{{CLAIM_ID}}/state"
     test_script: |
       pm.test("Wait up to 60s for process to reach WAITING_FOR_PAYMENT_SIGNATURE", (done) => {
           let maxAttempts = 30; // 60s
@@ -120,7 +120,7 @@ tests:
           let claimId = pm.environment.get("CLAIM_ID");
           let targetState = "CLAIM_STATE_WAITING_FOR_PAYMENT_SIGNATURE";
           let lastState = "";
-          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=process";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/process/claims/" + claimId + "/state";
 
           console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
 
@@ -155,7 +155,7 @@ tests:
 
   - name: "Assert process reached WAITING_FOR_PAYMENT_SIGNATURE"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}?workflow_name=process"
+    path: "v1/cdcs/workflows/process/claims/{{CLAIM_ID}}/state"
     test_script: |
       pm.test("Process reaches WAITING_FOR_PAYMENT_SIGNATURE", () => {
           pm.response.to.have.status(200);
@@ -188,7 +188,7 @@ tests:
 
   - name: "Wait up to 60s for PAYMENT_TEAM_NOTIFIED"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}?workflow_name=process"
+    path: "v1/cdcs/workflows/process/claims/{{CLAIM_ID}}/state"
     test_script: |
       pm.test("Wait up to 60s for process to reach PAYMENT_TEAM_NOTIFIED", (done) => {
           let maxAttempts = 30; // 60s
@@ -196,7 +196,7 @@ tests:
           let claimId = pm.environment.get("CLAIM_ID");
           let targetState = "CLAIM_STATE_PAYMENT_TEAM_NOTIFIED";
           let lastState = "";
-          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=process";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/process/claims/" + claimId + "/state";
 
           console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
 
@@ -231,7 +231,7 @@ tests:
 
   - name: "Verify Final State - PAYMENT_TEAM_NOTIFIED (Process Complete)"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID}}?workflow_name=process"
+    path: "v1/cdcs/workflows/process/claims/{{CLAIM_ID}}/state"
     test_script: |
       pm.test("Verify process reached final state", () => {
           // Process completes at PAYMENT_TEAM_NOTIFIED state

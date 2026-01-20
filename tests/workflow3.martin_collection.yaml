@@ -5,10 +5,9 @@ headers:
 tests:
   - name: "Initiate Workflow 3"
     method: POST
-    path: "v1/cdcs/UploadClaim"
+    path: "v1/cdcs/workflows/wf3/claims"
     body: |
       {
-        "workflow_name": "wf3",
         "claim_id": "{{CLAIM_ID}}",
         "invoice_amount": "2500.00",
         "signer_name": "John Doe",
@@ -30,7 +29,7 @@ tests:
 
   - name: "Wait up to 60s for WF3 final state"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF3}}?workflow_name=wf3"
+    path: "v1/cdcs/workflows/wf3/claims/{{CLAIM_ID_WF3}}/state"
     test_script: |
       pm.test("Wait up to 60s for workflow 3", (done) => {
           let claimId = pm.environment.get("CLAIM_ID_WF3");
@@ -39,7 +38,7 @@ tests:
           let maxAttempts = 30; // 60s
           let attempt = 0;
           let lastState = "";
-          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/GetClaimState/" + claimId + "?workflow_name=wf3";
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/workflows/wf3/claims/" + claimId + "/state";
 
           console.log(`Polling up to 60s for state: ${targetState}, claim_id: ${claimId}`);
 
@@ -74,7 +73,7 @@ tests:
 
   - name: "Assert WF3 final state"
     method: GET
-    path: "v1/cdcs/GetClaimState/{{CLAIM_ID_WF3}}?workflow_name=wf3"
+    path: "v1/cdcs/workflows/wf3/claims/{{CLAIM_ID_WF3}}/state"
     test_script: |
       pm.test("WF3 reaches final state", () => {
           pm.response.to.have.status(200);
