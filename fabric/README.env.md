@@ -45,10 +45,10 @@ d365_fo:
 
 In `fabric/.env`:
 ```bash
-D365FO_BASE_URL=https://mcpfo1.operations.dynamics.com
-D365FO_CLIENT_ID=b22be235-70fd-4aeb-a589-d265afaed22c
-D365FO_CLIENT_SECRET=hK98Q~zfZwHhaCk~XD0GQCuUL3mS1lminJT20a6L
-D365FO_TENANT_ID=a47b59dc-3c90-49c8-84bc-0c9fcaa05616
+D365FO_BASE_URL=https://your-tenant.operations.dynamics.com
+D365FO_CLIENT_ID=<your-app-client-id>
+D365FO_CLIENT_SECRET=<your-app-client-secret>
+D365FO_TENANT_ID=<your-azure-tenant-id>
 ```
 
 ## Environment Variables Reference
