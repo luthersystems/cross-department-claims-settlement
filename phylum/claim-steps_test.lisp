@@ -31,7 +31,8 @@
                          (claim-request-problem (with-fields (test-claim-request)
                                                              "settlement_document_item_id" item-id))))
        (list (get id-document-file "item_id")
-             (format-string " {} " (get id-document-file "item_id")))))
+             (format-string " {} " (get id-document-file "item_id"))
+             (string:lowercase (get id-document-file "item_id")))))
 
 (test "the settlement document step fetches the file the start request names"
   (let ([args (event-args (settlement-document-event (test-claim)))])
@@ -48,7 +49,10 @@
        (lambda (amount)
          (assert-string= (format-string "invoice_amount {} is not a positive decimal amount" amount)
                          (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
-       (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12))
+       (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12
+             ;; More than two decimal places: as a float it would round to
+             ;; a cap it exceeds.
+             "1.005" "20000.000000000000001"))
   (map ()
        (lambda (amount)
          (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
@@ -159,6 +163,25 @@
                                                                  "1.00")))
               "the policy's coverage limit is not an amount"))))
 
+;; #37: the ID document came back as the settlement document.
+(test "parse-document refuses a file other than the settlement document"
+  (assert-string= "SharePoint returned id-verification.txt, not the settlement document settlement-CLM-4567.txt"
+                  (bad-reply-message
+                    (lambda ()
+                      (parse-document (sorted-map "type" "text"
+                                                  "documents" (vector (sorted-map "file" "id-verification.txt")))
+                                      "settlement-CLM-4567.txt")))))
+
+(test "the ServiceNow incident names the settlement document"
+  (let ([description (get (event-args (servicenow-incident-event (test-claim))) "description")])
+    (assert (string:contains? description "settlement-CLM-4567.txt"))
+    (assert (string:contains? description "01RAAXWASETTLEMENTCLM4567"))))
+
+(test "a coverage limit with more decimal places is still an amount"
+  (assert-nil (bad-reply-message
+                (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" "2500.0000"))
+                                                "2500.00")))))
+
 (test "parse-guidewire-claim lets only an open claim settle"
   (map ()
        (lambda (status)
@@ -199,6 +222,8 @@
   (let ([doc (parse-document (get test-replies "settlement-document") "settlement-CLM-4567.txt")])
     (assert-string= "text" (get doc "type"))
     (assert-string= "settlement-CLM-4567.txt" (get doc "file")))
+  ;; A reply that does not name the file it read is taken as the file asked for.
+  (assert-string= "s.txt" (get (parse-document (sorted-map "type" "text") "s.txt") "file"))
   (assert-string= "INC0010001" (get (parse-servicenow-incident (get test-replies "servicenow-incident")) "number"))
   (assert-string= "INC7" (get (parse-servicenow-incident (sorted-map "incident_number" "INC7" "incident_id" "x")) "number"))
   (assert-string= "SAP-TXN-1001" (parse-sap-payment (get test-replies "sap-payment")))

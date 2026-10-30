@@ -84,8 +84,9 @@
       ;; settlement document (#37), so ServiceNow reviewers saw the wrong
       ;; file.  The two are separate documents; a request that names the
       ;; ID document as the settlement document is that mistake again.
-      ((equal? (string:trim-space (to-string (get req "settlement_document_item_id")))
-               (get id-document-file "item_id"))
+      ;; Compared without case: SharePoint takes an item id in either case.
+      ((equal? (string:lowercase (string:trim-space (to-string (get req "settlement_document_item_id"))))
+               (string:lowercase (get id-document-file "item_id")))
        "settlement_document_item_id names the ID verification document, not a settlement document")
       (else ()))))
 
@@ -95,7 +96,10 @@
 ;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
 ;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
 ;; them record different amounts, and Inf cannot go into a JSON event.
-(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]+)?$"))
+;; At most two decimal places, as GBP has: the coverage checks compare the
+;; amount as a float, and "20000.000000000000001" would round to the
+;; 20000.00 limit and pass while SAP recorded the longer text.
+(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]{1,2})?$"))
 
 (defun amount-number (v)
   (when (and (string? v) (regexp:regexp-match? decimal-amount v))
@@ -289,10 +293,14 @@
 ;; A cap as a database returns it: a JSON number (Oracle NUMBER) or decimal
 ;; text (MySQL DECIMAL).  Zero is a cap (nothing is covered); a negative
 ;; number or other text is not an amount.
+;; A database may return more decimal places than an invoice may have
+;; (DECIMAL(12,4)), so a cap's text may have any number of them.
+(set 'decimal-text (regexp:regexp-compile "^[0-9]+(\\.[0-9]+)?$"))
+
 (defun cap-number (v)
   (cond
     ((number? v) (when (>= v 0) (to-float v)))
-    ((and (string? v) (regexp:regexp-match? decimal-amount v)) (to-float v))
+    ((and (string? v) (regexp:regexp-match? decimal-text v)) (to-float v))
     (else ())))
 
 (defun id-document-event ()
@@ -469,17 +477,30 @@
               "filename" (get claim "settlement_document_filename")))
 
 ;; The settlement document is fetched for the incident's reviewers; the
-;; flow keeps only what it is.
+;; flow keeps only what it is.  When SharePoint names the file it read, it
+;; must be the one the claim asked for: #37 was the ID document passed off
+;; as the settlement document, and a summary that only echoed the request
+;; would hide that.
 (defun parse-document (reply filename)
   (match reply
-    ((sorted-map "type" kind) (sorted-map "file" filename "type" kind "lines" (get reply "line_count")))
+    ((sorted-map "type" kind)
+     (let ([returned (match (get reply "documents")
+                   ((vector (sorted-map "file" f) &rest _) f)
+                   (_ ()))])
+       (when (and returned (not (equal? returned filename)))
+         (bad-reply "SharePoint returned {}, not the settlement document {}" returned filename))
+       (sorted-map "file" filename "type" kind "lines" (get reply "line_count"))))
     (_ (bad-reply "SharePoint returned no document"))))
 
 (defun servicenow-incident-event (claim)
   (claim-event "servicenow" "create incident"
     (generic-req "KIND_SERVICENOW" "create_incident"
+      ;; The description names the settlement document so the reviewers
+      ;; open the right file in SharePoint.
       (sorted-map "short_description" (format-string "Create incident for claim {}" (get claim "claim_id"))
-                  "description"       "Auto-generated incident for inter-entity settlement review"
+                  "description"       (format-string "Auto-generated incident for inter-entity settlement review.\nSettlement document: {} (SharePoint item {})"
+                                                     (get claim "settlement_document_filename")
+                                                     (get claim "settlement_document_item_id"))
                   "priority"          "3"
                   "category"          "Finance"
                   "impact"            "2"

@@ -43,7 +43,7 @@ type StartClaimRequest struct {
 	RequestKey string `protobuf:"bytes,9,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"`
 	// Required: the SharePoint item id of the claim's settlement document,
 	// in the demo document library.  It must not be the ID verification
-	// document; the flow gives this file to ServiceNow for review.
+	// document.  The ServiceNow incident names this file for review.
 	SettlementDocumentItemId string `protobuf:"bytes,10,opt,name=settlement_document_item_id,json=settlementDocumentItemId,proto3" json:"settlement_document_item_id,omitempty"`
 	// Required: the settlement document's file name.  SharePoint picks the
 	// parser by its extension (.txt, .pdf, .docx, ...).

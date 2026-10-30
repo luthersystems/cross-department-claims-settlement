@@ -669,7 +669,7 @@
         },
         "settlementDocumentItemId": {
           "type": "string",
-          "description": "Required: the SharePoint item id of the claim's settlement document,\nin the demo document library.  It must not be the ID verification\ndocument; the flow gives this file to ServiceNow for review."
+          "description": "Required: the SharePoint item id of the claim's settlement document,\nin the demo document library.  It must not be the ID verification\ndocument.  The ServiceNow incident names this file for review."
         },
         "settlementDocumentFilename": {
           "type": "string",

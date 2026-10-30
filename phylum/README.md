@@ -72,10 +72,14 @@ Rules the steps apply:
   names, in the demo document library.  A request that names the ID
   document there is rejected: the demo once fetched the ID document
   twice and gave it to ServiceNow as the settlement document (#37).
+  When SharePoint names the file it read, it must be that file.  The
+  ServiceNow incident names the file for its reviewers.
 - The invoice may not exceed the Oracle claim `AMOUNT` or the policy's
   `COVERAGE_LIMIT`; both apply, so the lower one wins.  A cap that is
   missing or not a number fails the run too.  Both checks run before
-  Guidewire marks the claim for settlement.
+  Guidewire marks the claim for settlement.  An invoice amount has at
+  most two decimal places, so the float comparison cannot round it down
+  to a cap it exceeds.
 - The Guidewire claim must be `Open`, `UnderReview` or `Approved`.
   `Rejected`, `Closed` and any status the flow does not know fail the
   run.

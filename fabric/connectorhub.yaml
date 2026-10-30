@@ -277,6 +277,25 @@ connectors:
                         }
                       ]
                     }
+                # The settlement document the e2e start request names
+                # (tests/claim.martin_collection.yaml).  The key is the
+                # request's arguments as the hub marshals them (sorted keys,
+                # no spaces); any other file gets the ID document above.
+                '{"drive_id":"b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8","filename":"settlement-CLM-4567.txt","item_id":"01RAAXWASETTLEMENTCLM4567","site_id":"samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245"}':
+                  response: |
+                    {
+                      "type": "text",
+                      "content": [
+                        "U2V0dGxlbWVudCBmb3IgY2xhaW0gQ0xNLTQ1NjcKQW1vdW50OiAyNTAwLjAwIEdCUApBcHByb3ZlZDogWWVz"
+                      ],
+                      "line_count": 3,
+                      "documents": [
+                        {
+                          "type": "text",
+                          "file": "settlement-CLM-4567.txt"
+                        }
+                      ]
+                    }
     microsoft_sharepoint:
       client_id: "${SHAREPOINT_CLIENT_ID}"
       client_secret: "${SHAREPOINT_CLIENT_SECRET}"
