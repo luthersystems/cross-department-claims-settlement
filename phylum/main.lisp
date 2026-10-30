@@ -19,70 +19,12 @@
 (set 'build-id "LUTHER_PROJECT_BUILD_ID")  ; overridden during build
 (set 'service-version (format-string "{} ({})" version build-id))
 
-;; Load connector ID constants (must be loaded before parsers that use them)
-(load-file "connector-ids.lisp")
-
-;; Load all route definitions and core business logic for this phylum.
+;; init and healthcheck.
 (load-file "routes.lisp")
 
-;; Load substrate framework files
-(load-file "substrate/substr_connector.lisp")
-(load-file "substrate/substr_generic_state_machine.lisp")
-(load-file "substrate/substr_ephemeral_storage.lisp")
-(load-file "substrate/substr_generic_parser.lisp")
-
-;; Load workflow infrastructure
-(load-file "workflow-chaining.lisp")  ; Load before workflow registrations so invoke-workflow is available
-
-;; Load workflow-1 files
-(load-file "workflow-1/01-constants.lisp")
-(load-file "workflow-1/01-parsers.lisp")     ; Parsing & event creation
-(load-file "workflow-1/01-workflow.lisp")
-(load-file "workflow-1/01-routes.lisp")
-(load-file "workflow-1/01-reg.lisp")         ; Register WF1 manager
-
-;; Load workflow-2 files
-(load-file "workflow-2/02-constants.lisp")
-(load-file "workflow-2/02-parsers.lisp")     ; Parsing & event creation
-(load-file "workflow-2/02-workflow.lisp")
-(load-file "workflow-2/02-routes.lisp")
-(load-file "workflow-2/02-reg.lisp")         ; Register WF2 manager
-
-;; Load workflow-3 files
-(load-file "workflow-3/03-constants.lisp")
-(load-file "workflow-3/03-parsers.lisp")     ; Parsing & event creation
-(load-file "workflow-3/03-workflow.lisp")
-(load-file "workflow-3/03-routes.lisp")
-(load-file "workflow-3/03-reg.lisp")         ; Register WF3 manager
-
-;; Load workflow-4 files (from workflow-4-edit, which replaced the old workflow-4)
-(load-file "workflow-4-edit/04-constants.lisp")
-(load-file "workflow-4-edit/04-parsers.lisp")     ; Parsing & event creation
-(load-file "workflow-4-edit/04-workflow.lisp")
-(load-file "workflow-4-edit/04-reg.lisp")         ; Register WF4 manager (workflow-4-edit)
-
-;; Load workflow-5 files
-(load-file "workflow-5/05-constants.lisp")
-(load-file "workflow-5/05-parsers.lisp")     ; Parsing & event creation
-(load-file "workflow-5/05-workflow.lisp")
-(load-file "workflow-5/05-reg.lisp")         ; Register WF5 manager
-
-;; Load unified process registration (requires all workflow specs to be loaded)
-(load-file "process-reg.lisp")        ; Register unified process manager
-
-;; Configuration: Load EITHER workflow-specific routes OR unified process routes
-;; Set *use-unified-process-routes* to false to use individual workflow routes
-;; Defaults to true (unified process routes)
-(set '*use-unified-process-routes* true)
-
-(if *use-unified-process-routes*
-    ;; Load unified process routes (uses claim-manager)
-    (load-file "process-routes.lisp")
-    ;; Load workflow-specific routes (uses claim-manager-wf4, claim-manager-wf5, etc.)
-    (progn
-      (load-file "workflow-4-edit/04-routes.lisp")
-      (load-file "workflow-5/05-routes.lisp")))
+;; The claim process: its steps, then the flow that runs them.
+(load-file "claim-steps.lisp")
+(load-file "claim.lisp")
 
 ;; Note: Test files (*_test.lisp) are automatically discovered and loaded by the test runner
 ;; They should NOT be loaded here to avoid duplicate test registration
-
