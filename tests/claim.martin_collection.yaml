@@ -54,7 +54,7 @@ tests:
               attempt++;
               pm.sendRequest({ url, method: "GET" }, (err, res) => {
                   let claim = (!err && res && res.code === 200) ? (res.json().claim || {}) : {};
-                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`);
+                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`, claim.error || "");
                   if (claim.state === "failed") {
                       pm.expect.fail("claim failed: " + JSON.stringify(claim.error));
                       return done();
@@ -107,7 +107,7 @@ tests:
               attempt++;
               pm.sendRequest({ url, method: "GET" }, (err, res) => {
                   let claim = (!err && res && res.code === 200) ? (res.json().claim || {}) : {};
-                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`);
+                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`, claim.error || "");
                   if (claim.state === "failed") {
                       pm.expect.fail("claim failed: " + JSON.stringify(claim.error));
                       return done();
@@ -176,7 +176,7 @@ tests:
               attempt++;
               pm.sendRequest({ url, method: "GET" }, (err, res) => {
                   let claim = (!err && res && res.code === 200) ? (res.json().claim || {}) : {};
-                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`);
+                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`, claim.error || "");
                   if (claim.state === "failed") {
                       pm.expect.fail("claim failed: " + JSON.stringify(claim.error));
                       return done();
