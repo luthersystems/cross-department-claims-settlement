@@ -147,14 +147,28 @@ Run `make` to build all the services:
 make
 ```
 
-## "Hello World" Application
+## The Claim Settlement Application
 
-This repo includes a small application for managing an insurance claim. It
-serves a [JSON API](api/srvpb/v1/oracle.swagger.json) that provides endpoints to:
+This repo settles an insurance claim across departments.  One defflow,
+[phylum/claim.lisp](phylum/claim.lisp), runs each claim from the first
+database lookup to the payment record: Oracle, Equifax, Teams, Guidewire,
+MySQL, SharePoint, eSignature, Salesforce, email, Zoho, ServiceNow, D365FO
+and SAP HANA, all through Connector Hub.  The run id is the claim id.  See
+the [phylum documentation](phylum/README.md) for the steps.
 
-1. create a new insurance claim
-2. add a claimant to the claim
-3. retrieve claim details
+The portal serves a [JSON API](api/srvpb/v1/oracle.swagger.json):
+
+| Endpoint | What it does |
+| --- | --- |
+| `POST /v1/cdcs/claims` | Start a claim |
+| `GET /v1/cdcs/claims/{claim_id}` | Read its state, the step it waits at, and its result |
+| `POST /v1/cdcs/claims/{claim_id}/contract-signed` | eSignature webhook: the contract is signed |
+| `POST /v1/cdcs/claims/{claim_id}/payment-approved` | The payment team approved the payment |
+| `POST /v1/cdcs/claims/{claim_id}/payment-status` | ABS webhook: approved, rejected or pending |
+
+The three webhooks come to the portal, not to Connector Hub, because an
+input to a flow run must send the run's current generation, and only the
+portal can read it first (see [portal/oracle/endpoints.go](portal/oracle/endpoints.go)).
 
 > To simplify the cross-department-claims-settlement repo , we have omitted authentication which we handle
 > using [lutherauth](https://docs.luthersystems.com/luther/application/modules/lutherauth).
@@ -230,7 +244,8 @@ There are 3 main types of tests in this project:
    storage of smart contract data model entities. More information about
    writing and running unit tests can be found in the phylum
    [documentation](phylum/README.md).
-   See the example [claims test](./phylum/claim_test.lisp).
+   See the [claim flow tests](./phylum/claim_test.lisp) and the
+   [step tests](./phylum/claim-steps_test.lisp).
 
 2. Oracle _functional_ tests. These tests exercise API endpoints and their
    connectivity to the phylum application layer. More information about writing

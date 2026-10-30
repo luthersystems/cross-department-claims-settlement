@@ -20,7 +20,7 @@ portal/
 ├── start.go                  # Start command CLI logic
 ├── version.go                # CLI command to print version
 ├── oracle/                   # Oracle service implementation
-│   ├── endpoints.go          # gRPC API endpoint logic (e.g., CreateClaim)
+│   ├── endpoints.go          # Claim RPCs and the webhook inputs (StartClaim, ContractSigned, ...)
 │   ├── oracle.go             # Oracle server bootstrap and gRPC registration
 │   └── oracle_test.go        # Functional and snapshot tests
 ├── version/                  # Holds build version info
@@ -52,10 +52,10 @@ eval $(make host-go-env)
 go test ./...
 ```
 
-To run only a specific test (e.g., `GetClaim`):
+To run only a specific test (e.g., `TestClaimRunsThroughTheWebhooks`):
 
 ```sh
-go test -v -run=GetClaim ./...
+go test -v -run=TestClaimRunsThroughTheWebhooks ./...
 ```
 
 ## Production vs Emulated Mode

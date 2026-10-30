@@ -1,0 +1,207 @@
+# One claim through the claim flow (phylum/claim.lisp) on the full network,
+# with the connectors mocked by fabric/connectorhub.yaml.  The connector
+# steps run on their own; the test waits for each input step and sends the
+# webhook the portal serves for it.
+name: "Cdcs: claim settlement"
+headers:
+  - key: Content-Type
+    value: application/json
+tests:
+  - name: "Start a claim"
+    method: POST
+    path: "v1/cdcs/claims"
+    body: |
+      {
+        "policy_id": "POL-8872",
+        "guidewire_claim_id": "GW-1001",
+        "invoice_amount": "25000.00",
+        "signer_name": "Jack Clarke",
+        "signer_email": "jack.clarke@luthersystems.com",
+        "originator_name": "Acme Insurance Ltd.",
+        "recipient_name": "BlueRiver Underwriting Partners",
+        "issue_date": "2025-11-12"
+      }
+    test_script: |
+      pm.test("ok", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data.claim.state).to.equal("waiting");
+          pm.environment.set("CLAIM_ID", data.claim.claim_id);
+      });
+
+  - name: "A start without the signer is refused"
+    method: POST
+    path: "v1/cdcs/claims"
+    body: |
+      { "policy_id": "POL-8872", "guidewire_claim_id": "GW-1001", "invoice_amount": "25000.00" }
+    test_script: |
+      pm.test("refused", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.exception.description).to.equal("missing signer_name, signer_email");
+      });
+
+  - name: "Wait for contract-signed"
+    method: GET
+    path: "v1/cdcs/claims/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("claim reaches contract-signed", (done) => {
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/claims/" + pm.environment.get("CLAIM_ID");
+          let attempt = 0;
+          let check = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  let claim = (!err && res && res.code === 200) ? (res.json().claim || {}) : {};
+                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`);
+                  if (claim.state === "failed") {
+                      pm.expect.fail("claim failed: " + JSON.stringify(claim.error));
+                      return done();
+                  }
+                  if (claim.step === "contract-signed") return done();
+                  if (attempt >= 30) {
+                      pm.expect.fail("claim did not reach contract-signed in 60s: " + claim.state + " at " + claim.step);
+                      return done();
+                  }
+                  setTimeout(check, 2000);
+              });
+          };
+          check();
+      });
+
+  - name: "A payment status before the contract is signed is refused"
+    method: POST
+    path: "v1/cdcs/claims/{{CLAIM_ID}}/payment-status"
+    body: |
+      { "payment_id": "PAY-1001", "status": "approved" }
+    test_script: |
+      pm.test("refused", () => {
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data.exception.description).to.include("not waiting for payment-status");
+      });
+
+  - name: "eSignature webhook: contract signed"
+    method: POST
+    path: "v1/cdcs/claims/{{CLAIM_ID}}/contract-signed"
+    body: |
+      { "signed_by": "john.doe@example.com" }
+    test_script: |
+      pm.test("ok", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data.claim.step).to.equal("zoho-invoice");
+      });
+
+  - name: "Wait for payment-approved"
+    method: GET
+    path: "v1/cdcs/claims/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("claim reaches payment-approved", (done) => {
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/claims/" + pm.environment.get("CLAIM_ID");
+          let attempt = 0;
+          let check = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  let claim = (!err && res && res.code === 200) ? (res.json().claim || {}) : {};
+                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`);
+                  if (claim.state === "failed") {
+                      pm.expect.fail("claim failed: " + JSON.stringify(claim.error));
+                      return done();
+                  }
+                  if (claim.step === "payment-approved") return done();
+                  if (attempt >= 30) {
+                      pm.expect.fail("claim did not reach payment-approved in 60s: " + claim.state + " at " + claim.step);
+                      return done();
+                  }
+                  setTimeout(check, 2000);
+              });
+          };
+          check();
+      });
+
+  - name: "Payment team approves"
+    method: POST
+    path: "v1/cdcs/claims/{{CLAIM_ID}}/payment-approved"
+    body: |
+      { "signed_by": "payments@example.com" }
+    test_script: |
+      pm.test("ok", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data.claim.step).to.equal("payment-status");
+      });
+
+  - name: "ABS webhook: payment pending"
+    method: POST
+    path: "v1/cdcs/claims/{{CLAIM_ID}}/payment-status"
+    body: |
+      { "payment_id": "PAY-1001", "status": "pending" }
+    test_script: |
+      pm.test("ok", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data.claim.step).to.equal("payment-status");
+      });
+
+  - name: "ABS webhook: payment approved"
+    method: POST
+    path: "v1/cdcs/claims/{{CLAIM_ID}}/payment-status"
+    body: |
+      { "payment_id": "PAY-1001", "status": "approved" }
+    test_script: |
+      pm.test("ok", () => {
+          pm.response.to.have.status(200);
+          let data = pm.response.json();
+          console.log(data);
+          pm.expect(data).to.not.have.property("exception");
+          pm.expect(data.claim.step).to.equal("d365fo-journal");
+      });
+
+  - name: "Wait for done"
+    method: GET
+    path: "v1/cdcs/claims/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("claim reaches done", (done) => {
+          let url = pm.environment.get("SCHEME") + "://" + pm.environment.get("SERVER") + "/v1/cdcs/claims/" + pm.environment.get("CLAIM_ID");
+          let attempt = 0;
+          let check = () => {
+              attempt++;
+              pm.sendRequest({ url, method: "GET" }, (err, res) => {
+                  let claim = (!err && res && res.code === 200) ? (res.json().claim || {}) : {};
+                  console.log(`attempt ${attempt}: ${claim.state} at ${claim.step}`);
+                  if (claim.state === "failed") {
+                      pm.expect.fail("claim failed: " + JSON.stringify(claim.error));
+                      return done();
+                  }
+                  if (claim.state === "done") return done();
+                  if (attempt >= 30) {
+                      pm.expect.fail("claim did not reach done in 60s: " + claim.state + " at " + claim.step);
+                      return done();
+                  }
+                  setTimeout(check, 2000);
+              });
+          };
+          check();
+      });
+
+  - name: "The claim is paid"
+    method: GET
+    path: "v1/cdcs/claims/{{CLAIM_ID}}"
+    test_script: |
+      pm.test("paid", () => {
+          pm.response.to.have.status(200);
+          let claim = pm.response.json().claim;
+          console.log(claim);
+          pm.expect(claim.result.decision).to.equal("paid");
+          pm.expect(claim.result.payment_id).to.equal("PAY-1001");
+          pm.expect(claim.result.sap_txn).to.equal("SAP-TXN-1001");
+          pm.expect(claim.result.d365fo_txn_id).to.equal("5637144576");
+      });
