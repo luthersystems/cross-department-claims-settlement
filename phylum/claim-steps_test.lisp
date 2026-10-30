@@ -24,6 +24,14 @@
   (assert-string= "missing policy_id, guidewire_claim_id, invoice_amount, signer_name, signer_email"
                   (claim-request-problem (sorted-map))))
 
+(test "claim-request-problem needs a positive invoice amount"
+  (map ()
+       (lambda (amount)
+         (assert-string= (format-string "invoice_amount {} is not a positive number" amount)
+                         (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
+       (list "abc" "0" "-5"))
+  (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" "12"))))
+
 (test "new-claim fills blank fields with the demo defaults"
   (let ([claim (new-claim "run-1" (with-fields (test-claim-request) "recipient_name" ""))])
     (assert-string= "run-1" (get claim "claim_id"))
@@ -138,3 +146,30 @@
     (assert= 1 (get m "a"))
     (assert= 2 (get m2 "a"))
     (assert= 3 (get m2 "b"))))
+
+(test "the Zoho invoice is for the claim amount in the claim currency"
+  (let* ([json-data (get (event-args (zoho-invoice-event (test-claim))) "json_data")]
+         [item (first (get json-data "line_items"))])
+    (assert-string= claim-currency (get json-data "currency_code"))
+    (assert= 25000.0 (get item "rate")))
+  (assert-string= claim-currency
+                  (get (payment-record (sorted-map "payment_id" "P" "status" "approved")) "currency")))
+
+(test "the Guidewire approval uses the field names of its OpenAPI spec"
+  (let ([args (event-args (guidewire-approval-event (test-claim)))])
+    (assert-string= "GW-1001" (get args "claim_id"))
+    (assert-string= "Handler" (get args "approved_by"))
+    (assert-nil (get args "claimId"))))
+
+(test "parse-guidewire-approval refuses a claim Guidewire did not approve"
+  (assert-string= "Guidewire did not approve the claim: Rejected"
+                  (bad-reply-message (lambda () (parse-guidewire-approval (sorted-map "approval" "Rejected")))))
+  (assert-string= "Guidewire did not confirm the approval"
+                  (bad-reply-message (lambda () (parse-guidewire-approval (sorted-map "status" "ok"))))))
+
+(test "parse-sent refuses a message that did not go"
+  (assert-string= "the message was not sent: SMTP auth refused"
+                  (bad-reply-message (lambda () (parse-sent (sorted-map "status" "failed" "error" "SMTP auth refused")))))
+  (assert-string= "the message was not sent: status Failed"
+                  (bad-reply-message (lambda () (parse-sent (sorted-map "status" "Failed")))))
+  (assert-string= "updated" (parse-sent (sorted-map "status" "updated"))))

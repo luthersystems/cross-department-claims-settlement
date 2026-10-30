@@ -43,13 +43,16 @@
 (set 'zoho-customer-id "7533684000000109011")
 (set 'zoho-due-date "2025-11-15")
 
+;; The claim's currency, for the Zoho invoice and the SAP payment record.
+(set 'claim-currency "GBP")
+
 ;; The D365FO and SAP payment records.  The payment id comes from the
 ;; payment-status input; the rest are the demo ledger's values.
 (set 'payment-defaults (sorted-map
                          "invoice_id"     "INV-1002"
                          "reference"      "Batch-Nov-01"
                          "vendor_id"      "VEND-001"
-                         "currency"       "USD"
+                         "currency"       claim-currency
                          "payment_method" "EFT"
                          "payment_date"   "2025-11-06"))
 
@@ -67,8 +70,19 @@
   (let ([missing (select 'vector
                          (lambda (k) (blank? (get req k)))
                          claim-required-fields)])
-    (unless (empty? missing)
-      (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))))
+    (cond
+      ((not (empty? missing))
+       (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
+      ((nil? (amount-number (get req "invoice_amount")))
+       (format-string "invoice_amount {} is not a positive number" (get req "invoice_amount")))
+      (else ()))))
+
+;; Return v as a positive float, or nil.  The Zoho step needs a number, and
+;; it runs in a reply transaction where an error would leave the run
+;; waiting, so the start checks the amount once.
+(defun amount-number (v)
+  (let ([n (ignore-errors (to-float v))])
+    (when (and (float? n) (> n 0)) n)))
 
 (defun blank? (v)
   (or (nil? v) (and (string? v) (empty? (string:trim-space v)))))
@@ -103,14 +117,9 @@
 
 ;; A copy of map m with each key and value in kvs set.
 (defun with-fields (m &rest kvs)
-  (let ([out (sorted-map)])
-    (map () (lambda (k) (assoc! out k (get m k))) (keys m))
-    (labels ([put (pairs)
-               (unless (empty? pairs)
-                 (assoc! out (first pairs) (second pairs))
-                 (put (rest (rest pairs))))])
-      (put kvs))
-    out))
+  (if (empty? kvs)
+    m
+    (apply with-fields (assoc m (first kvs) (second kvs)) (rest (rest kvs)))))
 
 ;; Raise the error a reader raises for a reply it cannot use.
 (defun bad-reply (format &rest args)
@@ -241,14 +250,18 @@
 (defun guidewire-approval-event (claim)
   (claim-event "outboundgw" "update approval"
     (generic-req "KIND_HTTP_OUTBOUND_REST" "updateClaimApproval"
-      (sorted-map "claimId"    (get claim "guidewire_claim_id")
-                  "approval"   "ApprovedForSettlement"
-                  "approvedBy" "Handler"))))
+      ;; Field names as the OpenAPI spec of OUTBOUNDGW declares them
+      ;; (fabric/connectorhub.yaml): claim_id fills the path.
+      (sorted-map "claim_id"    (get claim "guidewire_claim_id")
+                  "approval"    "ApprovedForSettlement"
+                  "approved_by" "Handler"))))
 
+;; Guidewire may answer Rejected or Escalated; only ApprovedForSettlement
+;; lets the claim go on to the invoice.
 (defun parse-guidewire-approval (reply)
   (match reply
-    ((sorted-map "approval" approval) approval)
-    ((sorted-map "status" status) status)
+    ((sorted-map "approval" "ApprovedForSettlement") "ApprovedForSettlement")
+    ((sorted-map "approval" approval) (bad-reply "Guidewire did not approve the claim: {}" approval))
     (_ (bad-reply "Guidewire did not confirm the approval"))))
 
 ;; ---------------------------------------------------------------------------
@@ -310,11 +323,16 @@
     ((sorted-map "id" id) id)
     (_ (bad-reply "Salesforce returned no record id"))))
 
-;; The email and Teams connectors answer with a status; anything else means
-;; the message did not go.
+;; The email and Teams connectors answer with a status.  A reply with an
+;; error, a failed status or no status means the message did not go, and
+;; the next step waits on someone who was never told.
 (defun parse-sent (reply)
   (match reply
-    ((sorted-map "status" status) status)
+    ((sorted-map "error" err) (bad-reply "the message was not sent: {}" err))
+    ((sorted-map "status" status)
+     (when (let ([st (string:lowercase (to-string status))]) (or (equal? st "failed") (equal? st "error")))
+       (bad-reply "the message was not sent: status {}" status))
+     status)
     (_ (bad-reply "the message was not sent"))))
 
 (defun invoice-email-event (claim sf-record-id)
@@ -339,6 +357,8 @@
 ;; ---------------------------------------------------------------------------
 
 (defun zoho-invoice-event (claim)
+  ;; One line item for the claim amount, in the claim currency, so Zoho,
+  ;; the payment notice and SAP agree.
   (claim-event "zoho" "create invoice"
     (generic-req "KIND_ZOHO_BOOKS" "create_invoice"
       (sorted-map "json_data"
@@ -346,9 +366,9 @@
                     "reference_number" (get claim "claim_id")
                     "due_date"         zoho-due-date
                     "is_inclusive_tax" true
-                    "currency_code"    "GBP"
+                    "currency_code"    claim-currency
                     "line_items"       (vector (sorted-map "name"     "Inter-Entity Settlement"
-                                                           "rate"     1250.0
+                                                           "rate"     (amount-number (get claim "amount"))
                                                            "quantity" 1)))))))
 
 (defun parse-zoho-invoice (reply)
