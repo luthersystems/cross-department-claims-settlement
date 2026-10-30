@@ -259,6 +259,12 @@ connectors:
           passthrough_unmocked: false
           mock_responses:
             SHAREPOINT:
+              # One reply for every file: the hub cannot key a mock by
+              # these arguments, because it turns each "-" in a mock key
+              # into "_" (connectorhub normalizeKeys) and the site id has
+              # dashes.  So the reply names no file ("documents"): the
+              # settlement step refuses a reply that names another file,
+              # and this one would name the ID document.
               get_document_content:
                 __default__:
                   response: |
@@ -269,13 +275,7 @@ connectors:
                       ],
                       "line_count": 4,
                       "word_count": 6,
-                      "character_count": 45,
-                      "documents": [
-                        {
-                          "type": "text",
-                          "file": "id-verification.txt"
-                        }
-                      ]
+                      "character_count": 45
                     }
     microsoft_sharepoint:
       client_id: "${SHAREPOINT_CLIENT_ID}"

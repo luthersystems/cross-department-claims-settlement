@@ -21,8 +21,26 @@
   (assert-string= "missing policy_id, signer_email"
                   (claim-request-problem (with-fields (test-claim-request)
                                                       "policy_id" "  " "signer_email" ())))
-  (assert-string= "missing policy_id, guidewire_claim_id, invoice_amount, signer_name, signer_email"
+  (assert-string= "missing policy_id, guidewire_claim_id, invoice_amount, signer_name, signer_email, settlement_document_item_id, settlement_document_filename"
                   (claim-request-problem (sorted-map))))
+
+(test "claim-request-problem refuses the ID document as the settlement document"
+  (map ()
+       (lambda (item-id)
+         (assert-string= "settlement_document_item_id names the ID verification document, not a settlement document"
+                         (claim-request-problem (with-fields (test-claim-request)
+                                                             "settlement_document_item_id" item-id))))
+       (list (get id-document-file "item_id")
+             (format-string " {} " (get id-document-file "item_id"))
+             (string:lowercase (get id-document-file "item_id")))))
+
+(test "the settlement document step fetches the file the start request names"
+  (let ([args (event-args (settlement-document-event (test-claim)))])
+    (assert-string= "01RAAXWASETTLEMENTCLM4567" (get args "item_id"))
+    (assert-string= "settlement-CLM-4567.txt" (get args "filename"))
+    (assert-string= claim-documents-drive-id (get args "drive_id"))
+    (assert (not (equal? (get id-document-file "item_id") (get args "item_id"))))
+    (assert (not (equal? (get id-document-file "filename") (get args "filename"))))))
 
 (test "claim-request-problem needs a positive decimal invoice amount"
   ;; Inf, NaN, hex and exponents parse as floats, but SAP and Salesforce get
@@ -31,7 +49,10 @@
        (lambda (amount)
          (assert-string= (format-string "invoice_amount {} is not a positive decimal amount" amount)
                          (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
-       (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12))
+       (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12
+             ;; More than two decimal places: as a float it would round to
+             ;; a cap it exceeds.
+             "1.005" "20000.000000000000001"))
   (map ()
        (lambda (amount)
          (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
@@ -40,7 +61,7 @@
 (test "new-claim fills blank fields with the demo defaults"
   (let ([claim (new-claim "run-1" (with-fields (test-claim-request) "recipient_name" ""))])
     (assert-string= "run-1" (get claim "claim_id"))
-    (assert-string= "25000.00" (get claim "amount"))
+    (assert-string= "2500.00" (get claim "amount"))
     (assert-string= default-originator-name (get claim "originator_name"))
     (assert-string= default-recipient-name (get claim "recipient_name"))))
 
@@ -64,11 +85,30 @@
     (assert-string= "5637144576" (nth args 9))))
 
 (test "parse-oracle-claim reads the first row"
-  (let ([record (parse-oracle-claim (get test-replies "oracle-claim"))])
+  (let ([record (parse-oracle-claim (get test-replies "oracle-claim") "2500.00")])
     (assert-string= "CLM-4567" (get record "claim_id"))
     (assert-string= "Doe" (get (get record "claimant") "last_name")))
   (assert-string= "Oracle has no claim for this policy"
-                  (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "rows" (vector)))))))
+                  (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "rows" (vector)) "2500.00")))))
+
+;; #37: the demo paid an invoice of 25000.00 on a claim of 2500.00.
+(test "parse-oracle-claim refuses an invoice above the claim amount"
+  (let ([reply (get test-replies "oracle-claim")])
+    (assert-nil (bad-reply-message (lambda () (parse-oracle-claim reply "2499.99"))))
+    (assert-string= "invoice_amount 25000.00 exceeds the Oracle claim amount 2500"
+                    (bad-reply-message (lambda () (parse-oracle-claim reply "25000.00"))))
+    (assert-string= "invoice_amount 2500.01 exceeds the Oracle claim amount 2500"
+                    (bad-reply-message (lambda () (parse-oracle-claim reply "2500.01"))))))
+
+(test "parse-oracle-claim refuses a claim with no usable amount"
+  (let ([row (first (get (get test-replies "oracle-claim") "rows"))])
+    (map ()
+         (lambda (amount)
+           (assert (string:has-prefix?
+                     (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "rows" (vector (assoc row "AMOUNT" amount)))
+                                                                       "1.00")))
+                     "the Oracle claim amount is not an amount")))
+         (list () "lots" -1 "-1.00" "1e3"))))
 
 (test "parse-screening reads each Equifax wrapper"
   (let ([inner (sorted-map "status" "Pass" "pstatus_det" "Clear" "hit_value_pep" 1)])
@@ -103,9 +143,57 @@
     (assert-string= "Equifax Screening Passed" (get passed "title"))))
 
 (test "parse-active-policy needs a row"
-  (assert-string= "Active" (get (parse-active-policy (get test-replies "policy-check")) "status"))
+  (assert-string= "Active" (get (parse-active-policy (get test-replies "policy-check") "2500.00") "status"))
   (assert-string= "the policy is not active"
-                  (bad-reply-message (lambda () (parse-active-policy (vector))))))
+                  (bad-reply-message (lambda () (parse-active-policy (vector) "2500.00")))))
+
+;; #37: the demo paid 25000.00 against a 20000.00 coverage limit.
+(test "parse-active-policy refuses an invoice above the coverage limit"
+  (let ([reply (get test-replies "policy-check")])
+    (assert-nil (bad-reply-message (lambda () (parse-active-policy reply "20000.00"))))
+    (assert-string= "invoice_amount 25000.00 exceeds the policy's coverage limit 20000.00"
+                    (bad-reply-message (lambda () (parse-active-policy reply "25000.00"))))
+    ;; A zero limit covers nothing; a missing one cannot show the payment
+    ;; is covered.
+    (assert-string= "invoice_amount 0.01 exceeds the policy's coverage limit 0"
+                    (bad-reply-message (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" 0))
+                                                                       "0.01"))))
+    (assert (string:has-prefix?
+              (bad-reply-message (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" ()))
+                                                                 "1.00")))
+              "the policy's coverage limit is not an amount"))))
+
+;; #37: the ID document came back as the settlement document.
+(test "parse-document refuses a file other than the settlement document"
+  (assert-string= "SharePoint returned id-verification.txt, not the settlement document settlement-CLM-4567.txt"
+                  (bad-reply-message
+                    (lambda ()
+                      (parse-document (sorted-map "type" "text"
+                                                  "documents" (vector (sorted-map "file" "id-verification.txt")))
+                                      "settlement-CLM-4567.txt")))))
+
+(test "the ServiceNow incident names the settlement document"
+  (let ([description (get (event-args (servicenow-incident-event (test-claim))) "description")])
+    (assert (string:contains? description "settlement-CLM-4567.txt"))
+    (assert (string:contains? description "01RAAXWASETTLEMENTCLM4567"))))
+
+(test "a coverage limit with more decimal places is still an amount"
+  (assert-nil (bad-reply-message
+                (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" "2500.0000"))
+                                                "2500.00")))))
+
+(test "parse-guidewire-claim lets only an open claim settle"
+  (map ()
+       (lambda (status)
+         (assert-string= status (get (parse-guidewire-claim (sorted-map "status" status)) "status")))
+       (list "Open" "UnderReview" "Approved"))
+  ;; #37: a Rejected or Closed claim was marked ApprovedForSettlement.  A
+  ;; status the flow does not know stops the claim too.
+  (map ()
+       (lambda (status)
+         (assert-string= (format-string "Guidewire claim status {} cannot be settled" status)
+                         (bad-reply-message (lambda () (parse-guidewire-claim (sorted-map "status" status))))))
+       (list "Rejected" "Closed" "rejected" "Reopened" "" ())))
 
 (test "parse-id-document needs text that names the claim"
   (let ([doc (get test-replies "id-document")])
@@ -131,7 +219,11 @@
   (assert-string= "a0X5g000000XYZ1" (parse-salesforce-record-id (get test-replies "salesforce-invoice")))
   (assert-string= "sent" (parse-sent (get test-replies "invoice-email")))
   (assert-string= "INV-10001" (get (parse-zoho-invoice (get test-replies "zoho-invoice")) "invoice_id"))
-  (assert-string= "text" (get (parse-document (get test-replies "settlement-document")) "type"))
+  (let ([doc (parse-document (get test-replies "settlement-document") "settlement-CLM-4567.txt")])
+    (assert-string= "text" (get doc "type"))
+    (assert-string= "settlement-CLM-4567.txt" (get doc "file")))
+  ;; A reply that does not name the file it read is taken as the file asked for.
+  (assert-string= "s.txt" (get (parse-document (sorted-map "type" "text") "s.txt") "file"))
   (assert-string= "INC0010001" (get (parse-servicenow-incident (get test-replies "servicenow-incident")) "number"))
   (assert-string= "INC7" (get (parse-servicenow-incident (sorted-map "incident_number" "INC7" "incident_id" "x")) "number"))
   (assert-string= "SAP-TXN-1001" (parse-sap-payment (get test-replies "sap-payment")))
@@ -150,7 +242,11 @@
          (assert (string? (bad-reply-message (lambda () (funcall reader (sorted-map "unexpected" true)))))))
        (list parse-teams-thread parse-guidewire-claim parse-guidewire-approval
              parse-esignature-contract parse-salesforce-record-id
-             parse-zoho-invoice parse-document parse-servicenow-incident parse-sap-payment)))
+             parse-zoho-invoice parse-servicenow-incident parse-sap-payment))
+  ;; Readers that take an argument as well as the reply.
+  (assert (string? (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "unexpected" true) "1.00")))))
+  (assert (string? (bad-reply-message (lambda () (parse-active-policy (sorted-map "unexpected" true) "1.00")))))
+  (assert (string? (bad-reply-message (lambda () (parse-document (sorted-map "unexpected" true) "f.txt"))))))
 
 (test "with-fields copies and does not change its input"
   (let* ([m (sorted-map "a" 1)]
@@ -163,7 +259,7 @@
   (let* ([json-data (get (event-args (zoho-invoice-event (test-claim))) "json_data")]
          [item (first (get json-data "line_items"))])
     (assert-string= claim-currency (get json-data "currency_code"))
-    (assert= 25000.0 (get item "rate")))
+    (assert= 2500.0 (get item "rate")))
   (assert-string= claim-currency
                   (get (payment-record (sorted-map "payment_id" "P" "status" "approved")) "currency")))
 

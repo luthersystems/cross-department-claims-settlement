@@ -8,9 +8,11 @@
 (defun test-claim-request ()
   (sorted-map "policy_id"          "POL-8872"
               "guidewire_claim_id" "GW-1001"
-              "invoice_amount"     "25000.00"
+              "invoice_amount"     "2500.00"
               "signer_name"        "Jack Clarke"
-              "signer_email"       "jack.clarke@example.com"))
+              "signer_email"       "jack.clarke@example.com"
+              "settlement_document_item_id"  "01RAAXWASETTLEMENTCLM4567"
+              "settlement_document_filename" "settlement-CLM-4567.txt"))
 
 ;; "Claim ID: CLM-4567\nDate: 2025-11-12\nSigner: John Doe\nVerified: Yes"
 (set 'test-id-document-line "Q2xhaW0gSUQ6IENMTS00NTY3CkRhdGU6IDIwMjUtMTEtMTIKU2lnbmVyOiBKb2huIERvZQpWZXJpZmllZDogWWVz")
@@ -41,7 +43,11 @@
        ;; The email connector's reply (EmailResponse) has no fields.
        "invoice-email"       (sorted-map)
        "zoho-invoice"        (sorted-map "invoice" (sorted-map "invoice_id" "INV-10001" "invoice_number" "1234567000001" "total" 1250.0))
-       "settlement-document" (sorted-map "type" "text" "content" (vector test-id-document-line) "line_count" 4)
+       ;; "Settlement for claim CLM-4567\nAmount: 2500.00 GBP\nApproved: Yes"
+       "settlement-document" (sorted-map "type" "text"
+                                         "content" (vector "U2V0dGxlbWVudCBmb3IgY2xhaW0gQ0xNLTQ1NjcKQW1vdW50OiAyNTAwLjAwIEdCUApBcHByb3ZlZDogWWVz")
+                                         "line_count" 3
+                                         "documents" (vector (sorted-map "type" "text" "file" "settlement-CLM-4567.txt")))
        "servicenow-incident" (sorted-map "result" (sorted-map "sys_id" "abc123def456" "number" "INC0010001"))
        "payment-notice"      (sorted-map "thread_id" "thread-12345" "status" "updated")
        "d365fo-journal"      (sorted-map "record" (sorted-map "RecId" "5637144576" "Name" "DAT-AP-PAY"))

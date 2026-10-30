@@ -14,12 +14,14 @@ tests:
       {
         "policy_id": "POL-8872",
         "guidewire_claim_id": "GW-1001",
-        "invoice_amount": "25000.00",
+        "invoice_amount": "2500.00",
         "signer_name": "Jack Clarke",
         "signer_email": "jack.clarke@luthersystems.com",
         "originator_name": "Acme Insurance Ltd.",
         "recipient_name": "BlueRiver Underwriting Partners",
-        "issue_date": "2025-11-12"
+        "issue_date": "2025-11-12",
+        "settlement_document_item_id": "01RAAXWASETTLEMENTCLM4567",
+        "settlement_document_filename": "settlement-CLM-4567.txt"
       }
     test_script: |
       pm.test("ok", () => {
@@ -35,12 +37,12 @@ tests:
     method: POST
     path: "v1/cdcs/claims"
     body: |
-      { "policy_id": "POL-8872", "guidewire_claim_id": "GW-1001", "invoice_amount": "25000.00" }
+      { "policy_id": "POL-8872", "guidewire_claim_id": "GW-1001", "invoice_amount": "2500.00" }
     test_script: |
       pm.test("refused", () => {
           let data = pm.response.json();
           console.log(data);
-          pm.expect(data.exception.description).to.equal("missing signer_name, signer_email");
+          pm.expect(data.exception.description).to.equal("missing signer_name, signer_email, settlement_document_item_id, settlement_document_filename");
       });
 
   - name: "Wait for contract-signed"

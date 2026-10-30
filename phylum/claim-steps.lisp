@@ -24,9 +24,13 @@
 (set 'equifax-country-code "GB")
 
 ;; The SharePoint file that holds the claimant's ID verification.
+;; The settlement document is in the same document library, but each claim
+;; names its own file (see settlement-document-file).
+(set 'claim-documents-site-id "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245")
+(set 'claim-documents-drive-id "b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8")
 (set 'id-document-file (sorted-map
-                    "site_id"  "samwoodluthersystems.sharepoint.com,af554837-6d2d-48e7-aa08-9584e15df76e,28227d76-23e6-4218-85c5-0473c0006245"
-                    "drive_id" "b!N0hVry1t50iqCJWE4V33bnZ9IijmIxhChcUEc8AAYkU0cfiPk4MZRaBijb338Qw8"
+                    "site_id"  claim-documents-site-id
+                    "drive_id" claim-documents-drive-id
                     "item_id"  "01RAAXWAZH6LCSA5FLHRE2QJXBSIVDOGV4"
                     "filename" "id-verification.txt"))
 
@@ -61,7 +65,8 @@
 ;; ---------------------------------------------------------------------------
 
 (set 'claim-required-fields
-     (vector "policy_id" "guidewire_claim_id" "invoice_amount" "signer_name" "signer_email"))
+     (vector "policy_id" "guidewire_claim_id" "invoice_amount" "signer_name" "signer_email"
+             "settlement_document_item_id" "settlement_document_filename"))
 
 ;; Return why a start request cannot start a claim, or nil.  The flow calls
 ;; this before its first await, so a bad request fails the start with this
@@ -75,6 +80,14 @@
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
       ((nil? (amount-number (get req "invoice_amount")))
        (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
+      ;; The demo once fetched the ID document a second time as the
+      ;; settlement document (#37), so ServiceNow reviewers saw the wrong
+      ;; file.  The two are separate documents; a request that names the
+      ;; ID document as the settlement document is that mistake again.
+      ;; Compared without case: SharePoint takes an item id in either case.
+      ((equal? (string:lowercase (string:trim-space (to-string (get req "settlement_document_item_id"))))
+               (string:lowercase (get id-document-file "item_id")))
+       "settlement_document_item_id names the ID verification document, not a settlement document")
       (else ()))))
 
 ;; Return v as a positive float, or nil.  The Zoho step needs a number, and
@@ -83,7 +96,10 @@
 ;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
 ;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
 ;; them record different amounts, and Inf cannot go into a JSON event.
-(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]+)?$"))
+;; At most two decimal places, as GBP has: the coverage checks compare the
+;; amount as a float, and "20000.000000000000001" would round to the
+;; 20000.00 limit and pass while SAP recorded the longer text.
+(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]{1,2})?$"))
 
 (defun amount-number (v)
   (when (and (string? v) (regexp:regexp-match? decimal-amount v))
@@ -106,7 +122,9 @@
     "signer_email"       (get req "signer_email")
     "originator_name"    (or-default (get req "originator_name") default-originator-name)
     "recipient_name"     (or-default (get req "recipient_name") default-recipient-name)
-    "issue_date"         (or-default (get req "issue_date") default-issue-date)))
+    "issue_date"         (or-default (get req "issue_date") default-issue-date)
+    "settlement_document_item_id"  (string:trim-space (to-string (get req "settlement_document_item_id")))
+    "settlement_document_filename" (string:trim-space (to-string (get req "settlement_document_filename")))))
 
 ;; Return fallback when v is nil or blank: a JSON client often sends "" for "not set".
 (defun or-default (v fallback)
@@ -143,13 +161,18 @@
         "sql"  "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = :1"
         "args" (vector (get claim "policy_id"))))))
 
-(defun parse-oracle-claim (reply)
+;; The invoice may not ask for more than the claim is for (#37): the demo
+;; once paid an invoice of 25000.00 on an Oracle claim of 2500.00.  So the
+;; reader refuses a record whose AMOUNT is less than the invoice, before the
+;; flow screens the claimant or writes anywhere.
+(defun parse-oracle-claim (reply invoice-amount)
   (match reply
     ((sorted-map "rows" (vector row &rest _))
      (let ([(sorted-map "CLAIM_ID" id "AMOUNT" amount "STATUS" status
                         "CLAIMANT_FIRST_NAME" first-name "CLAIMANT_LAST_NAME" last-name
                         "CLAIMANT_DOB" dob "CLAIMANT_ADDRESS" address
                         "CLAIMANT_NATIONAL_ID" national-id) row])
+       (check-within invoice-amount amount "the Oracle claim amount")
        (sorted-map "claim_id" id "amount" amount "status" status
                    "claimant" (sorted-map "first_name" first-name "last_name" last-name "dob" dob
                                           "address" address "national_id" national-id))))
@@ -220,8 +243,24 @@
 
 (defun parse-guidewire-claim (reply)
   (match reply
-    ((sorted-map "status" status) (sorted-map "status" status "handler" (get reply "handler")))
+    ((sorted-map "status" status)
+     (unless (settleable-guidewire-status? status)
+       (bad-reply "Guidewire claim status {} cannot be settled" status))
+     (sorted-map "status" status "handler" (get reply "handler")))
     (_ (bad-reply "Guidewire returned no claim status"))))
+
+;; The Guidewire claim statuses (the OUTBOUNDGW spec in
+;; fabric/connectorhub.yaml) from which a claim may go on to settlement.
+;; Rejected and Closed are final decisions in Guidewire, and the flow once
+;; marked such a claim ApprovedForSettlement and paid it (#37).  The flow
+;; approves the claim itself in a later step, so a claim still Open or
+;; UnderReview may settle.  A status not on this list, including one a later
+;; Guidewire version adds, stops the claim: paying on a status nobody has
+;; judged is the mistake this check exists to prevent.
+(set 'settleable-guidewire-statuses (vector "Open" "UnderReview" "Approved"))
+
+(defun settleable-guidewire-status? (status)
+  (not (empty? (select 'vector (lambda (s) (equal? s status)) settleable-guidewire-statuses))))
 
 (defun policy-check-event (claim)
   (claim-event "mysql" "check policy"
@@ -231,12 +270,38 @@
         "args" (vector (get claim "policy_id"))))))
 
 ;; The query asks only for an active policy, so no row means the claim's
-;; policy is not active.
-(defun parse-active-policy (reply)
+;; policy is not active.  The invoice may not exceed the policy's coverage
+;; limit (#37): the demo once paid 25000.00 against a 20000.00 limit.
+(defun parse-active-policy (reply invoice-amount)
   (match reply
     ((vector (sorted-map "STATUS" status "COVERAGE_LIMIT" limit) &rest _)
+     (check-within invoice-amount limit "the policy's coverage limit")
      (sorted-map "status" status "coverage_limit" limit))
     (_ (bad-reply "the policy is not active"))))
+
+;; Raise a bad reply unless invoice-amount (the start request's decimal
+;; text) is at most the cap a connector returned.  Both the claim amount
+;; and the coverage limit apply, so the invoice is held to the lower one.
+;; A cap that is missing or not a number stops the claim: without it the
+;; flow cannot show the payment is covered.
+(defun check-within (invoice-amount cap what)
+  (let ([n (cap-number cap)])
+    (when (nil? n) (bad-reply "{} is not an amount: {}" what cap))
+    (when (> (amount-number invoice-amount) n)
+      (bad-reply "invoice_amount {} exceeds {} {}" invoice-amount what cap))))
+
+;; A cap as a database returns it: a JSON number (Oracle NUMBER) or decimal
+;; text (MySQL DECIMAL).  Zero is a cap (nothing is covered); a negative
+;; number or other text is not an amount.
+;; A database may return more decimal places than an invoice may have
+;; (DECIMAL(12,4)), so a cap's text may have any number of them.
+(set 'decimal-text (regexp:regexp-compile "^[0-9]+(\\.[0-9]+)?$"))
+
+(defun cap-number (v)
+  (cond
+    ((number? v) (when (>= v 0) (to-float v)))
+    ((and (string? v) (regexp:regexp-match? decimal-text v)) (to-float v))
+    (else ())))
 
 (defun id-document-event ()
   (claim-event "sharepoint" "get id-verification content"
@@ -396,22 +461,46 @@
      (sorted-map "invoice_id" id "invoice_number" number "total" total))
     (_ (bad-reply "Zoho returned no invoice"))))
 
-(defun settlement-document-event ()
+(defun settlement-document-event (claim)
   (claim-event "sharepoint" "get sharepoint doc"
-    (generic-req "KIND_MICROSOFT_SHAREPOINT" "get_document_content" id-document-file)))
+    (generic-req "KIND_MICROSOFT_SHAREPOINT" "get_document_content" (settlement-document-file claim))))
+
+;; The claim's settlement document, as the start request names it.  There is
+;; no one settlement document for every claim the way there is one demo ID
+;; document, so the caller that starts the claim says which file it is.
+;; get_document_content picks its parser by the filename's extension, so the
+;; filename is required with the item id.
+(defun settlement-document-file (claim)
+  (sorted-map "site_id"  claim-documents-site-id
+              "drive_id" claim-documents-drive-id
+              "item_id"  (get claim "settlement_document_item_id")
+              "filename" (get claim "settlement_document_filename")))
 
 ;; The settlement document is fetched for the incident's reviewers; the
-;; flow keeps only what it is.
-(defun parse-document (reply)
+;; flow keeps only what it is.  When SharePoint names the file it read, it
+;; must be the one the claim asked for: #37 was the ID document passed off
+;; as the settlement document, and a summary that only echoed the request
+;; would hide that.
+(defun parse-document (reply filename)
   (match reply
-    ((sorted-map "type" kind) (sorted-map "type" kind "lines" (get reply "line_count")))
+    ((sorted-map "type" kind)
+     (let ([returned (match (get reply "documents")
+                   ((vector (sorted-map "file" f) &rest _) f)
+                   (_ ()))])
+       (when (and returned (not (equal? returned filename)))
+         (bad-reply "SharePoint returned {}, not the settlement document {}" returned filename))
+       (sorted-map "file" filename "type" kind "lines" (get reply "line_count"))))
     (_ (bad-reply "SharePoint returned no document"))))
 
 (defun servicenow-incident-event (claim)
   (claim-event "servicenow" "create incident"
     (generic-req "KIND_SERVICENOW" "create_incident"
+      ;; The description names the settlement document so the reviewers
+      ;; open the right file in SharePoint.
       (sorted-map "short_description" (format-string "Create incident for claim {}" (get claim "claim_id"))
-                  "description"       "Auto-generated incident for inter-entity settlement review"
+                  "description"       (format-string "Auto-generated incident for inter-entity settlement review.\nSettlement document: {} (SharePoint item {})"
+                                                     (get claim "settlement_document_filename")
+                                                     (get claim "settlement_document_item_id"))
                   "priority"          "3"
                   "category"          "Finance"
                   "impact"            "2"

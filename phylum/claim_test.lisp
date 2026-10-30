@@ -20,7 +20,8 @@
       (assert-string= "payments@example.com" (get result "payment_approved_by"))
       (assert-string= "PAY-1" (get result "payment_id"))
       (assert-string= "5637144576" (get result "d365fo_txn_id"))
-      (assert-string= "SAP-TXN-1001" (get result "sap_txn")))))
+      (assert-string= "SAP-TXN-1001" (get result "sap_txn"))
+      (assert-string= "settlement-CLM-4567.txt" (get (get result "settlement_document") "file")))))
 
 (test "claim_get exposes the claim while the run waits"
   (let* ([run (start-test-claim "expose")]
@@ -63,6 +64,40 @@
     (flow-test:reply 'claim run (sorted-map "type" "text" "content" (vector (base64:encode "Claim ID: CLM-1")) "line_count" 1))
     (assert-string= "failed" (claim-state run))
     (assert (string:contains? (json:dump-string (claim-error run)) "does not name claim CLM-4567"))))
+
+(test "an invoice above the claim amount fails the run before any write"
+  (let ([run (start-test-claim "over-claim" (with-fields (test-claim-request) "invoice_amount" "2600.00"))])
+    (answer-connectors run "oracle-claim")
+    (flow-test:reply 'claim run (get test-replies "oracle-claim"))
+    (assert-string= "failed" (claim-state run))
+    (assert (string:contains? (json:dump-string (claim-error run))
+                              "invoice_amount 2600.00 exceeds the Oracle claim amount 2500"))))
+
+(test "an invoice above the coverage limit fails the run before the Guidewire approval"
+  (let ([run (start-test-claim "over-limit")])
+    (answer-connectors run "policy-check")
+    (flow-test:reply 'claim run (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" "2000.00")))
+    (assert-string= "failed" (claim-state run))
+    (assert (string:contains? (json:dump-string (claim-error run))
+                              "invoice_amount 2500.00 exceeds the policy's coverage limit 2000.00"))))
+
+(test "a claim Guidewire rejected or closed fails the run"
+  (map ()
+       (lambda (status)
+         (let ([run (start-test-claim (format-string "gw-{}" status))])
+           (answer-connectors run "guidewire-claim")
+           (flow-test:reply 'claim run (sorted-map "claim_id" "GW-1001" "status" status))
+           (assert-string= "failed" (claim-state run))
+           (assert (string:contains? (json:dump-string (claim-error run))
+                                     (format-string "Guidewire claim status {} cannot be settled" status)))))
+       (list "Rejected" "Closed")))
+
+(test "a start that names the ID document as the settlement document writes no run"
+  (flow-test:as "Org1MSP")
+  (let ([rej (flow-test:rejection 'claim "start" "id-as-settlement"
+                                  (with-fields (test-claim-request) "settlement_document_item_id"
+                                               (get id-document-file "item_id")))])
+    (assert-string= "start-rejected" (get rej "error"))))
 
 (test "a connector error fails the run"
   (let ([run (start-test-claim "conn-error")])

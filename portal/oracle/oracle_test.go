@@ -43,10 +43,13 @@ func testStartRequest() *pb.StartClaimRequest {
 	return &pb.StartClaimRequest{
 		PolicyId:         "POL-8872",
 		GuidewireClaimId: "GW-1001",
-		InvoiceAmount:    "25000.00",
+		InvoiceAmount:    "2500.00",
 		SignerName:       "Jack Clarke",
 		SignerEmail:      "jack.clarke@example.com",
 		RequestKey:       "test-start",
+
+		SettlementDocumentItemId:   "01RAAXWASETTLEMENTCLM4567",
+		SettlementDocumentFilename: "settlement-CLM-4567.txt",
 	}
 }
 
@@ -267,7 +270,7 @@ func TestStartRequestKeyReusedIsABusinessError(t *testing.T) {
 	_, err := server.StartClaim(ctx, testStartRequest())
 	require.NoError(t, err)
 	req := testStartRequest()
-	req.InvoiceAmount = "26000.00"
+	req.InvoiceAmount = "2600.00"
 	resp, err := server.StartClaim(ctx, req)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.GetException().GetDescription())

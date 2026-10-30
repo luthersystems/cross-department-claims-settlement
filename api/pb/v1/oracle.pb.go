@@ -40,9 +40,16 @@ type StartClaimRequest struct {
 	IssueDate        string                 `protobuf:"bytes,8,opt,name=issue_date,json=issueDate,proto3" json:"issue_date,omitempty"`                        // Optional (YYYY-MM-DD): a demo default if empty
 	// Optional: send the same key again to get the same claim back instead of
 	// a second claim.  The portal makes a new key when it is empty.
-	RequestKey    string `protobuf:"bytes,9,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	RequestKey string `protobuf:"bytes,9,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"`
+	// Required: the SharePoint item id of the claim's settlement document,
+	// in the demo document library.  It must not be the ID verification
+	// document.  The ServiceNow incident names this file for review.
+	SettlementDocumentItemId string `protobuf:"bytes,10,opt,name=settlement_document_item_id,json=settlementDocumentItemId,proto3" json:"settlement_document_item_id,omitempty"`
+	// Required: the settlement document's file name.  SharePoint picks the
+	// parser by its extension (.txt, .pdf, .docx, ...).
+	SettlementDocumentFilename string `protobuf:"bytes,11,opt,name=settlement_document_filename,json=settlementDocumentFilename,proto3" json:"settlement_document_filename,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *StartClaimRequest) Reset() {
@@ -134,6 +141,20 @@ func (x *StartClaimRequest) GetIssueDate() string {
 func (x *StartClaimRequest) GetRequestKey() string {
 	if x != nil {
 		return x.RequestKey
+	}
+	return ""
+}
+
+func (x *StartClaimRequest) GetSettlementDocumentItemId() string {
+	if x != nil {
+		return x.SettlementDocumentItemId
+	}
+	return ""
+}
+
+func (x *StartClaimRequest) GetSettlementDocumentFilename() string {
+	if x != nil {
+		return x.SettlementDocumentFilename
 	}
 	return ""
 }
@@ -886,7 +907,7 @@ var File_pb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
-	"\x12pb/v1/oracle.proto\x12\x05pb.v1\x1a\x19common/v1/exception.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xd9\x02\n" +
+	"\x12pb/v1/oracle.proto\x12\x05pb.v1\x1a\x19common/v1/exception.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xda\x03\n" +
 	"\x11StartClaimRequest\x12\x1b\n" +
 	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12,\n" +
 	"\x12guidewire_claim_id\x18\x02 \x01(\tR\x10guidewireClaimId\x12%\n" +
@@ -899,7 +920,10 @@ const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
 	"issue_date\x18\b \x01(\tR\tissueDate\x12\x1f\n" +
 	"\vrequest_key\x18\t \x01(\tR\n" +
-	"requestKey\",\n" +
+	"requestKey\x12=\n" +
+	"\x1bsettlement_document_item_id\x18\n" +
+	" \x01(\tR\x18settlementDocumentItemId\x12@\n" +
+	"\x1csettlement_document_filename\x18\v \x01(\tR\x1asettlementDocumentFilename\",\n" +
 	"\x0fGetClaimRequest\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"p\n" +
 	"\x15ContractSignedRequest\x12\x19\n" +

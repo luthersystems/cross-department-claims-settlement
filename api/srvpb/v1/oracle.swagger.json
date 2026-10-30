@@ -666,6 +666,14 @@
         "requestKey": {
           "type": "string",
           "description": "Optional: send the same key again to get the same claim back instead of\na second claim.  The portal makes a new key when it is empty."
+        },
+        "settlementDocumentItemId": {
+          "type": "string",
+          "description": "Required: the SharePoint item id of the claim's settlement document,\nin the demo document library.  It must not be the ID verification\ndocument.  The ServiceNow incident names this file for review."
+        },
+        "settlementDocumentFilename": {
+          "type": "string",
+          "description": "Required: the settlement document's file name.  SharePoint picks the\nparser by its extension (.txt, .pdf, .docx, ...)."
         }
       },
       "description": "Request to start a claim.  The phylum fails the start, and writes\nnothing, when a required field is missing."
