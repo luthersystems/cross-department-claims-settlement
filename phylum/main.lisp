@@ -14,13 +14,13 @@
 (set 'service-name "cdcs")
 
 ;; Set during build process to reflect current version and build ID.
-;; Used in health check endpoint for visibility.
+;; The health check reports them.
 (set 'version "LUTHER_PROJECT_VERSION")  ; overridden during build
 (set 'build-id "LUTHER_PROJECT_BUILD_ID")  ; overridden during build
-(set 'service-version (format-string "{} ({})" version build-id))
 
-;; init and healthcheck.
-(load-file "routes.lisp")
+;; The router's own healthcheck and init endpoints report this service
+;; name, version and build ID, so this phylum defines neither endpoint.
+(router:set-service-info service-name version build-id)
 
 ;; The claim process: its steps, then the flow that runs them.
 (load-file "claim-steps.lisp")
