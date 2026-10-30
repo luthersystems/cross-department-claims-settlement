@@ -72,8 +72,10 @@ Rules the steps apply:
   on: the review happens in Teams.
 - The ID document must name the claim id that Oracle returned.
 - Every SQL value is a bound arg (`:1` for Oracle, `?` for MySQL and SAP
-  HANA), never SQL text, so no value needs quoting.  This needs
-  connectorhub v0.0.29.SNAPSHOT.12 or later.
+  HANA), never SQL text, so no value needs quoting.
+- The flow needs connectorhub v0.0.29.SNAPSHOT.13 or later: older hubs
+  drop bound args and refuse Zoho `create_invoice` and ServiceNow
+  `create_incident`.
 
 ## Endpoints
 

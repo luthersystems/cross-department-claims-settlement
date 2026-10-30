@@ -25,10 +25,11 @@ CC_VERSION=${SUBSTRATE_VERSION}
 CHAINCODE_VERSION=${CC_VERSION}
 VERSION_SUBSTRATE=${CC_VERSION} # is this needed
 SHIROCLIENT_VERSION=${SUBSTRATE_VERSION}
-# v0.0.29.SNAPSHOT.12 or later: the hub must read substrate's luther:ev:N
-# event keys (connectorhub#229), and the SQL steps send bound args, which
-# older hubs drop (connectorhub#296).
-CONNECTORHUB_VERSION=v0.0.29.SNAPSHOT.12-5d34dc7c
+# v0.0.29.SNAPSHOT.13 or later: the hub must read substrate's luther:ev:N
+# event keys (connectorhub#229), the SQL steps send bound args, which older
+# hubs drop (connectorhub#296), and the Zoho and ServiceNow steps call
+# create_invoice and create_incident, which older hubs refuse (connectorhub#298).
+CONNECTORHUB_VERSION=v0.0.29.SNAPSHOT.13-4cb2d682
 SHIROTESTER_VERSION=${SUBSTRATE_VERSION}
 # https://github.com/luthersystems/fabric-network-builder
 NETWORK_BUILDER_VERSION=v0.0.2
