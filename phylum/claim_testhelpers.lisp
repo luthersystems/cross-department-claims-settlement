@@ -38,7 +38,8 @@
                                                   (sorted-map "id" "contract-abc123" "status" "pending"
                                                               "signers" (vector (sorted-map "sign_page_url" "https://esign.example.com/sign/abc123"))))))
        "salesforce-invoice"  (sorted-map "id" "a0X5g000000XYZ1" "success" true)
-       "invoice-email"       (sorted-map "message_id" "email-msg-12345" "status" "sent")
+       ;; The email connector's reply (EmailResponse) has no fields.
+       "invoice-email"       (sorted-map)
        "zoho-invoice"        (sorted-map "invoice" (sorted-map "invoice_id" "INV-10001" "invoice_number" "1234567000001" "total" 1250.0))
        "settlement-document" (sorted-map "type" "text" "content" (vector test-id-document-line) "line_count" 4)
        "servicenow-incident" (sorted-map "result" (sorted-map "sys_id" "abc123def456" "number" "INC0010001"))

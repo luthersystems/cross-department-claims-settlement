@@ -323,9 +323,10 @@
     ((sorted-map "id" id) id)
     (_ (bad-reply "Salesforce returned no record id"))))
 
-;; The email and Teams connectors answer with a status.  A reply with an
-;; error, a failed status or no status means the message did not go, and
-;; the next step waits on someone who was never told.
+;; Teams answers with a status; the email connector's reply has no fields.
+;; A reply with an error or a failed status means the message did not go,
+;; and the next step would wait on someone who was never told.  A send the
+;; hub could not make comes back as a connector error, which fails the run.
 (defun parse-sent (reply)
   (match reply
     ((sorted-map "error" err) (bad-reply "the message was not sent: {}" err))
@@ -333,7 +334,7 @@
      (when (let ([st (string:lowercase (to-string status))]) (or (equal? st "failed") (equal? st "error")))
        (bad-reply "the message was not sent: status {}" status))
      status)
-    (_ (bad-reply "the message was not sent"))))
+    (_ "sent")))
 
 (defun invoice-email-event (claim sf-record-id)
   (let ([claim-id (get claim "claim_id")])

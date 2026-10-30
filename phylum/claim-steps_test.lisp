@@ -137,7 +137,7 @@
        (lambda (reader)
          (assert (string? (bad-reply-message (lambda () (funcall reader (sorted-map "unexpected" true)))))))
        (list parse-teams-thread parse-guidewire-claim parse-guidewire-approval
-             parse-esignature-contract parse-salesforce-record-id parse-sent
+             parse-esignature-contract parse-salesforce-record-id
              parse-zoho-invoice parse-document parse-servicenow-incident parse-sap-payment)))
 
 (test "with-fields copies and does not change its input"
@@ -173,3 +173,6 @@
   (assert-string= "the message was not sent: status Failed"
                   (bad-reply-message (lambda () (parse-sent (sorted-map "status" "Failed")))))
   (assert-string= "updated" (parse-sent (sorted-map "status" "updated"))))
+
+(test "parse-sent takes the email connector's empty reply as sent"
+  (assert-string= "sent" (parse-sent (sorted-map))))
