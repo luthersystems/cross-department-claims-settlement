@@ -20,7 +20,7 @@ BUILDENV_TAG=v0.0.92
 # and should be kept up-to-date to leverage the latest platform features.
 # See release notes: https://docs.luthersystems.com/luther/platform/release-notes
 # v2.252.0 or later: the claim flow is a defflow (phylum/claim.lisp).
-SUBSTRATE_VERSION=v2.252.0
+SUBSTRATE_VERSION=v2.253.0
 CC_VERSION=${SUBSTRATE_VERSION}
 CHAINCODE_VERSION=${CC_VERSION}
 VERSION_SUBSTRATE=${CC_VERSION} # is this needed

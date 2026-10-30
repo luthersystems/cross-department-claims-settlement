@@ -16,8 +16,7 @@ connector request for idempotency.  So the process reads top to bottom in
 
 | File | What it holds |
 | --- | --- |
-| [main.lisp](main.lisp) | Package, service version, and the load order |
-| [routes.lisp](routes.lisp) | `init` and `healthcheck` |
+| [main.lisp](main.lisp) | Package, the service name and version for the router's `init` and `healthcheck` (`router:set-service-info`), and the load order |
 | [claim-steps.lisp](claim-steps.lisp) | Demo settings, and for each step a function that builds the connector event and one that reads the reply |
 | [claim.lisp](claim.lisp) | The `claim` flow and its `reply` macro |
 | [claim-steps_test.lisp](claim-steps_test.lisp) | Unit tests of each builder and reader |
