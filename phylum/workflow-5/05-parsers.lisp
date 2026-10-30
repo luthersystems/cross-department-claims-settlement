@@ -57,8 +57,11 @@
                            (get d365fo-record "transaction_id"))]
          ;; Build SAP HANA INSERT query to record the payment
          [query (format-string
-                  "INSERT INTO PAYMENTS_STAGING (PAYMENT_ID, INVOICE_ID, REFERENCE, VENDOR_ID, AMOUNT, CURRENCY, PAYMENT_METHOD, PAYMENT_DATE, STATUS, D365FO_TXN_ID) VALUES ('{}', '{}', '{}', '{}', {}, '{}', '{}', '{}', '{}', '{}');"
-                  payment-id invoice-id reference vendor-id amount currency method payment-date status d365fo-txn-id)]
+                  "INSERT INTO PAYMENTS_STAGING (PAYMENT_ID, INVOICE_ID, REFERENCE, VENDOR_ID, AMOUNT, CURRENCY, PAYMENT_METHOD, PAYMENT_DATE, STATUS, D365FO_TXN_ID) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {});"
+                  (sql-quote payment-id) (sql-quote invoice-id) (sql-quote reference)
+                  (sql-quote vendor-id) (sql-number amount) (sql-quote currency)
+                  (sql-quote method) (sql-quote payment-date) (sql-quote status)
+                  (sql-quote d365fo-txn-id))]
          [req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_SAP_HANA"

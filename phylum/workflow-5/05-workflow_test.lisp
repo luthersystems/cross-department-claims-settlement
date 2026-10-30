@@ -86,3 +86,34 @@
         (assert (equal? (get durable "sap_payment_txn_id") "TXN-789"))
         (assert (equal? (get durable "sap_status") "posted"))))
 
+
+;; =============================
+;; Test: SAP insert quotes strings and refuses a non-numeric amount
+;; =============================
+;; The D365FO record comes from a vendor response, so its values must not be
+;; able to change the INSERT statement.
+(test "wf5-mk-sap-record-payment-event-quotes-values"
+      (let* ([entity (mk-test-entity-wf5)]
+             [acc (sorted-map :entity-id (get entity "claim_id"))]
+             [d365fo-record (sorted-map "RecId" "D365'); DELETE FROM PAYMENTS_STAGING; --")]
+             [query-for (lambda (amount)
+                          (get (get (get (get (wf5-mk-sap-record-payment-event
+                                                entity d365fo-record (sorted-map "amount" amount) acc)
+                                              "req") "generic") "arguments") "query"))]
+             [expected-for (lambda (amount-text)
+                             (format-string
+                               "INSERT INTO PAYMENTS_STAGING (PAYMENT_ID, INVOICE_ID, REFERENCE, VENDOR_ID, AMOUNT, CURRENCY, PAYMENT_METHOD, PAYMENT_DATE, STATUS, D365FO_TXN_ID) VALUES ('PAYM-002', 'INV-1002', 'Batch-Nov-01', 'VEND-001', {}, 'USD', 'EFT', '2025-11-06', 'PENDING', 'D365''); DELETE FROM PAYMENTS_STAGING; --');"
+                               amount-text))])
+        (assert (equal? (funcall query-for 10) (funcall expected-for "10")))
+        ;; A decimal string is kept as is; an integral float has no exponent.
+        (assert (equal? (funcall query-for "2500.00") (funcall expected-for "2500.00")))
+        (assert (equal? (funcall query-for 10000000.0) (funcall expected-for "10000000")))
+        ;; Anything that is not a plain decimal is refused with a business
+        ;; exception, including a float that elps prints in exponent form.
+        (map ()
+             (lambda (amount)
+               (let ([raised (handler-bind ([set-exception-error (lambda (_ e) true)])
+                               (funcall query-for amount)
+                               false)])
+                 (assert raised)))
+             (list "1); DROP TABLE X; --" 2500000.5))))

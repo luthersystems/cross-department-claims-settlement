@@ -152,3 +152,14 @@
         (assert (equal? (get durable "equifax_status") "Pass"))
         (assert (= (get durable "equifax_hit_value_pep") 0))))
 
+
+;; =============================
+;; Test: Oracle query quotes the policy ID
+;; =============================
+;; The connector takes raw SQL with no bind parameters, so a quote in the
+;; policy ID must not end the string literal and change the query.
+(test "mk-oracle-get-claim-event-quotes-policy-id"
+      (let* ([entity (mk-test-entity-wf1)]
+             [event (mk-oracle-get-claim-event entity "POL' OR '1'='1" (sorted-map :entity-id (get entity "claim_id")))]
+             [sql (get (get (get (get event "req") "generic") "arguments") "query")])
+        (assert (equal? sql "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = 'POL'' OR ''1''=''1'"))))

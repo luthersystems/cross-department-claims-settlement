@@ -6,8 +6,8 @@
 
 (defun mk-oracle-get-claim-event (entity policy-id accessors) 
   (let* ([sql (format-string 
-                "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = '{}'" 
-                policy-id)] 
+                "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = {}" 
+                (sql-quote policy-id))] 
          [req (mk-connector-req 
           (sorted-map "kind" "KIND_ORACLE_READONLY" "operation" "execute_query" "args" (sorted-map "query" sql)))]) 
         (build-event entity req "get claim" "oracle" (get accessors :entity-id))))

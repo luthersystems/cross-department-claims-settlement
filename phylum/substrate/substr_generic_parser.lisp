@@ -83,3 +83,55 @@
             (set-exception-unexpected
               (format-string "connector inner error: {}" inner-error)))))
       parsed)))
+
+;; ---------------- SQL string literals ----------------
+
+;; The database connectors take raw SQL text and have no bind parameters, so
+;; a value that goes into a query must be written as a quoted literal that
+;; its content cannot end early.  These helpers exist so that no event
+;; builder interpolates a value between bare quotes.
+
+;; Quote a value as a standard SQL string literal (Oracle, SAP HANA): wrap it
+;; in single quotes and double each quote inside it.  These databases treat a
+;; backslash as an ordinary character, so it is left as is.
+;; A nil value is written as NULL, not as the text "()", so a missing value
+;; never turns into stored data.
+(export 'sql-quote)
+(defun sql-quote (value)
+  (if (nil? value)
+    "NULL"
+    (format-string "'{}'" (string:join (string:split (to-string value) "'") "''"))))
+
+;; Quote a value as a MySQL string literal.  MySQL also reads a backslash as
+;; an escape, so `\'` would undo the doubled quote; doubling each backslash
+;; first keeps the literal closed.  A server with NO_BACKSLASH_ESCAPES would
+;; then read a backslash in the value as two; that only makes a lookup miss,
+;; while the opposite choice would let a value end the literal.
+(export 'sql-quote-mysql)
+(defun sql-quote-mysql (value)
+  ;; Raw strings: this elps version's lexer misreads "\\" before a paren.
+  (if (nil? value)
+    "NULL"
+    (sql-quote (string:join (string:split (to-string value) """\""") """\\"""))))
+
+;; Write a number for a SQL statement as a plain decimal literal.  The value
+;; is spliced in without quotes, so only text that is all digits (with an
+;; optional sign and fraction) is allowed.  A decimal string such as
+;; "2500.00" is accepted because JSON clients often send money that way.  A
+;; float is written as elps prints it, but elps prints large or very precise
+;; floats in exponent form (2.5000005e+06), which a database reads as an
+;; approximate DOUBLE; that form, NaN and Inf are refused, and the caller
+;; should send such an amount as a decimal string.
+(set 'sql--decimal-re (regexp:regexp-compile "^-?[0-9]+([.][0-9]+)?$"))
+
+(export 'sql-number)
+(defun sql-number (value)
+  (let* ([text (cond ((int? value) (to-string value))
+                     ((and (float? value) (= value (to-float (to-int value))))
+                      (to-string (to-int value)))
+                     ((float? value) (to-string value))
+                     ((string? value) value)
+                     (:else ""))])
+    (unless (regexp:regexp-match? sql--decimal-re text)
+      (set-exception-business (format-string "not a plain decimal number: {}" value)))
+    text))

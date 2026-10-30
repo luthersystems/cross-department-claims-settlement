@@ -87,3 +87,15 @@
         (assert (equal? (get parsed "policy_id") "POL-8872"))
         (assert (equal? (get parsed "guidewire_claim_id") "GW-CLM-12345"))))
 
+
+;; =============================
+;; Test: MySQL query quotes the policy ID
+;; =============================
+;; MySQL treats a backslash as an escape inside a string literal, so a
+;; backslash before a quote must not be able to undo the quote doubling.
+(test "mk-mysql-check-policy-event-quotes-policy-id"
+      (let* ([entity (mk-test-entity-wf2)]
+             [args (sorted-map "policy_id" "POL\\' OR 1=1 -- ")]
+             [event (mk-mysql-check-policy-event entity args (sorted-map :entity-id (get entity "claim_id")))]
+             [sql (get (get (get (get event "req") "generic") "arguments") "sql")])
+        (assert (equal? sql "SELECT POLICY_ID, STATUS, COVERAGE_LIMIT FROM policies WHERE POLICY_ID='POL\\\\'' OR 1=1 -- ' AND STATUS='Active' LIMIT 1"))))

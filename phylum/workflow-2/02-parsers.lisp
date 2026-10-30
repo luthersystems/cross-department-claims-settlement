@@ -26,8 +26,8 @@
 
 (defun mk-mysql-check-policy-event (entity args accessors)
   (let* ([sql (format-string
-                "SELECT POLICY_ID, STATUS, COVERAGE_LIMIT FROM policies WHERE POLICY_ID='{}' AND STATUS='Active' LIMIT 1"
-                (get args "policy_id"))]
+                "SELECT POLICY_ID, STATUS, COVERAGE_LIMIT FROM policies WHERE POLICY_ID={} AND STATUS='Active' LIMIT 1"
+                (sql-quote-mysql (get args "policy_id")))]
          [req (mk-connector-req
                 (sorted-map
                   "kind" "KIND_MYSQL"
