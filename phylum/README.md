@@ -272,7 +272,7 @@ phylum/
 │   └── ...
 ├── workflow-3/              # Workflow 3: Invoice Generation
 │   └── ...
-├── workflow-4/              # Workflow 4: Invoice Processing
+├── workflow-4-edit/         # Workflow 4: Invoice Processing
 │   └── ...
 ├── workflow-5/              # Workflow 5: Payment Processing
 │   └── ...
@@ -341,5 +341,5 @@ curl -X POST http://localhost:8080/v1/invoke_wf1 \
 - [Workflow 1 Documentation](workflow-1/README.md)
 - [Workflow 2 Documentation](workflow-2/README.md)
 - [Workflow 3 Documentation](workflow-3/README.md)
-- [Workflow 4 Documentation](workflow-4/README.md)
+- [Workflow 4 Documentation](workflow-4-edit/README.md)
 - [Workflow 5 Documentation](workflow-5/README.md)

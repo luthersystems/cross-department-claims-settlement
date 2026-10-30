@@ -85,7 +85,7 @@
                                        "name" "Claim Settlement"
                                        "rate" 2500.00
                                        "quantity" 1)))]
-             [event (mk-zoho-create-invoice-event entity payload)])
+             [event (mk-zoho-create-invoice-event entity payload (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "zoho"))
@@ -101,49 +101,36 @@
                        "description" "Zoho invoice INV-789 created"
                        "category" "Invoice"
                        "subcategory" "Settlement")]
-             [event (mk-servicenow-create-incident-event entity payload)])
+             [event (mk-servicenow-create-incident-event entity payload (sorted-map :entity-id (get entity "claim_id")))])
         (assert (not (nil? event)))
         (assert (equal? (get event "oid") "CLM-4567"))
         (assert (equal? (get event "sys") "servicenow"))
         (assert (equal? (get event "eng") "create incident"))))
 
 ;; =============================
-;; Test: Init State Handler Parse
+;; Test: Init State Handler Receive
 ;; =============================
-(test "wf4-claim-init-state-handler-parse"
+(test "wf4-claim-init-state-handler-receive"
       (let* ([handler (wf4-claim-init-simple-state-handler)]
-             [parse-fn (get handler :parse)]
-             [resp (sorted-map
-                    "policy_id" "POL-8872"
-                    *connector-id-zoho* (sorted-map
-                            "customer_id" "CUST-12345"
-                            "reference_number" "CLM-4567"
-                            "due_date" "2024-02-15"
-                            "is_inclusive_tax" true
-                            "line_items" (vector
-                                           (sorted-map
-                                            "name" "Claim Settlement"
-                                            "rate" 2500.00
-                                            "quantity" 1))))]
-             [entity (sorted-map "claim_id" "CLM-4567")]
-             [parsed (funcall parse-fn resp entity)])
-        (assert (not (nil? parsed)))
-        ;; Init handler validates claim_id exists but doesn't include it in parsed
-        ;; claim_id is managed by entity manager, not persisted in stage functions
-        (assert (nil? (get parsed "claim_id")))
-        (assert (equal? (length (keys parsed)) 0))))
+             [receive-fn (get handler :receive)]
+             [entity (sorted-map "claim_id" "CLM-4567")])
+        ;; The claim ID in the response wins; the entity's is the fallback.
+        (assert (equal? (get (receive-fn (sorted-map "claim_id" "CLM-9") entity (sorted-map)) "claim_id")
+                        "CLM-9"))
+        (assert (equal? (get (receive-fn (sorted-map) entity (sorted-map)) "claim_id")
+                        "CLM-4567"))))
 
 ;; =============================
 ;; Test: Zoho Invoice Created State Handler
 ;; =============================
 (test "wf4-zoho-invoice-created-state-handler"
       (let* ([handler (wf4-zoho-invoice-created-state-handler)]
-             [parse-fn (get handler :parse)]
-             [stage-durable-fn (get handler :stage-durable)]
+             [receive-fn (get handler :receive)]
+             [store-durable-fn (get handler :store-durable)]
              [resp (mk-test-zoho-response)]
              [entity (mk-test-entity-wf4)]
-             [parsed (parse-fn resp entity)]
-             [durable (stage-durable-fn entity parsed (sorted-map))])
+             [parsed (receive-fn resp entity (sorted-map))]
+             [durable (store-durable-fn entity parsed (sorted-map))])
         (assert (not (nil? parsed)))
         (assert (not (nil? durable)))
         (assert (equal? (get durable "zoho_invoice_id") "INV-789"))

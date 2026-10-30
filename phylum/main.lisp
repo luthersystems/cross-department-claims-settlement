@@ -55,7 +55,7 @@
 (load-file "workflow-3/03-routes.lisp")
 (load-file "workflow-3/03-reg.lisp")         ; Register WF3 manager
 
-;; Load workflow-4 files (workflow-4-edit replaces workflow-4)
+;; Load workflow-4 files (from workflow-4-edit, which replaced the old workflow-4)
 (load-file "workflow-4-edit/04-constants.lisp")
 (load-file "workflow-4-edit/04-parsers.lisp")     ; Parsing & event creation
 (load-file "workflow-4-edit/04-workflow.lisp")
