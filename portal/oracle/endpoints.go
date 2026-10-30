@@ -55,6 +55,10 @@ func refusal(err error) (code, message string, ok bool) {
 	if json.Unmarshal(pe.DataJSON(), &data) != nil || data.Error == "" {
 		return "", "", false
 	}
+	if data.Message == "" {
+		// A caller treats an empty reason as success.
+		data.Message = data.Error
+	}
 	return data.Error, data.Message, true
 }
 
@@ -149,6 +153,10 @@ func (p *portal) StartClaim(ctx context.Context, req *pb.StartClaimRequest) (*pb
 		// The phylum checks more than the portal, such as the amount.
 		return &pb.StartClaimResponse{Result: &pb.StartClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, reason)}}, nil
 	}
+	if _, msg, ok := refusal(err); ok {
+		// For example a request key sent again with other fields.
+		return &pb.StartClaimResponse{Result: &pb.StartClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, msg)}}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("start claim: %w", err)
 	}
@@ -210,31 +218,43 @@ func refusedRead(claimID, code, message string) string {
 // apply twice.  Its request key cannot make the resend succeed instead:
 // defflow matches an input's request key together with the generation the
 // input was accepted at, which the portal no longer knows.
+//
+// The payment-status step waits at the same label again after "pending", so
+// two updates sent close together can read the same generation.  The second
+// is refused as stale-generation although the claim still waits for it, and
+// a refusal is final to the sender.  So a stale-generation refusal reads the
+// claim again and, if it still waits at label, sends the input once more.
 func (p *portal) sendInput(ctx context.Context, claimID, label, requestKey string, input map[string]string) (*pb.Claim, string, error) {
-	run, err := p.callFlow(ctx, claimFlow+"_get", claimID)
-	if code, msg, ok := refusal(err); ok {
-		return nil, refusedRead(claimID, code, msg), nil
-	}
-	if err != nil {
-		return nil, "", fmt.Errorf("get claim: %w", err)
-	}
-	if run.str("state") != "waiting" || run.str("label") != label {
-		return nil, fmt.Sprintf("claim %s is %s at %q, not waiting for %s", claimID, run.str("state"), run.str("label"), label), nil
-	}
+	const attempts = 2
 	method := claimFlow + "_" + strings.ReplaceAll(label, "-", "_")
-	params := []any{claimID, input, run.gen()}
-	if requestKey != "" {
-		params = append(params, requestKey)
+	for attempt := 1; ; attempt++ {
+		run, err := p.callFlow(ctx, claimFlow+"_get", claimID)
+		if code, msg, ok := refusal(err); ok {
+			return nil, refusedRead(claimID, code, msg), nil
+		}
+		if err != nil {
+			return nil, "", fmt.Errorf("get claim: %w", err)
+		}
+		if run.str("state") != "waiting" || run.str("label") != label {
+			return nil, fmt.Sprintf("claim %s is %s at %q, not waiting for %s", claimID, run.str("state"), run.str("label"), label), nil
+		}
+		params := []any{claimID, input, run.gen()}
+		if requestKey != "" {
+			params = append(params, requestKey)
+		}
+		run, err = p.callFlow(ctx, method, params...)
+		if code, msg, ok := refusal(err); ok {
+			if code == "stale-generation" && attempt < attempts {
+				continue
+			}
+			// Another input for this step won the race.
+			return nil, msg, nil
+		}
+		if err != nil {
+			return nil, "", fmt.Errorf("%s: %w", method, err)
+		}
+		return run.claim(), "", nil
 	}
-	run, err = p.callFlow(ctx, method, params...)
-	if _, msg, ok := refusal(err); ok {
-		// Another input for this step won the race.
-		return nil, msg, nil
-	}
-	if err != nil {
-		return nil, "", fmt.Errorf("%s: %w", method, err)
-	}
-	return run.claim(), "", nil
 }
 
 // ContractSigned resumes a claim that waits for its signed contract.

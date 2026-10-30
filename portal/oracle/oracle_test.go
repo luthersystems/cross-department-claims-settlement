@@ -247,11 +247,30 @@ func TestUnknownClaimIsABusinessError(t *testing.T) {
 
 func TestStartRejectedByThePhylumIsABusinessError(t *testing.T) {
 	server := makeTestServer(t)
-	req := testStartRequest()
-	req.InvoiceAmount = "lots"
-	resp, err := server.StartClaim(context.Background(), req)
+	// "Inf" and "0x1p4" parse as floats but are not amounts every system
+	// reads the same way.
+	for _, amount := range []string{"lots", "Inf", "0x1p4", "-5", "0"} {
+		req := testStartRequest()
+		req.InvoiceAmount = amount
+		req.RequestKey = "rejected-" + amount
+		resp, err := server.StartClaim(context.Background(), req)
+		require.NoError(t, err, amount)
+		require.Equal(t, "invoice_amount "+amount+" is not a positive decimal amount", resp.GetException().GetDescription())
+	}
+}
+
+// A request key sent again with other fields is the caller's mistake: the
+// flow refuses it, and a retry of the same request gets the same answer.
+func TestStartRequestKeyReusedIsABusinessError(t *testing.T) {
+	server := makeTestServer(t)
+	ctx := context.Background()
+	_, err := server.StartClaim(ctx, testStartRequest())
 	require.NoError(t, err)
-	require.Equal(t, "invoice_amount lots is not a positive number", resp.GetException().GetDescription())
+	req := testStartRequest()
+	req.InvoiceAmount = "26000.00"
+	resp, err := server.StartClaim(ctx, req)
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.GetException().GetDescription())
 }
 
 // TestStartRequiredFieldsMatchPhylum keeps the portal's list of required
