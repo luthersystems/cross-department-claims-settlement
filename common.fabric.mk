@@ -435,6 +435,8 @@ CONNECTORHUB_ENV_VARS = \
 	$(if $(MCP_FULL_LOG),-e MCP_FULL_LOG=$(MCP_FULL_LOG)) \
 	$(if $(CH_LOG_FULL),-e CH_LOG_FULL=$(CH_LOG_FULL))
 
+# start-ch runs the hub without --rm: when it exits at start, the docker
+# logs call below still finds it.
 start-ch-%: parts=$(subst ., ,$*)
 start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
@@ -455,7 +457,8 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
 	fi; \
-	${DOCKER_RUN} -d --name ${name} \
+	${DOCKER} rm -f ${name} >/dev/null 2>&1 || true; \
+	${DOCKER} run -d --name ${name} \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		-v "${PROJECT_ABS_DIR}:/tmp/project:ro" \
 		-v "$(abspath build/volume/checkpoint):/tmp/checkpoint:rw" \
@@ -538,7 +541,7 @@ gateway-down:
 .PHONY: connectorhub-down
 connectorhub-down: ch_names=$(foreach g,${CONNECTORHUBS},$(word 2,$(subst ., ,${g})))
 connectorhub-down:
-	-docker stop ${ch_names}
+	-docker rm -f ${ch_names}
 
 .PHONY: sleep-%
 sleep-%:
