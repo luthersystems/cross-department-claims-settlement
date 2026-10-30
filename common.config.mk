@@ -25,11 +25,10 @@ CC_VERSION=${SUBSTRATE_VERSION}
 CHAINCODE_VERSION=${CC_VERSION}
 VERSION_SUBSTRATE=${CC_VERSION} # is this needed
 SHIROCLIENT_VERSION=${SUBSTRATE_VERSION}
-# The local network runs the mocked hub (fabric/connectorhub.yaml), and
-# Docker Hub has no connectorhub-local image newer than latest.  A hub that
-# calls real systems needs v0.0.29.SNAPSHOT.12 or later: the SQL steps send
-# bound args, which older hubs drop (connectorhub#296).
-CONNECTORHUB_VERSION=latest
+# v0.0.29.SNAPSHOT.12 or later: the hub must read substrate's luther:ev:N
+# event keys (connectorhub#229), and the SQL steps send bound args, which
+# older hubs drop (connectorhub#296).
+CONNECTORHUB_VERSION=v0.0.29.SNAPSHOT.12-5d34dc7c
 SHIROTESTER_VERSION=${SUBSTRATE_VERSION}
 # https://github.com/luthersystems/fabric-network-builder
 NETWORK_BUILDER_VERSION=v0.0.2

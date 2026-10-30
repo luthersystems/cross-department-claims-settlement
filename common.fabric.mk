@@ -25,8 +25,13 @@ NETWORK_BUILDER_TARGET ?= docker-pull/${NETWORK_BUILDER_IMAGE}\:${NETWORK_BUILDE
 NETWORK_BUILDER=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION} --chown "${DOCKER_CHOWN_USER}"
 
 SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
-# Override CONNECTORHUB_IMAGE from common.mk to use the full Docker Hub path
-CONNECTORHUB_IMAGE = luthersystems/connectorhub-local
+# Override CONNECTORHUB_IMAGE from common.mk to use the full Docker Hub path.
+# The deploy image, not connectorhub-local: Docker Hub has no
+# connectorhub-local image new enough for this substrate (it must read the
+# luther:ev:N event keys, connectorhub#229).  The deploy image has no docker
+# CLI, which only an unmocked MCP connector needs; every connector in
+# fabric/connectorhub.yaml is mocked.
+CONNECTORHUB_IMAGE = luthersystems/connectorhub
 
 # CONNECTORHUB_REPO is the path to the ConnectorHub repository for local builds.
 # Default assumes it's a sibling directory to the project root.
