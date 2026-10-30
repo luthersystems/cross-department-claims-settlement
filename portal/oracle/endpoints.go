@@ -65,7 +65,10 @@ func refusal(err error) (code, message string, ok bool) {
 // startRequiredFields are the start request fields the flow needs.  They
 // must match claim-required-fields in phylum/claim-steps.lisp
 // (TestStartRequiredFieldsMatchPhylum).
-var startRequiredFields = []string{"policy_id", "guidewire_claim_id", "invoice_amount", "signer_name", "signer_email"}
+var startRequiredFields = []string{
+	"policy_id", "guidewire_claim_id", "invoice_amount", "signer_name", "signer_email",
+	"settlement_document_item_id", "settlement_document_filename",
+}
 
 func (p *portal) defaultConfigs(_ context.Context) []shiroclient.Config {
 	cfg, err := private.WithSeed()
@@ -140,6 +143,9 @@ func (p *portal) StartClaim(ctx context.Context, req *pb.StartClaimRequest) (*pb
 		"originator_name":    req.GetOriginatorName(),
 		"recipient_name":     req.GetRecipientName(),
 		"issue_date":         req.GetIssueDate(),
+
+		"settlement_document_item_id":  req.GetSettlementDocumentItemId(),
+		"settlement_document_filename": req.GetSettlementDocumentFilename(),
 	}
 	if problem := missing(start, startRequiredFields...); problem != "" {
 		return &pb.StartClaimResponse{Result: &pb.StartClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, problem)}}, nil

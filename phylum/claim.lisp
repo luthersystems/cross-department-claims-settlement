@@ -64,15 +64,18 @@
 
          ;; WF1: find the claim in Oracle, screen the claimant with Equifax,
          ;; open a Teams thread with the result.
-         [record (reply oracle-claim (oracle-claim-event claim) parse-oracle-claim)]
+         [record (reply oracle-claim (oracle-claim-event claim) parse-oracle-claim (get claim "amount"))]
          [screening (reply equifax-screening (equifax-event claim (get record "claimant"))
                            parse-screening)]
          [thread (reply teams-thread (teams-thread-event claim screening) parse-teams-thread)]
 
          ;; WF2: check the claim in Guidewire and the policy in MySQL, check
          ;; the ID document in SharePoint, approve the claim in Guidewire.
+         ;; The Oracle reader above holds the invoice to the claim amount
+         ;; and the policy reader holds it to the coverage limit, so the
+         ;; claim is checked before Guidewire marks it for settlement.
          [guidewire (reply guidewire-claim (guidewire-claim-event claim) parse-guidewire-claim)]
-         [policy (reply policy-check (policy-check-event claim) parse-active-policy)]
+         [policy (reply policy-check (policy-check-event claim) parse-active-policy (get claim "amount"))]
          [id-check (reply id-document (id-document-event) parse-id-document (get record "claim_id"))]
          [approval (reply guidewire-approval (guidewire-approval-event claim) parse-guidewire-approval)]
 
@@ -87,7 +90,8 @@
     ;; settlement document and open a ServiceNow incident for review.
     (let* ([signed (await-input 'contract-signed :from ("Org1MSP"))]
            [invoice (reply zoho-invoice (zoho-invoice-event claim) parse-zoho-invoice)]
-           [document (reply settlement-document (settlement-document-event) parse-document)]
+           [document (reply settlement-document (settlement-document-event claim) parse-document
+                             (get claim "settlement_document_filename"))]
            [incident (reply servicenow-incident (servicenow-incident-event claim) parse-servicenow-incident)])
 
       ;; Payment: ask the payment team in the Teams thread, wait for their
@@ -111,7 +115,7 @@
                          "sf_record_id"        sf-record-id
                          "contract_signed_by"  (get signed "signed_by")
                          "zoho_invoice_id"     (get invoice "invoice_id")
-                       "settlement_document" document
+                         "settlement_document" document
                          "servicenow_incident" (get incident "number")
                          "payment_approved_by" approved-by
                          "payment_id"          (get status "payment_id"))])

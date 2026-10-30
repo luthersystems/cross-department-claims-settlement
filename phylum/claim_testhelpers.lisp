@@ -8,9 +8,11 @@
 (defun test-claim-request ()
   (sorted-map "policy_id"          "POL-8872"
               "guidewire_claim_id" "GW-1001"
-              "invoice_amount"     "25000.00"
+              "invoice_amount"     "2500.00"
               "signer_name"        "Jack Clarke"
-              "signer_email"       "jack.clarke@example.com"))
+              "signer_email"       "jack.clarke@example.com"
+              "settlement_document_item_id"  "01RAAXWASETTLEMENTCLM4567"
+              "settlement_document_filename" "settlement-CLM-4567.txt"))
 
 ;; "Claim ID: CLM-4567\nDate: 2025-11-12\nSigner: John Doe\nVerified: Yes"
 (set 'test-id-document-line "Q2xhaW0gSUQ6IENMTS00NTY3CkRhdGU6IDIwMjUtMTEtMTIKU2lnbmVyOiBKb2huIERvZQpWZXJpZmllZDogWWVz")

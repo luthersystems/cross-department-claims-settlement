@@ -127,6 +127,13 @@ message StartClaimRequest {
   // Optional: send the same key again to get the same claim back instead of
   // a second claim.  The portal makes a new key when it is empty.
   string request_key = 9;
+  // Required: the SharePoint item id of the claim's settlement document,
+  // in the demo document library.  It must not be the ID verification
+  // document; the flow gives this file to ServiceNow for review.
+  string settlement_document_item_id = 10;
+  // Required: the settlement document's file name.  SharePoint picks the
+  // parser by its extension (.txt, .pdf, .docx, ...).
+  string settlement_document_filename = 11;
 }
 
 // Request to read a claim.

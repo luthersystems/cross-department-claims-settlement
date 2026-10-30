@@ -65,8 +65,20 @@ would wait until its one-hour connector timeout and fail with a bare
 Rules the steps apply:
 
 - A start request needs `policy_id`, `guidewire_claim_id`,
-  `invoice_amount`, `signer_name` and `signer_email`.  Without them the
-  start is rejected and no run is written.
+  `invoice_amount`, `signer_name`, `signer_email`,
+  `settlement_document_item_id` and `settlement_document_filename`.
+  Without them the start is rejected and no run is written.
+- The settlement document is the SharePoint file the start request
+  names, in the demo document library.  A request that names the ID
+  document there is rejected: the demo once fetched the ID document
+  twice and gave it to ServiceNow as the settlement document (#37).
+- The invoice may not exceed the Oracle claim `AMOUNT` or the policy's
+  `COVERAGE_LIMIT`; both apply, so the lower one wins.  A cap that is
+  missing or not a number fails the run too.  Both checks run before
+  Guidewire marks the claim for settlement.
+- The Guidewire claim must be `Open`, `UnderReview` or `Approved`.
+  `Rejected`, `Closed` and any status the flow does not know fail the
+  run.
 - The Equifax screening passes when the status is `Clear` with no PEP or
   embargo hit.  Otherwise the Teams thread says why, and the claim goes
   on: the review happens in Teams.
