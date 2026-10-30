@@ -336,10 +336,10 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
-	env_file_flag=""; \
+	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
-		env_file_flag="--env-file $$env_file"; \
+		env_file_flag="$$env_file_flag --env-file $$env_file"; \
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
@@ -386,10 +386,10 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
-	env_file_flag=""; \
+	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
-		env_file_flag="--env-file $$env_file"; \
+		env_file_flag="$$env_file_flag --env-file $$env_file"; \
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
@@ -446,10 +446,10 @@ start-ch-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
-	env_file_flag=""; \
+	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
-		env_file_flag="--env-file $$env_file"; \
+		env_file_flag="$$env_file_flag --env-file $$env_file"; \
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
