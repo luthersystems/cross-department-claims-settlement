@@ -12,6 +12,9 @@ package oracle
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
 	"testing"
 
 	pb "github.com/luthersystems/cdcs/api/pb/v1"
@@ -223,8 +226,45 @@ func TestClaimRunsThroughTheWebhooks(t *testing.T) {
 	require.Equal(t, "SAP-TXN-1001", result["sap_txn"].GetStringValue())
 
 	// A resend of the contract-signed webhook after the claim moved on is
-	// refused with the reason, not applied again.
-	resent, err := server.ContractSigned(ctx, &pb.ContractSignedRequest{ClaimId: id, SignedBy: "jack.clarke@example.com", RequestKey: "sig-1"})
+	// refused with the reason, not applied again, with or without its key.
+	for _, key := range []string{"sig-1", ""} {
+		late, err := server.ContractSigned(ctx, &pb.ContractSignedRequest{ClaimId: id, SignedBy: "jack.clarke@example.com", RequestKey: key})
+		require.NoError(t, err)
+		require.Equal(t, `claim `+id+` is done at "", not waiting for contract-signed`, late.GetException().GetDescription())
+	}
+}
+
+func TestUnknownClaimIsABusinessError(t *testing.T) {
+	server := makeTestServer(t)
+	ctx := context.Background()
+	got, err := server.GetClaim(ctx, &pb.GetClaimRequest{ClaimId: "no-such-claim"})
 	require.NoError(t, err)
-	require.Contains(t, resent.GetException().GetDescription(), "is done")
+	require.Equal(t, "claim no-such-claim not found", got.GetException().GetDescription())
+	signed, err := server.ContractSigned(ctx, &pb.ContractSignedRequest{ClaimId: "no-such-claim", SignedBy: "x@example.com"})
+	require.NoError(t, err)
+	require.Equal(t, "claim no-such-claim not found", signed.GetException().GetDescription())
+}
+
+func TestStartRejectedByThePhylumIsABusinessError(t *testing.T) {
+	server := makeTestServer(t)
+	req := testStartRequest()
+	req.InvoiceAmount = "lots"
+	resp, err := server.StartClaim(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, "invoice_amount lots is not a positive number", resp.GetException().GetDescription())
+}
+
+// TestStartRequiredFieldsMatchPhylum keeps the portal's list of required
+// start fields in step with the phylum's.  The portal checks them first so
+// a caller sees every missing field at once, before a transaction runs.
+func TestStartRequiredFieldsMatchPhylum(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join(phylumRelPath, "claim-steps.lisp"))
+	require.NoError(t, err)
+	m := regexp.MustCompile(`\(set 'claim-required-fields\s*\(vector ([^)]*)\)\)`).FindSubmatch(src)
+	require.NotNil(t, m, "claim-required-fields not found in claim-steps.lisp")
+	var phylum []string
+	for _, f := range regexp.MustCompile(`"([^"]+)"`).FindAllSubmatch(m[1], -1) {
+		phylum = append(phylum, string(f[1]))
+	}
+	require.Equal(t, phylum, startRequiredFields)
 }

@@ -431,7 +431,7 @@
         },
         "requestKey": {
           "type": "string",
-          "title": "Optional: makes a resend of the webhook safe"
+          "description": "Optional: the input's request key in the claim flow.  A resend after the\nclaim moved on is refused either way, so it never applies twice."
         }
       },
       "description": "The signed contract arrived (eSignature webhook)."
@@ -445,7 +445,7 @@
         },
         "requestKey": {
           "type": "string",
-          "title": "Optional: makes a resend of the webhook safe"
+          "description": "Optional: the input's request key in the claim flow.  A resend after the\nclaim moved on is refused either way, so it never applies twice."
         }
       },
       "description": "The payment team approved the payment."
@@ -463,7 +463,7 @@
         },
         "requestKey": {
           "type": "string",
-          "title": "Optional: makes a resend of the webhook safe"
+          "description": "Optional: the input's request key in the claim flow.  A resend after the\nclaim moved on is refused either way, so it never applies twice."
         }
       },
       "description": "ABS reports the payment status: approved, rejected or pending.  The claim\nwaits for another status after pending."

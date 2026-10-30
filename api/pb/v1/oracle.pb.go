@@ -185,10 +185,12 @@ func (x *GetClaimRequest) GetClaimId() string {
 
 // The signed contract arrived (eSignature webhook).
 type ContractSignedRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClaimId       string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`          // Required
-	SignedBy      string                 `protobuf:"bytes,2,opt,name=signed_by,json=signedBy,proto3" json:"signed_by,omitempty"`       // Required: email of the signer
-	RequestKey    string                 `protobuf:"bytes,3,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"` // Optional: makes a resend of the webhook safe
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	ClaimId  string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`    // Required
+	SignedBy string                 `protobuf:"bytes,2,opt,name=signed_by,json=signedBy,proto3" json:"signed_by,omitempty"` // Required: email of the signer
+	// Optional: the input's request key in the claim flow.  A resend after the
+	// claim moved on is refused either way, so it never applies twice.
+	RequestKey    string `protobuf:"bytes,3,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -246,10 +248,12 @@ func (x *ContractSignedRequest) GetRequestKey() string {
 
 // The payment team approved the payment.
 type PaymentApprovedRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClaimId       string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`          // Required
-	SignedBy      string                 `protobuf:"bytes,2,opt,name=signed_by,json=signedBy,proto3" json:"signed_by,omitempty"`       // Required: email of the approver
-	RequestKey    string                 `protobuf:"bytes,3,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"` // Optional: makes a resend of the webhook safe
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	ClaimId  string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`    // Required
+	SignedBy string                 `protobuf:"bytes,2,opt,name=signed_by,json=signedBy,proto3" json:"signed_by,omitempty"` // Required: email of the approver
+	// Optional: the input's request key in the claim flow.  A resend after the
+	// claim moved on is refused either way, so it never applies twice.
+	RequestKey    string `protobuf:"bytes,3,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -308,11 +312,13 @@ func (x *PaymentApprovedRequest) GetRequestKey() string {
 // ABS reports the payment status: approved, rejected or pending.  The claim
 // waits for another status after pending.
 type PaymentStatusRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ClaimId       string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`          // Required
-	PaymentId     string                 `protobuf:"bytes,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`    // Required
-	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`                           // Required: approved, rejected or pending
-	RequestKey    string                 `protobuf:"bytes,4,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"` // Optional: makes a resend of the webhook safe
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	ClaimId   string                 `protobuf:"bytes,1,opt,name=claim_id,json=claimId,proto3" json:"claim_id,omitempty"`       // Required
+	PaymentId string                 `protobuf:"bytes,2,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"` // Required
+	Status    string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`                        // Required: approved, rejected or pending
+	// Optional: the input's request key in the claim flow.  A resend after the
+	// claim moved on is refused either way, so it never applies twice.
+	RequestKey    string `protobuf:"bytes,4,opt,name=request_key,json=requestKey,proto3" json:"request_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

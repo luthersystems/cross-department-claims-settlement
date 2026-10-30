@@ -2,12 +2,15 @@ package oracle
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
 	pb "github.com/luthersystems/cdcs/api/pb/v1"
 	"github.com/luthersystems/shiroclient-sdk-go/shiroclient"
+	"github.com/luthersystems/shiroclient-sdk-go/shiroclient/phylum"
 	"github.com/luthersystems/shiroclient-sdk-go/shiroclient/private"
 	"github.com/luthersystems/svc/oracle"
 	"github.com/luthersystems/svc/svcerr"
@@ -29,13 +32,36 @@ import (
 // generation it read.  This is why the webhooks come to the portal and not
 // to connectorhub inbound REST connectors.
 //
-// The phylum checks every input again.  The portal checks first because
-// the phylum client hides a refusal's reason ("unknown phylum error") when
-// the phylum answers with a map, and a defflow refusal is a map.  So the
-// caller gets the reason from the portal; only a race between two inputs
-// for the same step reaches the phylum's refusal.
+// The phylum checks every input again; only a race between two inputs for
+// the same step reaches its refusal.  The portal answers a defflow refusal
+// (an unknown claim, an input the claim is not waiting for) as a business
+// exception, not an internal error, so a webhook sender does not retry it.
 
 const claimFlow = "claim"
+
+// refusal returns the code ("not-found", "not-waiting", ...) and message of
+// a defflow refusal.  A refusal is phylum error data
+// {"error": CODE, "message": TEXT}; the phylum client masks it in Error()
+// and keeps it in *phylum.Error (shiroclient-sdk-go#90).
+func refusal(err error) (code, message string, ok bool) {
+	var pe *phylum.Error
+	if !errors.As(err, &pe) {
+		return "", "", false
+	}
+	var data struct {
+		Error   string `json:"error"`
+		Message string `json:"message"`
+	}
+	if json.Unmarshal(pe.DataJSON(), &data) != nil || data.Error == "" {
+		return "", "", false
+	}
+	return data.Error, data.Message, true
+}
+
+// startRequiredFields are the start request fields the flow needs.  They
+// must match claim-required-fields in phylum/claim-steps.lisp
+// (TestStartRequiredFieldsMatchPhylum).
+var startRequiredFields = []string{"policy_id", "guidewire_claim_id", "invoice_amount", "signer_name", "signer_email"}
 
 func (p *portal) defaultConfigs(_ context.Context) []shiroclient.Config {
 	cfg, err := private.WithSeed()
@@ -83,36 +109,24 @@ func (r flowRun) claim() *pb.Claim {
 	return claim
 }
 
-// missing returns "missing a, b" for the named fields that are blank, or "".
-func missing(fields ...[2]string) string {
-	var names []string
-	for _, f := range fields {
-		if strings.TrimSpace(f[1]) == "" {
-			names = append(names, f[0])
+// missing returns "missing a, b" for the named fields of m that are blank,
+// or "".
+func missing(m map[string]string, names ...string) string {
+	var blank []string
+	for _, name := range names {
+		if strings.TrimSpace(m[name]) == "" {
+			blank = append(blank, name)
 		}
 	}
-	if len(names) == 0 {
+	if len(blank) == 0 {
 		return ""
 	}
-	return "missing " + strings.Join(names, ", ")
+	return "missing " + strings.Join(blank, ", ")
 }
 
 // StartClaim starts a claim.  The phylum checks the request too; the portal
 // checks first so the caller sees which field is missing.
 func (p *portal) StartClaim(ctx context.Context, req *pb.StartClaimRequest) (*pb.StartClaimResponse, error) {
-	if problem := missing(
-		[2]string{"policy_id", req.GetPolicyId()},
-		[2]string{"guidewire_claim_id", req.GetGuidewireClaimId()},
-		[2]string{"invoice_amount", req.GetInvoiceAmount()},
-		[2]string{"signer_name", req.GetSignerName()},
-		[2]string{"signer_email", req.GetSignerEmail()},
-	); problem != "" {
-		return &pb.StartClaimResponse{Result: &pb.StartClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, problem)}}, nil
-	}
-	key := req.GetRequestKey()
-	if key == "" {
-		key = uuid.NewString()
-	}
 	start := map[string]string{
 		"policy_id":          req.GetPolicyId(),
 		"guidewire_claim_id": req.GetGuidewireClaimId(),
@@ -123,7 +137,18 @@ func (p *portal) StartClaim(ctx context.Context, req *pb.StartClaimRequest) (*pb
 		"recipient_name":     req.GetRecipientName(),
 		"issue_date":         req.GetIssueDate(),
 	}
+	if problem := missing(start, startRequiredFields...); problem != "" {
+		return &pb.StartClaimResponse{Result: &pb.StartClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, problem)}}, nil
+	}
+	key := req.GetRequestKey()
+	if key == "" {
+		key = uuid.NewString()
+	}
 	run, err := p.callFlow(ctx, claimFlow+"_start", key, start)
+	if reason, ok := startRejected(err); ok {
+		// The phylum checks more than the portal, such as the amount.
+		return &pb.StartClaimResponse{Result: &pb.StartClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, reason)}}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("start claim: %w", err)
 	}
@@ -132,20 +157,64 @@ func (p *portal) StartClaim(ctx context.Context, req *pb.StartClaimRequest) (*pb
 
 // GetClaim reads a claim.
 func (p *portal) GetClaim(ctx context.Context, req *pb.GetClaimRequest) (*pb.GetClaimResponse, error) {
-	if problem := missing([2]string{"claim_id", req.GetClaimId()}); problem != "" {
+	if problem := missing(map[string]string{"claim_id": req.GetClaimId()}, "claim_id"); problem != "" {
 		return &pb.GetClaimResponse{Result: &pb.GetClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, problem)}}, nil
 	}
 	run, err := p.callFlow(ctx, claimFlow+"_get", req.GetClaimId())
+	if code, msg, ok := refusal(err); ok {
+		return &pb.GetClaimResponse{Result: &pb.GetClaimResponse_Exception{Exception: svcerr.BusinessException(ctx, refusedRead(req.GetClaimId(), code, msg))}}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("get claim: %w", err)
 	}
 	return &pb.GetClaimResponse{Result: &pb.GetClaimResponse_Claim{Claim: run.claim()}}, nil
 }
 
+// startRejected returns the reason when err is the flow's start rejection.
+// A start rejection fails the transaction, so it comes back as the
+// transaction's error text, "... start-rejected: {JSON}", not as phylum
+// error data (refusal).  The JSON's run.reason is the flow's fail message.
+func startRejected(err error) (string, bool) {
+	if err == nil {
+		return "", false
+	}
+	text := err.Error()
+	i := strings.Index(text, "start-rejected: {")
+	if i < 0 {
+		return "", false
+	}
+	var rej struct {
+		Run struct {
+			Reason string `json:"reason"`
+		} `json:"run"`
+	}
+	if json.Unmarshal([]byte(text[i+len("start-rejected: "):]), &rej) != nil || rej.Run.Reason == "" {
+		return "the claim flow rejected the start request", true
+	}
+	return rej.Run.Reason, true
+}
+
+// refusedRead is the reason a claim_get was refused: almost always an
+// unknown claim id.
+func refusedRead(claimID, code, message string) string {
+	if code == "not-found" {
+		return fmt.Sprintf("claim %s not found", claimID)
+	}
+	return message
+}
+
 // sendInput sends input to the claim when it waits at label.  It returns the
 // claim, or a reason the input was refused.
+//
+// A webhook sent again after the claim moved on is refused, so it cannot
+// apply twice.  Its request key cannot make the resend succeed instead:
+// defflow matches an input's request key together with the generation the
+// input was accepted at, which the portal no longer knows.
 func (p *portal) sendInput(ctx context.Context, claimID, label, requestKey string, input map[string]string) (*pb.Claim, string, error) {
 	run, err := p.callFlow(ctx, claimFlow+"_get", claimID)
+	if code, msg, ok := refusal(err); ok {
+		return nil, refusedRead(claimID, code, msg), nil
+	}
 	if err != nil {
 		return nil, "", fmt.Errorf("get claim: %w", err)
 	}
@@ -158,6 +227,10 @@ func (p *portal) sendInput(ctx context.Context, claimID, label, requestKey strin
 		params = append(params, requestKey)
 	}
 	run, err = p.callFlow(ctx, method, params...)
+	if _, msg, ok := refusal(err); ok {
+		// Another input for this step won the race.
+		return nil, msg, nil
+	}
 	if err != nil {
 		return nil, "", fmt.Errorf("%s: %w", method, err)
 	}
@@ -166,7 +239,7 @@ func (p *portal) sendInput(ctx context.Context, claimID, label, requestKey strin
 
 // ContractSigned resumes a claim that waits for its signed contract.
 func (p *portal) ContractSigned(ctx context.Context, req *pb.ContractSignedRequest) (*pb.ContractSignedResponse, error) {
-	if problem := missing([2]string{"claim_id", req.GetClaimId()}, [2]string{"signed_by", req.GetSignedBy()}); problem != "" {
+	if problem := missing(map[string]string{"claim_id": req.GetClaimId(), "signed_by": req.GetSignedBy()}, "claim_id", "signed_by"); problem != "" {
 		return &pb.ContractSignedResponse{Result: &pb.ContractSignedResponse_Exception{Exception: svcerr.BusinessException(ctx, problem)}}, nil
 	}
 	claim, refused, err := p.sendInput(ctx, req.GetClaimId(), "contract-signed", req.GetRequestKey(),
@@ -182,7 +255,7 @@ func (p *portal) ContractSigned(ctx context.Context, req *pb.ContractSignedReque
 
 // PaymentApproved resumes a claim that waits for the payment team.
 func (p *portal) PaymentApproved(ctx context.Context, req *pb.PaymentApprovedRequest) (*pb.PaymentApprovedResponse, error) {
-	if problem := missing([2]string{"claim_id", req.GetClaimId()}, [2]string{"signed_by", req.GetSignedBy()}); problem != "" {
+	if problem := missing(map[string]string{"claim_id": req.GetClaimId(), "signed_by": req.GetSignedBy()}, "claim_id", "signed_by"); problem != "" {
 		return &pb.PaymentApprovedResponse{Result: &pb.PaymentApprovedResponse_Exception{Exception: svcerr.BusinessException(ctx, problem)}}, nil
 	}
 	claim, refused, err := p.sendInput(ctx, req.GetClaimId(), "payment-approved", req.GetRequestKey(),
@@ -198,8 +271,8 @@ func (p *portal) PaymentApproved(ctx context.Context, req *pb.PaymentApprovedReq
 
 // PaymentStatus gives a claim the payment status from ABS.
 func (p *portal) PaymentStatus(ctx context.Context, req *pb.PaymentStatusRequest) (*pb.PaymentStatusResponse, error) {
-	problem := missing([2]string{"claim_id", req.GetClaimId()}, [2]string{"payment_id", req.GetPaymentId()},
-		[2]string{"status", req.GetStatus()})
+	problem := missing(map[string]string{"claim_id": req.GetClaimId(), "payment_id": req.GetPaymentId(), "status": req.GetStatus()},
+		"claim_id", "payment_id", "status")
 	if problem == "" {
 		switch strings.ToLower(req.GetStatus()) {
 		case "approved", "rejected", "pending":

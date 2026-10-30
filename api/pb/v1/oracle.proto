@@ -138,14 +138,18 @@ message GetClaimRequest {
 message ContractSignedRequest {
   string claim_id = 1; // Required
   string signed_by = 2; // Required: email of the signer
-  string request_key = 3; // Optional: makes a resend of the webhook safe
+  // Optional: the input's request key in the claim flow.  A resend after the
+  // claim moved on is refused either way, so it never applies twice.
+  string request_key = 3;
 }
 
 // The payment team approved the payment.
 message PaymentApprovedRequest {
   string claim_id = 1; // Required
   string signed_by = 2; // Required: email of the approver
-  string request_key = 3; // Optional: makes a resend of the webhook safe
+  // Optional: the input's request key in the claim flow.  A resend after the
+  // claim moved on is refused either way, so it never applies twice.
+  string request_key = 3;
 }
 
 // ABS reports the payment status: approved, rejected or pending.  The claim
@@ -154,7 +158,9 @@ message PaymentStatusRequest {
   string claim_id = 1; // Required
   string payment_id = 2; // Required
   string status = 3; // Required: approved, rejected or pending
-  string request_key = 4; // Optional: makes a resend of the webhook safe
+  // Optional: the input's request key in the claim flow.  A resend after the
+  // claim moved on is refused either way, so it never applies twice.
+  string request_key = 4;
 }
 
 // A claim as its flow run reports it.
