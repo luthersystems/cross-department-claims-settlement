@@ -19,12 +19,15 @@ BUILDENV_TAG=v0.0.92
 # These variables control the version numbers for parts of the Luther platform
 # and should be kept up-to-date to leverage the latest platform features.
 # See release notes: https://docs.luthersystems.com/luther/platform/release-notes
-SUBSTRATE_VERSION=v2.205.13
+# v2.252.0 or later: the claim flow is a defflow (phylum/claim.lisp).
+SUBSTRATE_VERSION=v2.252.0
 CC_VERSION=${SUBSTRATE_VERSION}
 CHAINCODE_VERSION=${CC_VERSION}
 VERSION_SUBSTRATE=${CC_VERSION} # is this needed
 SHIROCLIENT_VERSION=${SUBSTRATE_VERSION}
-CONNECTORHUB_VERSION=latest
+# v0.0.29.SNAPSHOT.12 or later: the SQL steps send bound args, which older
+# hubs drop (connectorhub#296).
+CONNECTORHUB_VERSION=v0.0.29.SNAPSHOT.12
 SHIROTESTER_VERSION=${SUBSTRATE_VERSION}
 # https://github.com/luthersystems/fabric-network-builder
 NETWORK_BUILDER_VERSION=v0.0.2
