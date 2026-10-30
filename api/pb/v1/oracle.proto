@@ -6,6 +6,7 @@ syntax = "proto3";
 package pb.v1;
 
 import "common/v1/exception.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/luthersystems/cdcs/api/pb/v1";
 
@@ -109,199 +110,106 @@ option go_package = "github.com/luthersystems/cdcs/api/pb/v1";
 // }
 
 // ------------------------------------------------------------
-// WORKFLOW 1
+// CLAIM FLOW (phylum/claim.lisp)
 // ------------------------------------------------------------
 
-message UploadClaimWF1Request {
-  string policy_id = 1;
-}
-
-message UploadClaimWF1Response {
-  string claim_id = 1;
-  string state = 2;
-
-  oneof result {
-    common.v1.Exception exception = 3;
-  }
-}
-
-// ------------------------------------------------------------
-// WORKFLOW 2
-// ------------------------------------------------------------
-
-message UploadClaimWF2Request {
-  string policy_id = 1;
-  string guidewire_claim_id = 2;
-}
-
-message UploadClaimWF2Response {
-  string claim_id = 1;
-  string state = 2;
-
-  oneof result {
-    common.v1.Exception exception = 3;
-  }
-}
-
-// ------------------------------------------------------------
-// WORKFLOW 3
-// ------------------------------------------------------------
-
-message UploadClaimWF3Request {
-  string claim_id = 1;
-  string invoice_amount = 2; // or double
-  string signer_name = 3;
-  string signer_email = 4;
-  string originator_name = 5; // optional
-  string recipient_name = 6; // optional
-  string issue_date = 7; // YYYY-MM-DD
-}
-
-message UploadClaimWF3Response {
-  string claim_id = 1;
-  string state = 2;
-
-  oneof result {
-    common.v1.Exception exception = 3;
-  }
-}
-
-// ------------------------------------------------------------
-// WORKFLOW 4
-// ------------------------------------------------------------
-
-// Line item for Zoho invoice
-message LineItem {
-  string name = 1;
-  double rate = 2;
-  int32 quantity = 3;
-}
-
-message UploadClaimWF4Request {
-  // Optional: defaults to "POL-8872" if not provided
-  string policy_id = 1;
-  // Zoho invoice fields
-  string customer_id = 2; // Required: Zoho customer ID
-  string reference_number = 3; // Required: Claim reference number (used as claim_id if claim_id not provided)
-  string due_date = 4; // Required: Invoice due date (YYYY-MM-DD)
-  bool is_inclusive_tax = 5; // Required: Whether tax is inclusive
-  repeated LineItem line_items = 6; // Required: Invoice line items
-  // Optional overrides
-  string claim_id = 7; // Optional: Override claim_id (defaults to reference_number)
-  string currency_code = 8; // Optional: Currency code (defaults to "GBP")
-}
-
-message UploadClaimWF4Response {
-  string claim_id = 1;
-  string state = 2;
-
-  oneof result {
-    common.v1.Exception exception = 3;
-  }
-}
-
-// ------------------------------------------------------------
-// WORKFLOW 5
-// ------------------------------------------------------------
-
-message UploadClaimWF5Request {
-  string policy_id = 1;
-}
-
-message UploadClaimWF5Response {
-  string claim_id = 1;
-  string state = 2;
-
-  oneof result {
-    common.v1.Exception exception = 3;
-  }
-}
-
-// ------------------------------------------------------------
-// UNIFIED PROCESS (WF1 → WF2 → WF3 → WF4 → WF5)
-// ------------------------------------------------------------
-
-message InvokeProcessRequest {
+// Request to start a claim.  The phylum fails the start, and writes
+// nothing, when a required field is missing.
+message StartClaimRequest {
   string policy_id = 1; // Required
-  string guidewire_claim_id = 2; // Optional
-  string gw_claim_id = 3; // Optional
-  string signer_email = 4; // Optional
-  string signer_name = 5; // Optional
-  string invoice_amount = 6; // Optional
-  string originator_name = 7; // Optional
-  string recipient_name = 8; // Optional
-  string issue_date = 9; // Optional (YYYY-MM-DD)
+  string guidewire_claim_id = 2; // Required
+  string invoice_amount = 3; // Required
+  string signer_name = 4; // Required: signs the settlement invoice
+  string signer_email = 5; // Required
+  string originator_name = 6; // Optional: a demo default if empty
+  string recipient_name = 7; // Optional: a demo default if empty
+  string issue_date = 8; // Optional (YYYY-MM-DD): a demo default if empty
+  // Optional: send the same key again to get the same claim back instead of
+  // a second claim.  The portal makes a new key when it is empty.
+  string request_key = 9;
 }
 
-message InvokeProcessResponse {
-  string claim_id = 1;
-  string state = 2;
+// Request to read a claim.
+message GetClaimRequest {
+  string claim_id = 1; // Required
+}
 
+// The signed contract arrived (eSignature webhook).
+message ContractSignedRequest {
+  string claim_id = 1; // Required
+  string signed_by = 2; // Required: email of the signer
+  // Optional: the input's request key in the claim flow.  A resend after the
+  // claim moved on is refused either way, so it never applies twice.
+  string request_key = 3;
+}
+
+// The payment team approved the payment.
+message PaymentApprovedRequest {
+  string claim_id = 1; // Required
+  string signed_by = 2; // Required: email of the approver
+  // Optional: the input's request key in the claim flow.  A resend after the
+  // claim moved on is refused either way, so it never applies twice.
+  string request_key = 3;
+}
+
+// ABS reports the payment status: approved, rejected or pending.  The claim
+// waits for another status after pending.
+message PaymentStatusRequest {
+  string claim_id = 1; // Required
+  string payment_id = 2; // Required
+  string status = 3; // Required: approved, rejected or pending
+  // Optional: the input's request key in the claim flow.  A resend after the
+  // claim moved on is refused either way, so it never applies twice.
+  string request_key = 4;
+}
+
+// A claim as its flow run reports it.
+message Claim {
+  string claim_id = 1;
+  // waiting, done or failed.
+  string state = 2;
+  // The step the claim waits at, for example "contract-signed".
+  string step = 3;
+  // The claim's request with the defaults filled in.
+  google.protobuf.Struct details = 4;
+  // The summary when state is done, with "decision" paid or payment rejected.
+  google.protobuf.Struct result = 5;
+  // Why the claim failed, when state is failed.
+  google.protobuf.Value error = 6;
+}
+
+// The responses of the claim RPCs: the claim, or why the call was refused.
+message StartClaimResponse {
   oneof result {
-    common.v1.Exception exception = 3;
+    common.v1.Exception exception = 1;
+    Claim claim = 2;
   }
 }
 
-// ------------------------------------------------------------
-// UNIFIED UPLOAD CLAIM (routes by workflow_name)
-// ------------------------------------------------------------
-
-// Unified request for uploading a claim to any workflow.
-// The server routes by workflow_name to the corresponding workflow manager.
-message UploadClaimRequest {
-  // Required: "wf1", "wf2", "wf3", "wf4", "wf5", or "process"
-  string workflow_name = 1;
-
-  // Common fields (used by multiple workflows)
-  string policy_id = 2;
-  string claim_id = 3; // Used by WF3, WF4, WF5
-
-  // WF2 fields
-  string guidewire_claim_id = 4;
-  string gw_claim_id = 5; // Alternative to guidewire_claim_id
-
-  // WF3 fields
-  string invoice_amount = 6;
-  string signer_name = 7;
-  string signer_email = 8;
-  string originator_name = 9;
-  string recipient_name = 10;
-  string issue_date = 11; // YYYY-MM-DD
-
-  // WF4 fields
-  string customer_id = 12;
-  string reference_number = 13;
-  string due_date = 14; // YYYY-MM-DD
-  bool is_inclusive_tax = 15;
-  repeated LineItem line_items = 16;
-  string currency_code = 17;
-}
-
-message UploadClaimResponse {
-  string claim_id = 1;
-  string state = 2;
-
+message GetClaimResponse {
   oneof result {
-    common.v1.Exception exception = 3;
+    common.v1.Exception exception = 1;
+    Claim claim = 2;
   }
 }
 
-// ------------------------------------------------------------
-// GET CLAIM STATE
-// ------------------------------------------------------------
-
-message GetClaimStateRequest {
-  string claim_id = 1; // Required: Unique identifier of the claim
-  // Required: "wf1", "wf2", "wf3", "wf4", "wf5", or "process"
-  // Used to select which workflow manager to query.
-  string workflow_name = 2;
+message ContractSignedResponse {
+  oneof result {
+    common.v1.Exception exception = 1;
+    Claim claim = 2;
+  }
 }
 
-message GetClaimStateResponse {
-  string claim_id = 1;
-  string state = 2;
-
+message PaymentApprovedResponse {
   oneof result {
-    common.v1.Exception exception = 3;
+    common.v1.Exception exception = 1;
+    Claim claim = 2;
+  }
+}
+
+message PaymentStatusResponse {
+  oneof result {
+    common.v1.Exception exception = 1;
+    Claim claim = 2;
   }
 }

@@ -6,6 +6,17 @@ The `connectorhub.yaml` file can use environment variables for all sensitive con
 
 1. **The `connectorhub.env` file** contains your actual secrets and is git-ignored (already in `fabric/.gitignore`).
 
+1a. **`connectorhub.mock.env`** is committed. It holds placeholder values for
+   the settings the hub requires even when a connector is mocked (the hub
+   refuses to start without them). It is loaded first, so a value in
+   `connectorhub.env` overrides it.
+
+1b. **`connectorhub.tool-policy.env`** is committed. It sets
+   `CH_TOOL_POLICY=allow-unlisted`, which lets the mocked connectors run
+   tools that are not on the hub's built-in allowlists. The make targets
+   load it only when `connectorhub.env` does not exist, so a hub with real
+   credentials keeps its allowlists.
+
 2. **Note:** The project root `.env` file (created by `make up`) contains chaincode IDs and should not be modified. We use `connectorhub.env` instead to avoid conflicts.
 
 3. **To use environment variables in `connectorhub.yaml`**, you need to export them before running ConnectorHub:

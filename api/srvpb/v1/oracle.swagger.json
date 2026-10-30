@@ -19,14 +19,15 @@
     "application/json"
   ],
   "paths": {
-    "/v1/cdcs/InvokeProcess": {
+    "/v1/cdcs/claims": {
       "post": {
-        "operationId": "CdcsService_InvokeProcess",
+        "summary": "Start a claim.",
+        "operationId": "CdcsService_StartClaim",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1InvokeProcessResponse"
+              "$ref": "#/definitions/v1StartClaimResponse"
             }
           },
           "400": {
@@ -82,483 +83,28 @@
         "parameters": [
           {
             "name": "body",
+            "description": "Request to start a claim.  The phylum fails the start, and writes\nnothing, when a required field is missing.",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1InvokeProcessRequest"
+              "$ref": "#/definitions/v1StartClaimRequest"
             }
           }
         ],
         "tags": [
-          "Service"
+          "Claims"
         ]
       }
     },
-    "/v1/cdcs/UploadClaimWF1": {
-      "post": {
-        "operationId": "CdcsService_UploadClaimWF1",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF1Response"
-            }
-          },
-          "400": {
-            "description": "Bad request determined by business logic",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "401": {
-            "description": "Authorization failed",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "404": {
-            "description": "Missing resource",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "schema": {
-              "type": "string",
-              "format": "string"
-            }
-          },
-          "500": {
-            "description": "Unexpected internal server error",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "503": {
-            "description": "Service not available",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF1Request"
-            }
-          }
-        ],
-        "tags": [
-          "Service"
-        ]
-      }
-    },
-    "/v1/cdcs/UploadClaimWF2": {
-      "post": {
-        "operationId": "CdcsService_UploadClaimWF2",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF2Response"
-            }
-          },
-          "400": {
-            "description": "Bad request determined by business logic",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "401": {
-            "description": "Authorization failed",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "404": {
-            "description": "Missing resource",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "schema": {
-              "type": "string",
-              "format": "string"
-            }
-          },
-          "500": {
-            "description": "Unexpected internal server error",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "503": {
-            "description": "Service not available",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF2Request"
-            }
-          }
-        ],
-        "tags": [
-          "Service"
-        ]
-      }
-    },
-    "/v1/cdcs/UploadClaimWF3": {
-      "post": {
-        "operationId": "CdcsService_UploadClaimWF3",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF3Response"
-            }
-          },
-          "400": {
-            "description": "Bad request determined by business logic",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "401": {
-            "description": "Authorization failed",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "404": {
-            "description": "Missing resource",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "schema": {
-              "type": "string",
-              "format": "string"
-            }
-          },
-          "500": {
-            "description": "Unexpected internal server error",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "503": {
-            "description": "Service not available",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF3Request"
-            }
-          }
-        ],
-        "tags": [
-          "Service"
-        ]
-      }
-    },
-    "/v1/cdcs/UploadClaimWF4": {
-      "post": {
-        "operationId": "CdcsService_UploadClaimWF4",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF4Response"
-            }
-          },
-          "400": {
-            "description": "Bad request determined by business logic",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "401": {
-            "description": "Authorization failed",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "404": {
-            "description": "Missing resource",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "schema": {
-              "type": "string",
-              "format": "string"
-            }
-          },
-          "500": {
-            "description": "Unexpected internal server error",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "503": {
-            "description": "Service not available",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF4Request"
-            }
-          }
-        ],
-        "tags": [
-          "Service"
-        ]
-      }
-    },
-    "/v1/cdcs/UploadClaimWF5": {
-      "post": {
-        "operationId": "CdcsService_UploadClaimWF5",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF5Response"
-            }
-          },
-          "400": {
-            "description": "Bad request determined by business logic",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "401": {
-            "description": "Authorization failed",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "404": {
-            "description": "Missing resource",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "schema": {
-              "type": "string",
-              "format": "string"
-            }
-          },
-          "500": {
-            "description": "Unexpected internal server error",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "503": {
-            "description": "Service not available",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimWF5Request"
-            }
-          }
-        ],
-        "tags": [
-          "Service"
-        ]
-      }
-    },
-    "/v1/cdcs/workflows/{workflowName}/claims": {
-      "post": {
-        "operationId": "CdcsService_UploadClaim",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/v1UploadClaimResponse"
-            }
-          },
-          "400": {
-            "description": "Bad request determined by business logic",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "401": {
-            "description": "Authorization failed",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "403": {
-            "description": "Permission denied",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "404": {
-            "description": "Missing resource",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "405": {
-            "description": "Method not allowed",
-            "schema": {
-              "type": "string",
-              "format": "string"
-            }
-          },
-          "500": {
-            "description": "Unexpected internal server error",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "503": {
-            "description": "Service not available",
-            "schema": {
-              "$ref": "#/definitions/v1ExceptionResponse"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "#/definitions/rpcStatus"
-            }
-          }
-        },
-        "parameters": [
-          {
-            "name": "workflowName",
-            "description": "Required: \"wf1\", \"wf2\", \"wf3\", \"wf4\", \"wf5\", or \"process\"",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/CdcsServiceUploadClaimBody"
-            }
-          }
-        ],
-        "tags": [
-          "Service"
-        ]
-      }
-    },
-    "/v1/cdcs/workflows/{workflowName}/claims/{claimId}/state": {
+    "/v1/cdcs/claims/{claimId}": {
       "get": {
-        "operationId": "CdcsService_GetClaimState",
+        "summary": "Read a claim: its state, the step it waits at, and its result.",
+        "operationId": "CdcsService_GetClaim",
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/v1GetClaimStateResponse"
+              "$ref": "#/definitions/v1GetClaimResponse"
             }
           },
           "400": {
@@ -612,93 +158,315 @@
           }
         },
         "parameters": [
-          {
-            "name": "workflowName",
-            "description": "Required: \"wf1\", \"wf2\", \"wf3\", \"wf4\", \"wf5\", or \"process\"\nUsed to select which workflow manager to query.",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          },
           {
             "name": "claimId",
-            "description": "Required: Unique identifier of the claim",
+            "description": "Required",
             "in": "path",
             "required": true,
             "type": "string"
           }
         ],
         "tags": [
-          "Service"
+          "Claims"
+        ]
+      }
+    },
+    "/v1/cdcs/claims/{claimId}/contract-signed": {
+      "post": {
+        "summary": "The eSignature webhook: the settlement contract is signed.",
+        "operationId": "CdcsService_ContractSigned",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1ContractSignedResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request determined by business logic",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "401": {
+            "description": "Authorization failed",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "404": {
+            "description": "Missing resource",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "500": {
+            "description": "Unexpected internal server error",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "503": {
+            "description": "Service not available",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "claimId",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CdcsServiceContractSignedBody"
+            }
+          }
+        ],
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/cdcs/claims/{claimId}/payment-approved": {
+      "post": {
+        "summary": "The payment team approved the payment.",
+        "operationId": "CdcsService_PaymentApproved",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PaymentApprovedResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request determined by business logic",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "401": {
+            "description": "Authorization failed",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "404": {
+            "description": "Missing resource",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "500": {
+            "description": "Unexpected internal server error",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "503": {
+            "description": "Service not available",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "claimId",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CdcsServicePaymentApprovedBody"
+            }
+          }
+        ],
+        "tags": [
+          "Webhooks"
+        ]
+      }
+    },
+    "/v1/cdcs/claims/{claimId}/payment-status": {
+      "post": {
+        "summary": "The ABS webhook: the payment status.",
+        "operationId": "CdcsService_PaymentStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PaymentStatusResponse"
+            }
+          },
+          "400": {
+            "description": "Bad request determined by business logic",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "401": {
+            "description": "Authorization failed",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "404": {
+            "description": "Missing resource",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "405": {
+            "description": "Method not allowed",
+            "schema": {
+              "type": "string",
+              "format": "string"
+            }
+          },
+          "500": {
+            "description": "Unexpected internal server error",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "503": {
+            "description": "Service not available",
+            "schema": {
+              "$ref": "#/definitions/v1ExceptionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "claimId",
+            "description": "Required",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CdcsServicePaymentStatusBody"
+            }
+          }
+        ],
+        "tags": [
+          "Webhooks"
         ]
       }
     }
   },
   "definitions": {
-    "CdcsServiceUploadClaimBody": {
+    "CdcsServiceContractSignedBody": {
       "type": "object",
       "properties": {
-        "policyId": {
+        "signedBy": {
           "type": "string",
-          "title": "Common fields (used by multiple workflows)"
+          "title": "Required: email of the signer"
         },
-        "claimId": {
+        "requestKey": {
           "type": "string",
-          "title": "Used by WF3, WF4, WF5"
-        },
-        "guidewireClaimId": {
-          "type": "string",
-          "title": "WF2 fields"
-        },
-        "gwClaimId": {
-          "type": "string",
-          "title": "Alternative to guidewire_claim_id"
-        },
-        "invoiceAmount": {
-          "type": "string",
-          "title": "WF3 fields"
-        },
-        "signerName": {
-          "type": "string"
-        },
-        "signerEmail": {
-          "type": "string"
-        },
-        "originatorName": {
-          "type": "string"
-        },
-        "recipientName": {
-          "type": "string"
-        },
-        "issueDate": {
-          "type": "string",
-          "title": "YYYY-MM-DD"
-        },
-        "customerId": {
-          "type": "string",
-          "title": "WF4 fields"
-        },
-        "referenceNumber": {
-          "type": "string"
-        },
-        "dueDate": {
-          "type": "string",
-          "title": "YYYY-MM-DD"
-        },
-        "isInclusiveTax": {
-          "type": "boolean"
-        },
-        "lineItems": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LineItem"
-          }
-        },
-        "currencyCode": {
-          "type": "string"
+          "description": "Optional: the input's request key in the claim flow.  A resend after the\nclaim moved on is refused either way, so it never applies twice."
         }
       },
-      "description": "Unified request for uploading a claim to any workflow.\nThe server routes by workflow_name to the corresponding workflow manager."
+      "description": "The signed contract arrived (eSignature webhook)."
+    },
+    "CdcsServicePaymentApprovedBody": {
+      "type": "object",
+      "properties": {
+        "signedBy": {
+          "type": "string",
+          "title": "Required: email of the approver"
+        },
+        "requestKey": {
+          "type": "string",
+          "description": "Optional: the input's request key in the claim flow.  A resend after the\nclaim moved on is refused either way, so it never applies twice."
+        }
+      },
+      "description": "The payment team approved the payment."
+    },
+    "CdcsServicePaymentStatusBody": {
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "type": "string",
+          "title": "Required"
+        },
+        "status": {
+          "type": "string",
+          "title": "Required: approved, rejected or pending"
+        },
+        "requestKey": {
+          "type": "string",
+          "description": "Optional: the input's request key in the claim flow.  A resend after the\nclaim moved on is refused either way, so it never applies twice."
+        }
+      },
+      "description": "ABS reports the payment status: approved, rejected or pending.  The claim\nwaits for another status after pending."
     },
     "protobufAny": {
       "type": "object",
@@ -708,6 +476,14 @@
         }
       },
       "additionalProperties": {}
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
     },
     "rpcStatus": {
       "type": "object",
@@ -725,6 +501,45 @@
             "type": "object",
             "$ref": "#/definitions/protobufAny"
           }
+        }
+      }
+    },
+    "v1Claim": {
+      "type": "object",
+      "properties": {
+        "claimId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "description": "waiting, done or failed."
+        },
+        "step": {
+          "type": "string",
+          "description": "The step the claim waits at, for example \"contract-signed\"."
+        },
+        "details": {
+          "type": "object",
+          "description": "The claim's request with the defaults filled in."
+        },
+        "result": {
+          "type": "object",
+          "description": "The summary when state is done, with \"decision\" paid or payment rejected."
+        },
+        "error": {
+          "description": "Why the claim failed, when state is failed."
+        }
+      },
+      "description": "A claim as its flow run reports it."
+    },
+    "v1ContractSignedResponse": {
+      "type": "object",
+      "properties": {
+        "exception": {
+          "$ref": "#/definitions/v1Exception"
+        },
+        "claim": {
+          "$ref": "#/definitions/v1Claim"
         }
       }
     },
@@ -780,21 +595,40 @@
       "default": "INVALID_TYPE",
       "description": "Type of exception.\n\n - INVALID_TYPE: Default for no exception.\n - BUSINESS: Business logic error.\n - SERVICE_NOT_AVAILABLE: A service was unavailable.\n - INFRASTRUCTURE: Infrastructure was down.\n - UNEXPECTED: Catch-all for all other types.\n - SECURITY_VIOLATION: Security related error."
     },
-    "v1GetClaimStateResponse": {
+    "v1GetClaimResponse": {
       "type": "object",
       "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
         "exception": {
           "$ref": "#/definitions/v1Exception"
+        },
+        "claim": {
+          "$ref": "#/definitions/v1Claim"
         }
       }
     },
-    "v1InvokeProcessRequest": {
+    "v1PaymentApprovedResponse": {
+      "type": "object",
+      "properties": {
+        "exception": {
+          "$ref": "#/definitions/v1Exception"
+        },
+        "claim": {
+          "$ref": "#/definitions/v1Claim"
+        }
+      }
+    },
+    "v1PaymentStatusResponse": {
+      "type": "object",
+      "properties": {
+        "exception": {
+          "$ref": "#/definitions/v1Exception"
+        },
+        "claim": {
+          "$ref": "#/definitions/v1Claim"
+        }
+      }
+    },
+    "v1StartClaimRequest": {
       "type": "object",
       "properties": {
         "policyId": {
@@ -803,252 +637,50 @@
         },
         "guidewireClaimId": {
           "type": "string",
-          "title": "Optional"
-        },
-        "gwClaimId": {
-          "type": "string",
-          "title": "Optional"
-        },
-        "signerEmail": {
-          "type": "string",
-          "title": "Optional"
-        },
-        "signerName": {
-          "type": "string",
-          "title": "Optional"
+          "title": "Required"
         },
         "invoiceAmount": {
           "type": "string",
-          "title": "Optional"
+          "title": "Required"
+        },
+        "signerName": {
+          "type": "string",
+          "title": "Required: signs the settlement invoice"
+        },
+        "signerEmail": {
+          "type": "string",
+          "title": "Required"
         },
         "originatorName": {
           "type": "string",
-          "title": "Optional"
+          "title": "Optional: a demo default if empty"
         },
         "recipientName": {
           "type": "string",
-          "title": "Optional"
+          "title": "Optional: a demo default if empty"
         },
         "issueDate": {
           "type": "string",
-          "title": "Optional (YYYY-MM-DD)"
-        }
-      }
-    },
-    "v1InvokeProcessResponse": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
+          "title": "Optional (YYYY-MM-DD): a demo default if empty"
         },
-        "state": {
-          "type": "string"
-        },
-        "exception": {
-          "$ref": "#/definitions/v1Exception"
-        }
-      }
-    },
-    "v1LineItem": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "rate": {
-          "type": "number",
-          "format": "double"
-        },
-        "quantity": {
-          "type": "integer",
-          "format": "int32"
+        "requestKey": {
+          "type": "string",
+          "description": "Optional: send the same key again to get the same claim back instead of\na second claim.  The portal makes a new key when it is empty."
         }
       },
-      "title": "Line item for Zoho invoice"
+      "description": "Request to start a claim.  The phylum fails the start, and writes\nnothing, when a required field is missing."
     },
-    "v1UploadClaimResponse": {
+    "v1StartClaimResponse": {
       "type": "object",
       "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
         "exception": {
           "$ref": "#/definitions/v1Exception"
+        },
+        "claim": {
+          "$ref": "#/definitions/v1Claim"
         }
-      }
-    },
-    "v1UploadClaimWF1Request": {
-      "type": "object",
-      "properties": {
-        "policyId": {
-          "type": "string"
-        }
-      }
-    },
-    "v1UploadClaimWF1Response": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "exception": {
-          "$ref": "#/definitions/v1Exception"
-        }
-      }
-    },
-    "v1UploadClaimWF2Request": {
-      "type": "object",
-      "properties": {
-        "policyId": {
-          "type": "string"
-        },
-        "guidewireClaimId": {
-          "type": "string"
-        }
-      }
-    },
-    "v1UploadClaimWF2Response": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "exception": {
-          "$ref": "#/definitions/v1Exception"
-        }
-      }
-    },
-    "v1UploadClaimWF3Request": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "invoiceAmount": {
-          "type": "string",
-          "title": "or double"
-        },
-        "signerName": {
-          "type": "string"
-        },
-        "signerEmail": {
-          "type": "string"
-        },
-        "originatorName": {
-          "type": "string",
-          "title": "optional"
-        },
-        "recipientName": {
-          "type": "string",
-          "title": "optional"
-        },
-        "issueDate": {
-          "type": "string",
-          "title": "YYYY-MM-DD"
-        }
-      }
-    },
-    "v1UploadClaimWF3Response": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "exception": {
-          "$ref": "#/definitions/v1Exception"
-        }
-      }
-    },
-    "v1UploadClaimWF4Request": {
-      "type": "object",
-      "properties": {
-        "policyId": {
-          "type": "string",
-          "title": "Optional: defaults to \"POL-8872\" if not provided"
-        },
-        "customerId": {
-          "type": "string",
-          "description": "Required: Zoho customer ID",
-          "title": "Zoho invoice fields"
-        },
-        "referenceNumber": {
-          "type": "string",
-          "title": "Required: Claim reference number (used as claim_id if claim_id not provided)"
-        },
-        "dueDate": {
-          "type": "string",
-          "title": "Required: Invoice due date (YYYY-MM-DD)"
-        },
-        "isInclusiveTax": {
-          "type": "boolean",
-          "title": "Required: Whether tax is inclusive"
-        },
-        "lineItems": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "$ref": "#/definitions/v1LineItem"
-          },
-          "title": "Required: Invoice line items"
-        },
-        "claimId": {
-          "type": "string",
-          "description": "Optional: Override claim_id (defaults to reference_number)",
-          "title": "Optional overrides"
-        },
-        "currencyCode": {
-          "type": "string",
-          "title": "Optional: Currency code (defaults to \"GBP\")"
-        }
-      }
-    },
-    "v1UploadClaimWF4Response": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "exception": {
-          "$ref": "#/definitions/v1Exception"
-        }
-      }
-    },
-    "v1UploadClaimWF5Request": {
-      "type": "object",
-      "properties": {
-        "policyId": {
-          "type": "string"
-        }
-      }
-    },
-    "v1UploadClaimWF5Response": {
-      "type": "object",
-      "properties": {
-        "claimId": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "exception": {
-          "$ref": "#/definitions/v1Exception"
-        }
-      }
+      },
+      "description": "The responses of the claim RPCs: the claim, or why the call was refused."
     }
   },
   "securityDefinitions": {

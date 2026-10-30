@@ -8,7 +8,9 @@
 PROJECT_REL_DIR:=..
 include ${PROJECT_REL_DIR}/common.mk
 
-SOURCE_FILES=$(shell find . -name "*.lisp" | grep -v '/build')
+# Tests and test helpers stay out of the phylum zip; main.lisp never loads
+# them, and the production env has no testing package.
+SOURCE_FILES=$(shell find . -name "*.lisp" -not -name "*_test.lisp" -not -name "*_testhelpers.lisp" | grep -v '/build')
 
 PHYLUM_NAME ?= ${PROJECT}.zip
 PHYLUM_PATH=build/${PROJECT}-${BUILD_VERSION}/${PHYLUM_NAME}
@@ -36,7 +38,7 @@ test: shiro-test
 
 .PHONY: shiro-test
 shiro-test: build
-	${SHIRO_TEST} unit-tests --verbose . workflow-1 workflow-2 workflow-3 workflow-4 workflow-5
+	${SHIRO_TEST} unit-tests --verbose .
 
 .PHONY: repl
 repl:

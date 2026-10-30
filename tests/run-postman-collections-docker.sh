@@ -38,8 +38,9 @@ echo ${cmd}
 if ! ${cmd} ${MARTIN_BIND_DEST}/tests/run-postman-collections.sh "$@"; then
     set -x
     docker ps
-    # docker logs cdcs_oracle
-    # docker logs shiroclient_gw_cdcs
-    # docker logs fnb-cdcs-peer0-1
+    # The hub and the chaincode show why a claim run failed.
+    docker logs --tail 100 connectorhub_cdcs || true
+    docker logs --tail 100 cdcs_oracle || true
+    docker logs --tail 200 fnb-cdcs-peer0-1 || true
     exit 1
 fi

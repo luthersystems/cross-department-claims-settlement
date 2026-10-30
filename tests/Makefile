@@ -40,12 +40,11 @@ test-docker:
 	${TESTS_DIR}/run-postman-collections-docker.sh ${LOCAL_POSTMAN_ENVIRONMENT}
 
 # Filter Martin tests by filename pattern
-# Usage: make test-martin FILTER=workflow    (runs all workflow*.martin_collection.yaml)
-#        make test-martin FILTER=workflow5   (runs all workflow5*.martin_collection.yaml)
+# Usage: make test-martin FILTER=claim    (runs claim*.martin_collection.yaml)
 .PHONY: test-martin
 test-martin:
 	@if [ -z "${FILTER}" ]; then \
-		echo "Error: FILTER is required. Usage: make test-martin FILTER=workflow"; \
+		echo "Error: FILTER is required. Usage: make test-martin FILTER=claim"; \
 		exit 1; \
 	fi
 	@FILTERED_FILES=$$(find . -name "*${FILTER}*.martin_collection.yaml" -type f | sort | tr '\n' ' ' | sed 's/ $$//'); \

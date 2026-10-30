@@ -75,28 +75,3 @@
                           "service_version" service-version
                           "service_name"    service-name
                           "timestamp"       (cc:timestamp (cc:now)))))))
-
-;; create_claim endpoint: creates a new claim and stores it.
-(defendpoint "create_claim" (req)
-  (route-success (sorted-map "claim" (create-claim))))
-
-;; add_claimant endpoint: populates claim with claimant info and triggers
-;; claim processing state machine.
-(defendpoint "add_claimant" (req)
-  (let* ([claim-id (or (get req "claim_id")
-                       (set-exception-business "missing claim_id"))]
-         [claimant (get req "claimant")])
-    (when (or (nil? claimant) (empty? (get claimant "forename")))
-      (set-exception-business "missing claimant forename"))
-    (route-success (sorted-map "claim" (trigger-claim claim-id claimant)))))
-
-;; get_claim endpoint: fetches the full data for a given claim by ID.
-(defendpoint-get "get_claim" (req)
-  (let* ([claim-id (or (get req "claim_id")
-                       (set-exception-business "missing claim_id"))]
-         [claim (or (claims 'get claim-id)
-                    (set-exception-business 
-                      (format-string "missing claim {}" claim-id)))]
-         [data (claim 'data)])
-    (route-success (sorted-map "claim" data))))
-

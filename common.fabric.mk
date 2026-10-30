@@ -25,8 +25,17 @@ NETWORK_BUILDER_TARGET ?= docker-pull/${NETWORK_BUILDER_IMAGE}\:${NETWORK_BUILDE
 NETWORK_BUILDER=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION} --chown "${DOCKER_CHOWN_USER}"
 
 SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
-# Override CONNECTORHUB_IMAGE from common.mk to use the full Docker Hub path
-CONNECTORHUB_IMAGE = luthersystems/connectorhub-local
+# Override CONNECTORHUB_IMAGE from common.mk to use the full Docker Hub path.
+# The deploy image, not connectorhub-local: Docker Hub has no
+# connectorhub-local image new enough for this substrate (it must read the
+# luther:ev:N event keys, connectorhub#229).  The deploy image has no docker
+# CLI, which only an unmocked MCP connector needs; every connector in
+# fabric/connectorhub.yaml is mocked.
+CONNECTORHUB_IMAGE = luthersystems/connectorhub
+# The deploy image runs as nobody, which cannot read the crypto material the
+# network builder writes (owned by DOCKER_CHOWN_USER, private keys 0600).
+# Run the hub as that owner.
+CONNECTORHUB_USER ?= ${DOCKER_CHOWN_USER}
 
 # CONNECTORHUB_REPO is the path to the ConnectorHub repository for local builds.
 # Default assumes it's a sibling directory to the project root.
@@ -327,16 +336,18 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
-	env_file_flag=""; \
+	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
-		env_file_flag="--env-file $$env_file"; \
+		env_file_flag="$$env_file_flag --env-file $$env_file"; \
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
 	fi; \
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
+	else \
+		env_file_flag="$$env_file_flag --env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.tool-policy.env"; \
 	fi; \
 	${DOCKER_RUN} --rm -t \
 		-v "${CURDIR}:/tmp/fabric:ro" \
@@ -345,6 +356,7 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		--user "${CONNECTORHUB_USER}" \
 		${CONNECTORHUB_ENV_VARS} \
 		$$env_file_flag \
 		$$mock_all_flag \
@@ -376,16 +388,18 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
-	env_file_flag=""; \
+	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
-		env_file_flag="--env-file $$env_file"; \
+		env_file_flag="$$env_file_flag --env-file $$env_file"; \
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
 	fi; \
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
+	else \
+		env_file_flag="$$env_file_flag --env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.tool-policy.env"; \
 	fi; \
 	${DOCKER_RUN} --rm -t \
 		-v "${CURDIR}:/tmp/fabric:ro" \
@@ -394,6 +408,7 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		--user "${CONNECTORHUB_USER}" \
 		${CONNECTORHUB_ENV_VARS} \
 		$$env_file_flag \
 		$$mock_all_flag \
@@ -424,6 +439,8 @@ CONNECTORHUB_ENV_VARS = \
 	$(if $(MCP_FULL_LOG),-e MCP_FULL_LOG=$(MCP_FULL_LOG)) \
 	$(if $(CH_LOG_FULL),-e CH_LOG_FULL=$(CH_LOG_FULL))
 
+# start-ch runs the hub without --rm: when it exits at start, the docker
+# logs call below still finds it.
 start-ch-%: parts=$(subst ., ,$*)
 start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
@@ -433,24 +450,28 @@ start-ch-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	@env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
-	env_file_flag=""; \
+	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
 	if [ -f "$$env_file" ]; then \
-		env_file_flag="--env-file $$env_file"; \
+		env_file_flag="$$env_file_flag --env-file $$env_file"; \
 		if grep -q "^MOCK_ALL=" "$$env_file" 2>/dev/null; then \
 			mock_all_flag=""; \
 		fi; \
 	fi; \
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
+	else \
+		env_file_flag="$$env_file_flag --env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.tool-policy.env"; \
 	fi; \
-	${DOCKER_RUN} -d --name ${name} \
+	${DOCKER} rm -f ${name} >/dev/null 2>&1 || true; \
+	${DOCKER} run -d --name ${name} \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		-v "${PROJECT_ABS_DIR}:/tmp/project:ro" \
 		-v "$(abspath build/volume/checkpoint):/tmp/checkpoint:rw" \
 		-v /var/run/docker.sock:/var/run/docker.sock \
   		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		--user "${CONNECTORHUB_USER}" \
 		-p "8080:8080" \
 		-p "8090:8090" \
 		${CONNECTORHUB_ENV_VARS} \
@@ -526,7 +547,7 @@ gateway-down:
 .PHONY: connectorhub-down
 connectorhub-down: ch_names=$(foreach g,${CONNECTORHUBS},$(word 2,$(subst ., ,${g})))
 connectorhub-down:
-	-docker stop ${ch_names}
+	-docker rm -f ${ch_names}
 
 .PHONY: sleep-%
 sleep-%:
