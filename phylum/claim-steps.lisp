@@ -74,15 +74,21 @@
       ((not (empty? missing))
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
       ((nil? (amount-number (get req "invoice_amount")))
-       (format-string "invoice_amount {} is not a positive number" (get req "invoice_amount")))
+       (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
       (else ()))))
 
 ;; Return v as a positive float, or nil.  The Zoho step needs a number, and
 ;; it runs in a reply transaction where an error would leave the run
-;; waiting, so the start checks the amount once.
+;; waiting, so the start checks the amount once.  Only plain decimal text
+;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
+;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
+;; them record different amounts, and Inf cannot go into a JSON event.
+(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]+)?$"))
+
 (defun amount-number (v)
-  (let ([n (ignore-errors (to-float v))])
-    (when (and (float? n) (> n 0)) n)))
+  (when (and (string? v) (regexp:regexp-match? decimal-amount v))
+    (let ([n (to-float v)])
+      (when (> n 0) n))))
 
 (defun blank? (v)
   (or (nil? v) (and (string? v) (empty? (string:trim-space v)))))
@@ -242,10 +248,22 @@
   (match reply
     ((sorted-map "type" "text" "content" lines)
      (let ([text (string:join (map 'list (lambda (line) (to-string (base64:decode line))) lines) "\n")])
-       (unless (string:contains? text (to-string oracle-claim-id))
+       (unless (names-id? text (to-string oracle-claim-id))
          (bad-reply "the ID document does not name claim {}" oracle-claim-id))
        (sorted-map "file" (get id-document-file "filename") "lines" (length lines))))
     (_ (bad-reply "the ID document is not text"))))
+
+;; True when id appears in text as a whole word, so claim CLM-456 does not
+;; match a document for CLM-4567, nor claim 12 the date 2025-11-12.  A word
+;; is a run of letters, digits, _ and -.  An id with other characters
+;; matches nothing: it is not a word, and it would need escaping.
+(set 'word-id (regexp:regexp-compile "^[A-Za-z0-9_-]+$"))
+
+(defun names-id? (text id)
+  (and (regexp:regexp-match? word-id id)
+       (regexp:regexp-match?
+         (regexp:regexp-compile (format-string "(^|[^A-Za-z0-9_-]){}($|[^A-Za-z0-9_-])" id))
+         text)))
 
 (defun guidewire-approval-event (claim)
   (claim-event "outboundgw" "update approval"

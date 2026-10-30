@@ -24,13 +24,18 @@
   (assert-string= "missing policy_id, guidewire_claim_id, invoice_amount, signer_name, signer_email"
                   (claim-request-problem (sorted-map))))
 
-(test "claim-request-problem needs a positive invoice amount"
+(test "claim-request-problem needs a positive decimal invoice amount"
+  ;; Inf, NaN, hex and exponents parse as floats, but SAP and Salesforce get
+  ;; the text and Zoho the number, so they would not agree.
   (map ()
        (lambda (amount)
-         (assert-string= (format-string "invoice_amount {} is not a positive number" amount)
+         (assert-string= (format-string "invoice_amount {} is not a positive decimal amount" amount)
                          (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
-       (list "abc" "0" "-5"))
-  (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" "12"))))
+       (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12))
+  (map ()
+       (lambda (amount)
+         (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
+       (list "12" "25000.00" "0.5")))
 
 (test "new-claim fills blank fields with the demo defaults"
   (let ([claim (new-claim "run-1" (with-fields (test-claim-request) "recipient_name" ""))])
@@ -108,7 +113,14 @@
     (assert-string= "the ID document does not name claim CLM-9999"
                     (bad-reply-message (lambda () (parse-id-document doc "CLM-9999"))))
     (assert-string= "the ID document is not text"
-                    (bad-reply-message (lambda () (parse-id-document (with-fields doc "type" "pdf") "CLM-4567"))))))
+                    (bad-reply-message (lambda () (parse-id-document (with-fields doc "type" "pdf") "CLM-4567"))))
+    ;; The id must stand alone: CLM-456 is part of CLM-4567, and 12 is part
+    ;; of the date 2025-11-12.
+    (map ()
+         (lambda (id)
+           (assert-string= (format-string "the ID document does not name claim {}" id)
+                           (bad-reply-message (lambda () (parse-id-document doc id)))))
+         (list "CLM-456" "LM-4567" "4567" "12" "2025" "a.b"))))
 
 (test "readers of the remaining replies"
   (assert-string= "UnderReview" (get (parse-guidewire-claim (get test-replies "guidewire-claim")) "status"))
