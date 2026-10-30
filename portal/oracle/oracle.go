@@ -9,6 +9,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	srv "github.com/luthersystems/cdcs/api/srvpb/v1"
+	"github.com/luthersystems/shiroclient-sdk-go/shiroclient"
 	"github.com/luthersystems/svc/oracle"
 	"google.golang.org/grpc"
 )
@@ -21,6 +22,9 @@ type Config struct {
 type portal struct {
 	srv.UnimplementedCdcsServiceServer
 	orc *oracle.Oracle
+	// extraConfigs are added to every phylum call.  The tests set the mock
+	// creator here; on Fabric the creator is the gateway's identity.
+	extraConfigs []shiroclient.Config
 }
 
 func (p *portal) RegisterServiceServer(grpcServer *grpc.Server) {

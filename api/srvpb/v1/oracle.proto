@@ -123,97 +123,48 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 //   }
 // }
 
+// The claim settlement process, one flow run per claim.  The claim id is the
+// run id.
 service CdcsService {
-  // ------------------------------------------------------------
-  // UNIFIED UPLOAD CLAIM (workflow-scoped)
-  // ------------------------------------------------------------
-
-  rpc UploadClaim(pb.v1.UploadClaimRequest) returns (pb.v1.UploadClaimResponse) {
+  // Start a claim.
+  rpc StartClaim(pb.v1.StartClaimRequest) returns (pb.v1.StartClaimResponse) {
     option (google.api.http) = {
-      post: "/v1/cdcs/workflows/{workflow_name}/claims"
+      post: "/v1/cdcs/claims"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Claims"};
   }
 
-  // ------------------------------------------------------------
-  // WORKFLOW 1
-  // ------------------------------------------------------------
+  // Read a claim: its state, the step it waits at, and its result.
+  rpc GetClaim(pb.v1.GetClaimRequest) returns (pb.v1.GetClaimResponse) {
+    option (google.api.http) = {get: "/v1/cdcs/claims/{claim_id}"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Claims"};
+  }
 
-  rpc UploadClaimWF1(pb.v1.UploadClaimWF1Request) returns (pb.v1.UploadClaimWF1Response) {
+  // The eSignature webhook: the settlement contract is signed.
+  rpc ContractSigned(pb.v1.ContractSignedRequest) returns (pb.v1.ContractSignedResponse) {
     option (google.api.http) = {
-      post: "/v1/cdcs/UploadClaimWF1"
+      post: "/v1/cdcs/claims/{claim_id}/contract-signed"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Webhooks"};
   }
 
-  // ------------------------------------------------------------
-  // WORKFLOW 2
-  // ------------------------------------------------------------
-
-  rpc UploadClaimWF2(pb.v1.UploadClaimWF2Request) returns (pb.v1.UploadClaimWF2Response) {
+  // The payment team approved the payment.
+  rpc PaymentApproved(pb.v1.PaymentApprovedRequest) returns (pb.v1.PaymentApprovedResponse) {
     option (google.api.http) = {
-      post: "/v1/cdcs/UploadClaimWF2"
+      post: "/v1/cdcs/claims/{claim_id}/payment-approved"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Webhooks"};
   }
 
-  // ------------------------------------------------------------
-  // WORKFLOW 3
-  // ------------------------------------------------------------
-
-  rpc UploadClaimWF3(pb.v1.UploadClaimWF3Request) returns (pb.v1.UploadClaimWF3Response) {
+  // The ABS webhook: the payment status.
+  rpc PaymentStatus(pb.v1.PaymentStatusRequest) returns (pb.v1.PaymentStatusResponse) {
     option (google.api.http) = {
-      post: "/v1/cdcs/UploadClaimWF3"
+      post: "/v1/cdcs/claims/{claim_id}/payment-status"
       body: "*"
     };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
-  }
-
-  // ------------------------------------------------------------
-  // WORKFLOW 4
-  // ------------------------------------------------------------
-
-  rpc UploadClaimWF4(pb.v1.UploadClaimWF4Request) returns (pb.v1.UploadClaimWF4Response) {
-    option (google.api.http) = {
-      post: "/v1/cdcs/UploadClaimWF4"
-      body: "*"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
-  }
-
-  // ------------------------------------------------------------
-  // WORKFLOW 5
-  // ------------------------------------------------------------
-
-  rpc UploadClaimWF5(pb.v1.UploadClaimWF5Request) returns (pb.v1.UploadClaimWF5Response) {
-    option (google.api.http) = {
-      post: "/v1/cdcs/UploadClaimWF5"
-      body: "*"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
-  }
-
-  // ------------------------------------------------------------
-  // UNIFIED PROCESS (WF1 → WF2 → WF3 → WF4 → WF5)
-  // ------------------------------------------------------------
-
-  rpc InvokeProcess(pb.v1.InvokeProcessRequest) returns (pb.v1.InvokeProcessResponse) {
-    option (google.api.http) = {
-      post: "/v1/cdcs/InvokeProcess"
-      body: "*"
-    };
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
-  }
-
-  // ------------------------------------------------------------
-  // GET CLAIM STATE
-  // ------------------------------------------------------------
-
-  rpc GetClaimState(pb.v1.GetClaimStateRequest) returns (pb.v1.GetClaimStateResponse) {
-    option (google.api.http) = {get: "/v1/cdcs/workflows/{workflow_name}/claims/{claim_id}/state"};
-    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Service"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {tags: "Webhooks"};
   }
 }
