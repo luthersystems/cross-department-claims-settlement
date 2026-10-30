@@ -346,6 +346,8 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi; \
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
+	else \
+		env_file_flag="$$env_file_flag --env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.tool-policy.env"; \
 	fi; \
 	${DOCKER_RUN} --rm -t \
 		-v "${CURDIR}:/tmp/fabric:ro" \
@@ -396,6 +398,8 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi; \
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
+	else \
+		env_file_flag="$$env_file_flag --env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.tool-policy.env"; \
 	fi; \
 	${DOCKER_RUN} --rm -t \
 		-v "${CURDIR}:/tmp/fabric:ro" \
@@ -456,6 +460,8 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 	fi; \
 	if [ -f "$$connectorhub_env" ]; then \
 		env_file_flag="$$env_file_flag --env-file $$connectorhub_env"; \
+	else \
+		env_file_flag="$$env_file_flag --env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.tool-policy.env"; \
 	fi; \
 	${DOCKER} rm -f ${name} >/dev/null 2>&1 || true; \
 	${DOCKER} run -d --name ${name} \
