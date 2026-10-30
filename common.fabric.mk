@@ -32,6 +32,10 @@ SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
 # CLI, which only an unmocked MCP connector needs; every connector in
 # fabric/connectorhub.yaml is mocked.
 CONNECTORHUB_IMAGE = luthersystems/connectorhub
+# The deploy image runs as nobody, which cannot read the crypto material the
+# network builder writes (owned by DOCKER_CHOWN_USER, private keys 0600).
+# Run the hub as that owner.
+CONNECTORHUB_USER ?= ${DOCKER_CHOWN_USER}
 
 # CONNECTORHUB_REPO is the path to the ConnectorHub repository for local builds.
 # Default assumes it's a sibling directory to the project root.
@@ -350,6 +354,7 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		--user "${CONNECTORHUB_USER}" \
 		${CONNECTORHUB_ENV_VARS} \
 		$$env_file_flag \
 		$$mock_all_flag \
@@ -399,6 +404,7 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		-v /var/run/docker.sock:/var/run/docker.sock \
 		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		--user "${CONNECTORHUB_USER}" \
 		${CONNECTORHUB_ENV_VARS} \
 		$$env_file_flag \
 		$$mock_all_flag \
@@ -456,6 +462,7 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		-v /var/run/docker.sock:/var/run/docker.sock \
   		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
+		--user "${CONNECTORHUB_USER}" \
 		-p "8080:8080" \
 		-p "8090:8090" \
 		${CONNECTORHUB_ENV_VARS} \
