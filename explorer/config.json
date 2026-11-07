@@ -1,9 +1,0 @@
-{
-	"network-configs": {
-		"cdcs-test-network": {
-			"name": "Cdcs Test Network",
-			"profile": "./connection-profile/test-network.json"
-		}
-	},
-	"license": "Apache-2.0"
-}
