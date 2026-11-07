@@ -27,3 +27,18 @@ jobs:
           CONNECTORHUB_VERSION: ${{ vars.CONNECTORHUB_VERSION || 'latest' }}
           SKIP_CONNECTORHUB_LOCAL_BUILD: 1
         run: script -q -e -c "make citest"
+
+  # Start and stop the local Fabric network (fabric/Makefile fnb-smoke) with
+  # the builder as the runner's user, not root, as `make up` does.
+  fabric-network:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure DockerHub
+        uses: ./.github/actions/configure-dockerhub
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      - name: Start and stop the local Fabric network
+        run: make -C fabric fnb-smoke

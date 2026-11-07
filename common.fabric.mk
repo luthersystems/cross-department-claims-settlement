@@ -19,10 +19,23 @@ PHYLUM_VERSION_FILE=./build/phylum_version
 DOCKER_CHOWN_USER ?= $(shell id -u ${USER}):$(shell id -g ${USER})
 
 # NETWORK_BUILDER is the entrypoint into the NETWORK_BUILDER_IMAGE for all
-# commands.
+# commands. Every recipe passes it last, after its own docker run options.
 NETWORK_BUILDER_IMAGE ?= luthersystems/fabric-network-builder
 NETWORK_BUILDER_TARGET ?= docker-pull/${NETWORK_BUILDER_IMAGE}\:${NETWORK_BUILDER_VERSION}
-NETWORK_BUILDER=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION} --chown "${DOCKER_CHOWN_USER}"
+NETWORK_BUILDER_FQN=${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION}
+# The builder (v0.1.0 on) runs as nobody, not root, so it cannot chown. Run
+# it as DOCKER_CHOWN_USER (your own user), so the files it writes are yours,
+# and add the group of the docker socket as the container sees it (on Docker
+# Desktop it is not the group of the host's socket file). The image's own
+# stat reads that group when the recipe runs.
+NETWORK_BUILDER_USER=-u "${DOCKER_CHOWN_USER}" \
+	--group-add "$$(${DOCKER_RUN} ${DOCKER_IN_DOCKER_MOUNT} --entrypoint stat ${NETWORK_BUILDER_FQN} -c %g /var/run/docker.sock)"
+NETWORK_BUILDER=${NETWORK_BUILDER_USER} ${NETWORK_BUILDER_FQN}
+
+# The shiroclient image runs as nobody, which cannot read the crypto material
+# the builder writes (owned by DOCKER_CHOWN_USER, private keys 0600). Run
+# shiroclient as that owner.
+SHIROCLIENT_USER ?= ${DOCKER_CHOWN_USER}
 
 SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
 # Override CONNECTORHUB_IMAGE from common.mk to use the full Docker Hub path.
@@ -133,10 +146,13 @@ clean-generated:
 	rm -rf \
 		base \
 		channel-artifacts \
+		collections.json \
 		configtx.yaml \
+		core.yaml \
 		couchdb \
 		crypto-config \
 		crypto-config.yaml \
+		docker-compose-ccaas.yaml \
 		docker-compose-cli.yaml \
 		docker-compose-couch.yaml \
 		docker-compose-e2e-template.yaml \
@@ -147,6 +163,12 @@ clean-generated:
 		shiroclient.yaml \
 		shiroclient_fast.yaml \
 		scripts
+
+# crypto-config stands for every file the builder generates (clean-generated
+# lists them). They are not kept in git: the first target that needs the
+# network generates them, sized by GENERATE_OPTS.
+crypto-config:
+	$(MAKE) --no-print-directory generate
 
 .PHONY: go-test
 go-test:
@@ -203,10 +225,10 @@ couchdb-up: DBMODE = couchdb
 couchdb-up: fnb-up gateway-up
 
 .PHONY: up
-up: generate-chaincodes .env fnb-up gateway-up connectorhub-up
+up: generate-chaincodes fnb-up gateway-up connectorhub-up
 
 .PHONY: fnb-up
-fnb-up: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS}
+fnb-up: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS} crypto-config
 	${DOCKER_RUN} -t \
 		${DOCKER_IN_DOCKER_MOUNT} \
 		-v "${CURDIR}:${CURDIR}" \
@@ -219,7 +241,7 @@ fnb-up: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS}
 			--cc-version "${CC_VERSION}"
 
 .PHONY: fnb-extend
-fnb-extend: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS}
+fnb-extend: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS} crypto-config
 	${DOCKER_RUN} -t \
 		${DOCKER_IN_DOCKER_MOUNT} \
 		-v "${CURDIR}:${CURDIR}" \
@@ -229,7 +251,7 @@ fnb-extend: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS}
 			--domain-name=${FABRIC_DOMAIN}
 
 .PHONY: fnb-shell
-fnb-shell: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS}
+fnb-shell: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS} crypto-config
 	${DOCKER_RUN} -t \
 		${DOCKER_IN_DOCKER_MOUNT} \
 		-v "${CURDIR}:${CURDIR}" \
@@ -238,8 +260,9 @@ fnb-shell: ${NETWORK_BUILDER_TARGET} ${FABRIC_IMAGE_TARGETS}
 		-e CHANNEL=${CHANNEL} \
 		-e FABRIC_DOMAIN=${FABRIC_DOMAIN} \
 		-e FABRIC_DBMODE="${DBMODE}" \
-		--entrypoint bash \
-		${NETWORK_BUILDER_IMAGE}:${NETWORK_BUILDER_VERSION}
+		${NETWORK_BUILDER_USER} \
+		--entrypoint sh \
+		${NETWORK_BUILDER_FQN}
 
 .PHONY: gateway-up
 gateway-up: ${START_GATEWAYS}
@@ -261,6 +284,7 @@ start-gw-%: ${SHIROCLIENT_TARGET} build/volume/msp build/volume/enroll_user
 		-v "$(abspath build/volume/enroll_user):/tmp/state-store:rw" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-w "/tmp/fabric" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
@@ -508,6 +532,7 @@ notify-gw-%: ${SHIROCLIENT_TARGET} compile-phylum-$$(ccname) build/volume/msp bu
 		-v "$(abspath build/phylum_${ccname}/phylum.zip):/tmp/phylum.zip:ro" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-w "/tmp/fabric" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
@@ -614,6 +639,7 @@ shiro-init-phylum-%: ${SHIROCLIENT_TARGET} compile-phylum-% build/volume/msp bui
 		-v "$(abspath build/phylum_$*/phylum.zip):/tmp/phylum.zip:ro" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
 		-w "/tmp/fabric" \
@@ -629,6 +655,7 @@ call_cmd-%:
 		-v "$(abspath build/volume/enroll_user):/tmp/state-store:rw" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
 		-e SHIROCLIENT_LOG_LEVEL \
@@ -648,6 +675,7 @@ enable_logging-%:
 		-v "$(abspath build/volume/enroll_user):/tmp/state-store:rw" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
 		-w "/tmp/fabric" \
@@ -665,6 +693,7 @@ disable_logging-%:
 		-v "$(abspath build/volume/enroll_user):/tmp/state-store:rw" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
 		-w "/tmp/fabric" \
@@ -681,6 +710,7 @@ metadump_cmd-%:
 		-v "$(abspath build/volume/enroll_user):/tmp/state-store:rw" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
 		-w "/tmp/fabric" \
@@ -697,6 +727,7 @@ get_phyla-%:
 		-v "$(abspath build/volume/enroll_user):/tmp/state-store:rw" \
 		-v "${CURDIR}:/tmp/fabric:ro" \
 		${DOCKER_FABRIC_OPTS} \
+		--user "${SHIROCLIENT_USER}" \
 		-e ORG="${FABRIC_ORG}" \
 		-e DOMAIN_NAME="${FABRIC_DOMAIN}" \
 		-w "/tmp/fabric" \
@@ -739,8 +770,3 @@ compile-phylum-%: $$(shell find -L phylum_$$* -name "*.lisp" -not -path "*/build
 
 chaincodes/:
 	mkdir -p chaincodes/
-
-CHAINCODE_ID_FILES := $(wildcard ./chaincodes/*.id)
-
-.env: $(CHAINCODE_ID_FILES)
-	@./scripts/env.sh
