@@ -80,18 +80,22 @@ make pristine
 
 ---
 
-## 🔧 (Optional) Cryptographic Setup
+## 🔧 Generated Files
 
-Before running the network, you can optionally generate the required
-cryptographic assets (certs, keys, config files) using:
+fabric-network-builder generates the network's files: the compose files,
+`configtx.yaml`, `crypto-config.yaml`, `core.yaml`, the client configs, the
+scripts, and the crypto material in `crypto-config/` and
+`channel-artifacts/`. Git does not keep them (see `.gitignore`). The first
+`make up` (or `make crypto-config`) generates them, sized by `GENERATE_OPTS`
+in the Makefile. They stay until `make pristine` or `make clean-generated`
+removes them; then the next `make up` makes a new network.
 
-```bash
-make generate-assets
-```
+Only the gateway configs of the `cdcs` phylum (`shiroclient_cdcs.yaml` and
+`shiroclient_fast_cdcs.yaml`) are kept here.
 
-This will populate the `crypto-config/` and `channel-artifacts/` directories,
-which are git-ignored and persist across runs. You only need to run this once,
-unless you wipe the setup with `make clean` or `make pristine`.
+The builder runs as your own user, not root, so the files it writes are
+yours. The gateway and Connector Hub containers run as your user too, so they
+can read the private keys.
 
 ---
 
