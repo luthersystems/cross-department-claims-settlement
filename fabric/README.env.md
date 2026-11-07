@@ -17,7 +17,7 @@ The `connectorhub.yaml` file can use environment variables for all sensitive con
    load it only when `connectorhub.env` does not exist, so a hub with real
    credentials keeps its allowlists.
 
-2. **Note:** The project root `.env` file (created by `make up`) contains chaincode IDs and should not be modified. We use `connectorhub.env` instead to avoid conflicts.
+2. **Note:** `make up` no longer writes a `.env` file with the chaincode IDs: fabric-network-builder fills them itself. We still keep the hub's values in `connectorhub.env`, not `.env`.
 
 3. **To use environment variables in `connectorhub.yaml`**, you need to export them before running ConnectorHub:
    ```bash
@@ -35,7 +35,7 @@ ConnectorHub automatically:
 - Substitutes `${VAR}` or `$VAR` syntax in `connectorhub.yaml` with values from environment variables
 - Uses the `godotenv` library for `.env` file parsing
 
-**Important:** Since `make up` creates a `.env` file at the project root (for chaincode IDs), we use `connectorhub.env` instead. You need to export these variables before running ConnectorHub.
+**Important:** ConnectorHub does not load `connectorhub.env` by itself. You need to export these variables before running ConnectorHub.
 
 ## Supported Syntax
 
