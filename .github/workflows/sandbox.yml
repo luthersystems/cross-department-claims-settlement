@@ -6,9 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    permissions:
-      id-token: write # Docker Hub OIDC login
-      contents: read # actions/checkout
     steps:
       - uses: actions/checkout@v5
       - name: Setup Go
@@ -20,12 +17,7 @@ jobs:
         with:
           # Built with Go 1.26: an older golangci-lint refuses a go 1.26 module.
           version: v2.15.0
-      # Pull-only: every image this job pulls is public, so a failed login
-      # warns and pulls anonymously. The token lives at most 3600s.
-      - name: Log in to Docker Hub (pull only)
-        uses: ./.github/actions/ci-dockerhub-login
       - name: Run CI tests
-        timeout-minutes: 60
         env:
           CONNECTORHUB_VERSION: ${{ vars.CONNECTORHUB_VERSION || 'latest' }}
           SKIP_CONNECTORHUB_LOCAL_BUILD: 1
@@ -36,14 +28,7 @@ jobs:
   fabric-network:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
-    permissions:
-      id-token: write # Docker Hub OIDC login
-      contents: read # actions/checkout
     steps:
       - uses: actions/checkout@v5
-      # Pull-only: every image this job pulls is public, so a failed login
-      # warns and pulls anonymously. The token lives at most 3600s.
-      - name: Log in to Docker Hub (pull only)
-        uses: ./.github/actions/ci-dockerhub-login
       - name: Start and stop the local Fabric network
         run: make -C fabric fnb-smoke
