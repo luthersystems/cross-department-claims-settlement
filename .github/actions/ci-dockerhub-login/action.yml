@@ -99,4 +99,4 @@ runs:
       shell: bash
       run: |
         echo "::warning title=Docker Hub OIDC failed::OIDC login failed 3 times; pulls are anonymous and rate-limited"
-        docker logout docker.io || true
+        docker logout || true
