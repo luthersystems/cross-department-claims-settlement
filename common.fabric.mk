@@ -468,7 +468,9 @@ CONNECTORHUB_ENV_VARS = \
 start-ch-%: parts=$(subst ., ,$*)
 start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
-start-ch-%: ccname=$(word 3,${parts}) # TODO
+# start-ch-% does not use ccname. A CONNECTORHUBS stem keeps the same
+# <idx>.<name>.<ccname> shape as a GATEWAYS stem, so both lists read alike.
+start-ch-%: ccname=$(word 3,${parts})
 start-ch-%: port=$$(( 9091 + ${idx} ))
 start-ch-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
