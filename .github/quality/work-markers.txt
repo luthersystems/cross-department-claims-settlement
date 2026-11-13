@@ -1,0 +1,13 @@
+# Allowlist for the shared work marker gate (luthersystems/.github,
+# actions/work-markers/work-markers.sh). Only for words that are not our
+# work: copied third-party source, data, quoted text. A marker for deferred
+# work names its open issue inline instead, as MARKER(#N).
+#
+# path | text | expires | issue | reason
+compose/grafana/plugins/grafana-lokiexplore-app/386.js.map | * | never | - | Vendored Grafana Loki plugin build; the source maps quote upstream comments.
+compose/grafana/plugins/grafana-lokiexplore-app/470.js.map | * | never | - | Vendored Grafana Loki plugin build; the source maps quote upstream comments.
+compose/grafana/plugins/grafana-lokiexplore-app/677.js.map | * | never | - | Vendored Grafana Loki plugin build; the source maps quote upstream comments.
+compose/grafana/plugins/grafana-lokiexplore-app/854.js.map | * | never | - | Vendored Grafana Loki plugin build; the source maps quote upstream comments.
+compose/grafana/plugins/grafana-lokiexplore-app/944.js.map | * | never | - | Vendored Grafana Loki plugin build; the source maps quote upstream comments.
+compose/grafana/plugins/grafana-lokiexplore-app/module.js.map | * | never | - | Vendored Grafana Loki plugin build; the source maps quote upstream comments.
+compose/grafana/plugins/grafana-pyroscope-app/module.js.map | * | never | - | Vendored Grafana Pyroscope plugin build; the source maps quote upstream comments.

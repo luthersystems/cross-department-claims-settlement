@@ -468,7 +468,7 @@ CONNECTORHUB_ENV_VARS = \
 start-ch-%: parts=$(subst ., ,$*)
 start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
-start-ch-%: ccname=$(word 3,${parts}) # TODO
+start-ch-%: ccname=$(word 3,${parts}) # TODO(#51): bind each hub to its chaincode
 start-ch-%: port=$$(( 9091 + ${idx} ))
 start-ch-%: port_fw=-p "${port}:8080"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint

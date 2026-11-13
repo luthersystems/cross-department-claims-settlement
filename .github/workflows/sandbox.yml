@@ -12,11 +12,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          # Built with Go 1.26: an older golangci-lint refuses a go 1.26 module.
-          version: v2.15.0
+      # No golangci-lint step: the shared Quality workflow
+      # (.github/workflows/quality.yml, from luthersystems/.github) runs the
+      # pinned golangci-lint with .golangci.yml on every PR and on push to main.
       - name: Run CI tests
         env:
           CONNECTORHUB_VERSION: ${{ vars.CONNECTORHUB_VERSION || 'latest' }}
