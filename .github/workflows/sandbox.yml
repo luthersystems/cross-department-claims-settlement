@@ -14,7 +14,7 @@ jobs:
           go-version-file: go.mod
       # No golangci-lint step: the shared Quality workflow
       # (.github/workflows/quality.yml, from luthersystems/.github) runs the
-      # pinned golangci-lint with .golangci.yml on every PR and push.
+      # pinned golangci-lint with .golangci.yml on every PR and on push to main.
       - name: Run CI tests
         env:
           CONNECTORHUB_VERSION: ${{ vars.CONNECTORHUB_VERSION || 'latest' }}
