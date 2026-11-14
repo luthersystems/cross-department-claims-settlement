@@ -1,5 +1,5 @@
 # One claim through the claim flow (phylum/claim.lisp) on the full network,
-# with the connectors mocked by fabric/connectorhub.yaml.  The connector
+# with the connectors mocked by fabric/connectorhub_cdcs.yaml.  The connector
 # steps run on their own; the test waits for each input step and sends the
 # webhook the portal serves for it.
 name: "Cdcs: claim settlement"

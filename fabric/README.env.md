@@ -1,6 +1,6 @@
 # Environment Variables for ConnectorHub Configuration
 
-The `connectorhub.yaml` file can use environment variables for all sensitive configuration values (passwords, API keys, tokens, etc.). This keeps secrets out of version control.
+The `connectorhub_cdcs.yaml` file can use environment variables for all sensitive configuration values (passwords, API keys, tokens, etc.). This keeps secrets out of version control.
 
 ## Setup
 
@@ -19,7 +19,7 @@ The `connectorhub.yaml` file can use environment variables for all sensitive con
 
 2. **Note:** `make up` no longer writes a `.env` file with the chaincode IDs: fabric-network-builder fills them itself. We still keep the hub's values in `connectorhub.env`, not `.env`.
 
-3. **To use environment variables in `connectorhub.yaml`**, you need to export them before running ConnectorHub:
+3. **To use environment variables in `connectorhub_cdcs.yaml`**, you need to export them before running ConnectorHub:
    ```bash
    # Option 1: Source the file before running make up
    export $(grep -v '^#' fabric/connectorhub.env | xargs)
@@ -32,7 +32,7 @@ The `connectorhub.yaml` file can use environment variables for all sensitive con
 
 ConnectorHub automatically:
 - Loads `.env` files from the project root (walking up the directory tree)
-- Substitutes `${VAR}` or `$VAR` syntax in `connectorhub.yaml` with values from environment variables
+- Substitutes `${VAR}` or `$VAR` syntax in `connectorhub_cdcs.yaml` with values from environment variables
 - Uses the `godotenv` library for `.env` file parsing
 
 **Important:** ConnectorHub does not load `connectorhub.env` by itself. You need to export these variables before running ConnectorHub.
@@ -45,7 +45,7 @@ Both syntaxes are supported:
 
 ## Example
 
-In `connectorhub.yaml`:
+In `connectorhub_cdcs.yaml`:
 ```yaml
 d365_fo:
   base_url: "${D365FO_BASE_URL}"
@@ -64,7 +64,7 @@ D365FO_TENANT_ID=<your-azure-tenant-id>
 
 ## Environment Variables Reference
 
-See `fabric/.env.example` for a complete list of all environment variables used in `connectorhub.yaml`. Copy it to `connectorhub.env` and fill in your actual values.
+See `fabric/.env.example` for a complete list of all environment variables used in `connectorhub_cdcs.yaml`. Copy it to `connectorhub.env` and fill in your actual values.
 
 ## Loading connectorhub.env
 
