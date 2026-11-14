@@ -63,7 +63,7 @@ would wait until its one-hour connector timeout and fail with a bare
 
 Rules the steps apply:
 
-- A start request needs `policy_id`, `guidewire_claim_id`,
+- A start request needs `policy_id`, `oracle_claim_id`, `guidewire_claim_id`,
   `invoice_amount`, `signer_name`, `signer_email`,
   `settlement_document_item_id` and `settlement_document_filename`.
   Without them the start is rejected and no run is written.
@@ -73,12 +73,27 @@ Rules the steps apply:
   twice and gave it to ServiceNow as the settlement document (#37).
   When SharePoint names the file it read, it must be that file.  The
   ServiceNow incident names the file for its reviewers.
+- The Oracle lookup asks for the claim the request names
+  (`oracle_claim_id`) on the request's policy, and the reply must be that
+  one row.  The flow once took whichever claim on the policy Oracle
+  returned first (#39).
+- The Oracle claim `STATUS` must be `Open`.  A claim Oracle has closed
+  fails the run even when Guidewire says Open (#39).
 - The invoice may not exceed the Oracle claim `AMOUNT` or the policy's
   `COVERAGE_LIMIT`; both apply, so the lower one wins.  A cap that is
   missing or not a number fails the run too.  Both checks run before
-  Guidewire marks the claim for settlement.  An invoice amount has at
-  most two decimal places, so the float comparison cannot round it down
-  to a cap it exceeds.
+  Guidewire marks the claim for settlement.  Amounts are compared in
+  whole pence; a cap with more decimal places is rounded down.
+- The phylum records, in its state, the amount settled on each Oracle
+  claim and each policy (`cdcs:settled:claim:<id>` and
+  `cdcs:settled:policy:<id>`, in pence).  The claim amount and the
+  coverage limit apply to the invoice plus that amount, so two starts
+  for one claim with different request keys cannot each pay it in full
+  (#39).  A run records its invoice in one transaction just before it
+  asks the payment team to approve, checking the caps again; a rejected
+  payment gives the amount back.  A run that fails or is cancelled after
+  that keeps its amount recorded, because the payment may already be
+  with ABS.  No endpoint releases such an amount yet.
 - The Guidewire claim must be `Open`, `UnderReview` or `Approved`.
   `Rejected`, `Closed` and any status the flow does not know fail the
   run.

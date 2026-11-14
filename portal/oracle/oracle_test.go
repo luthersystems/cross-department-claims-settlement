@@ -42,6 +42,7 @@ func makeTestServer(t *testing.T) *portal {
 func testStartRequest() *pb.StartClaimRequest {
 	return &pb.StartClaimRequest{
 		PolicyId:         "POL-8872",
+		OracleClaimId:    "CLM-4567",
 		GuidewireClaimId: "GW-1001",
 		InvoiceAmount:    "2500.00",
 		SignerName:       "Jack Clarke",
@@ -85,9 +86,10 @@ func TestStartClaimNamesMissingFields(t *testing.T) {
 	req := testStartRequest()
 	req.SignerEmail = " "
 	req.GuidewireClaimId = ""
+	req.OracleClaimId = ""
 	resp, err := server.StartClaim(context.Background(), req)
 	require.NoError(t, err)
-	require.Equal(t, "missing guidewire_claim_id, signer_email", resp.GetException().GetDescription())
+	require.Equal(t, "missing oracle_claim_id, guidewire_claim_id, signer_email", resp.GetException().GetDescription())
 }
 
 func TestInputRefusedWhenClaimWaitsElsewhere(t *testing.T) {
@@ -133,7 +135,7 @@ const idDocument = "Q2xhaW0gSUQ6IENMTS00NTY3ClZlcmlmaWVkOiBZZXM="
 // full mock replies of fabric/connectorhub.yaml.
 var testReplies = map[string]any{
 	"oracle-claim": map[string]any{"rows": []any{map[string]any{
-		"CLAIM_ID": "CLM-4567", "AMOUNT": 2500.0, "STATUS": "UnderReview",
+		"CLAIM_ID": "CLM-4567", "POLICY_ID": "POL-8872", "AMOUNT": 2500.0, "STATUS": "Open",
 		"CLAIMANT_FIRST_NAME": "John", "CLAIMANT_LAST_NAME": "Doe", "CLAIMANT_DOB": "1980-05-15",
 		"CLAIMANT_ADDRESS": "123 Main Street", "CLAIMANT_NATIONAL_ID": "AB123456C"}}},
 	"equifax-screening": map[string]any{"equifax": map[string]any{"entity_screening_response": map[string]any{
