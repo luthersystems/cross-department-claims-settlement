@@ -130,7 +130,7 @@ const idDocument = "Q2xhaW0gSUQ6IENMTS00NTY3ClZlcmlmaWVkOiBZZXM="
 
 // testReplies is the reply each connector step gets, by step, trimmed to
 // the fields the readers need.  phylum/claim_testhelpers.lisp holds the
-// full mock replies of fabric/connectorhub.yaml.
+// full mock replies of fabric/connectorhub_cdcs.yaml.
 var testReplies = map[string]any{
 	"oracle-claim": map[string]any{"rows": []any{map[string]any{
 		"CLAIM_ID": "CLM-4567", "AMOUNT": 2500.0, "STATUS": "UnderReview",

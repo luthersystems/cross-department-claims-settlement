@@ -43,7 +43,7 @@ SHIROCLIENT_IMAGE ?= luthersystems/shiroclient
 # connectorhub-local image new enough for this substrate (it must read the
 # luther:ev:N event keys, connectorhub#229).  The deploy image has no docker
 # CLI, which only an unmocked MCP connector needs; every connector in
-# fabric/connectorhub.yaml is mocked.
+# fabric/connectorhub_cdcs.yaml is mocked.
 CONNECTORHUB_IMAGE = luthersystems/connectorhub
 # The deploy image runs as nobody, which cannot read the crypto material the
 # network builder writes (owned by DOCKER_CHOWN_USER, private keys 0600).
@@ -96,7 +96,13 @@ CHAINCODE_GO ?= ${PHYLA_GO}
 PHYLA_CCAAS ?=
 PHYLA ?= ${PHYLA_GO} ${PHYLA_CCAAS}
 GATEWAYS ?= 1.shiroclient_gw_a.a
+# index.hub_name.chaincode_name...
 CONNECTORHUBS ?= 1.connectorhub_a.a
+CONNECTORHUB_CONFIG_BASENAME ?= connectorhub
+# test-connector and test-request read the config of this chaincode's hub,
+# by default the first hub's.
+CONNECTORHUB_TEST_CC ?= $(word 3,$(subst ., ,$(firstword ${CONNECTORHUBS})))
+CONNECTORHUB_TEST_CONFIG = ${CONNECTORHUB_CONFIG_BASENAME}_${CONNECTORHUB_TEST_CC}.yaml
 START_GATEWAYS=$(addprefix start-gw-,${GATEWAYS})
 START_CONNECTORHUBS=$(addprefix start-ch-,${CONNECTORHUBS})
 # possibly this
@@ -387,7 +393,7 @@ test-connector: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		--network ${FABRIC_DOCKER_NETWORK} \
 		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
 			test -v \
-			--config-file /tmp/fabric/connectorhub.yaml \
+			--config-file /tmp/fabric/${CONNECTORHUB_TEST_CONFIG} \
 			--keep-containers \
 			--mcp-init-timeout 120 \
 			$(c)
@@ -439,7 +445,7 @@ test-request: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		--network ${FABRIC_DOCKER_NETWORK} \
 		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
 			test-request -v \
-			--config-file /tmp/fabric/connectorhub.yaml \
+			--config-file /tmp/fabric/${CONNECTORHUB_TEST_CONFIG} \
 			--keep-containers \
 			--request '$(r)' \
 			$(c)
@@ -463,16 +469,29 @@ CONNECTORHUB_ENV_VARS = \
 	$(if $(MCP_FULL_LOG),-e MCP_FULL_LOG=$(MCP_FULL_LOG)) \
 	$(if $(CH_LOG_FULL),-e CH_LOG_FULL=$(CH_LOG_FULL))
 
+# start-ch-<idx>.<name>.<ccname> runs one hub, named <name>, for chaincode
+# <ccname>, as start-gw-% runs a gateway.  It reads
+# fabric/${CONNECTORHUB_CONFIG_BASENAME}_<ccname>.yaml, which names that
+# chaincode, and keeps its own checkpoint file.  Each hub publishes only its
+# own host ports: its API (container 8080) on 9091+<idx> and its inbound
+# HTTP (container 8090) on 8089+<idx>, so the first hub keeps localhost:8090.
+# Hub <idx>'s inbound port is gateway <idx>+8's port (8081+<idx>), so keep
+# fewer than nine gateways.  The build/volume/checkpoint directory goes with
+# make down, so a hub's checkpoint starts afresh with each network.
+#
 # start-ch runs the hub without --rm: when it exits at start, the docker
 # logs call below still finds it.
 start-ch-%: parts=$(subst ., ,$*)
 start-ch-%: idx=$(word 1,${parts})
 start-ch-%: name=$(word 2,${parts})
-start-ch-%: ccname=$(word 3,${parts}) # TODO(#51): bind each hub to its chaincode
+start-ch-%: ccname=$(word 3,${parts})
+start-ch-%: config=${CONNECTORHUB_CONFIG_BASENAME}_${ccname}.yaml
 start-ch-%: port=$$(( 9091 + ${idx} ))
-start-ch-%: port_fw=-p "${port}:8080"
+start-ch-%: inbound_port=$$(( 8089 + ${idx} ))
+start-ch-%: port_fw=-p "${port}:8080" -p "${inbound_port}:8090"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
-	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	@$(if ${ccname},,echo "❌ CONNECTORHUBS entry $* needs a chaincode name: <idx>.<name>.<ccname>"; exit 1;) \
+	env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
 	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \
@@ -496,8 +515,6 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
   		-v /tmp:/tmp \
 		-w "/tmp/fabric" \
 		--user "${CONNECTORHUB_USER}" \
-		-p "8080:8080" \
-		-p "8090:8090" \
 		${CONNECTORHUB_ENV_VARS} \
 		$$env_file_flag \
 		$$mock_all_flag \
@@ -505,8 +522,8 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		--network ${FABRIC_DOCKER_NETWORK} \
 		${CONNECTORHUB_IMAGE}:${CONNECTORHUB_VERSION} \
 			start -v \
-			--config-file /tmp/fabric/connectorhub.yaml \
-			--checkpoint-file /tmp/checkpoint/checkpoint.txt
+			--config-file /tmp/fabric/${config} \
+			--checkpoint-file /tmp/checkpoint/${name}.txt
 		
 	@echo "⌛ Waiting for ${name} to start..."
 	@sleep 3
@@ -515,7 +532,7 @@ start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
 		echo "🔍 Showing last 50 log lines:"; \
 		docker logs --tail 50 ${name} || true; \
 		echo ""; \
-		echo "💡 Tip: check connectorhub.yaml for invalid keys or indentation"; \
+		echo "💡 Tip: check fabric/${config} for invalid keys or indentation"; \
 		exit 1; \
 	else \
 		echo "✅ ConnectorHub ${name} is running successfully."; \

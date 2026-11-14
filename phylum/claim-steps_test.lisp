@@ -24,6 +24,18 @@
   (assert-string= "missing policy_id, guidewire_claim_id, invoice_amount, signer_name, signer_email, settlement_document_item_id, settlement_document_filename"
                   (claim-request-problem (sorted-map))))
 
+(test "a field of only white space is missing, a value that is not text is not"
+  ;; Blank as string:trim-space reads it: \v and the Unicode spaces too.
+  (map ()
+       (lambda (v)
+         (assert-string= "missing policy_id"
+                         (claim-request-problem (with-fields (test-claim-request) "policy_id" v))))
+       (list "" " " "\t\n\r" "\v" "\u00a0" "\u3000 \u2028"))
+  (assert-nil (claim-request-problem (with-fields (test-claim-request) "policy_id" " a\u00a0")))
+  ;; A number is given: the amount check, not the missing check, refuses it.
+  (assert-string= "invoice_amount 12 is not a positive decimal amount"
+                  (claim-request-problem (with-fields (test-claim-request) "invoice_amount" 12))))
+
 (test "claim-request-problem refuses the ID document as the settlement document"
   (map ()
        (lambda (item-id)
@@ -52,11 +64,11 @@
        (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12
              ;; More than two decimal places: as a float it would round to
              ;; a cap it exceeds.
-             "1.005" "20000.000000000000001"))
+             "1.005" "20000.000000000000001" "00" "0.0" "000.00"))
   (map ()
        (lambda (amount)
          (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
-       (list "12" "25000.00" "0.5")))
+       (list "12" "25000.00" "0.5" "0.01" "00.10" "100")))
 
 (test "new-claim fills blank fields with the demo defaults"
   (let ([claim (new-claim "run-1" (with-fields (test-claim-request) "recipient_name" ""))])
