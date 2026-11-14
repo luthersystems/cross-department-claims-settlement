@@ -98,7 +98,7 @@ PHYLA ?= ${PHYLA_GO} ${PHYLA_CCAAS}
 GATEWAYS ?= 1.shiroclient_gw_a.a
 # index.hub_name.chaincode_name...
 CONNECTORHUBS ?= 1.connectorhub_a.a
-CONNECTORHUB_CONFIG_BASENAME=connectorhub
+CONNECTORHUB_CONFIG_BASENAME ?= connectorhub
 # test-connector and test-request read the config of this chaincode's hub,
 # by default the first hub's.
 CONNECTORHUB_TEST_CC ?= $(word 3,$(subst ., ,$(firstword ${CONNECTORHUBS})))
@@ -475,8 +475,9 @@ CONNECTORHUB_ENV_VARS = \
 # chaincode, and keeps its own checkpoint file.  Each hub publishes only its
 # own host ports: its API (container 8080) on 9091+<idx> and its inbound
 # HTTP (container 8090) on 8089+<idx>, so the first hub keeps localhost:8090.
-# Indexes 1 to 8 stay clear of the gateways' 8081+<idx> as long as there
-# are fewer than nine gateways.
+# Hub <idx>'s inbound port is gateway <idx>+8's port (8081+<idx>), so keep
+# fewer than nine gateways.  The build/volume/checkpoint directory goes with
+# make down, so a hub's checkpoint starts afresh with each network.
 #
 # start-ch runs the hub without --rm: when it exits at start, the docker
 # logs call below still finds it.
@@ -489,7 +490,8 @@ start-ch-%: port=$$(( 9091 + ${idx} ))
 start-ch-%: inbound_port=$$(( 8089 + ${idx} ))
 start-ch-%: port_fw=-p "${port}:8080" -p "${inbound_port}:8090"
 start-ch-%: ${CONNECTORHUB_TARGET} build/volume/checkpoint
-	@env_file="${PROJECT_ABS_DIR}/.env"; \
+	@$(if ${ccname},,echo "❌ CONNECTORHUBS entry $* needs a chaincode name: <idx>.<name>.<ccname>"; exit 1;) \
+	env_file="${PROJECT_ABS_DIR}/.env"; \
 	connectorhub_env="${PROJECT_ABS_DIR}/fabric/connectorhub.env"; \
 	env_file_flag="--env-file ${PROJECT_ABS_DIR}/fabric/connectorhub.mock.env"; \
 	mock_all_flag="-e MOCK_ALL=${MOCK_ALL}"; \

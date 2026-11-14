@@ -76,7 +76,7 @@
 ;; A blank value: text of only white space.  () is blank too (see blank?).
 ;; The class holds what Go's unicode.IsSpace does, as string:trim-space
 ;; trims it: \s alone misses \v, U+0085 and the Unicode spaces (U+00A0).
-(set 'blank-text (s:make-validator "blank-text" s:string
+(set 'blank-text-schema (s:make-validator "blank-text" s:string
                                    (s:regexp "^[\\t\\n\\v\\f\\r\\x{85}\\p{Z}]*$")))
 
 ;; An invoice amount: positive plain decimal text.  The Zoho step needs a
@@ -90,7 +90,7 @@
 ;; 20000.00 limit and pass while SAP recorded the longer text.  The second
 ;; regexp asks for a digit other than 0, which in this form means more than
 ;; zero.
-(set 'invoice-amount
+(set 'invoice-amount-schema
      (s:make-validator "invoice-amount" s:string
                        (s:regexp "^[0-9]+(\\.[0-9]{1,2})?$")
                        (s:regexp "[1-9]")))
@@ -105,7 +105,7 @@
     (cond
       ((not (empty? missing))
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
-      ((not (s:is? (get req "invoice_amount") invoice-amount))
+      ((not (s:is? (get req "invoice_amount") invoice-amount-schema))
        (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
       ;; The demo once fetched the ID document a second time as the
       ;; settlement document (#37), so ServiceNow reviewers saw the wrong
@@ -119,10 +119,10 @@
 
 ;; Return v as a float if it is an invoice amount, or nil.
 (defun amount-number (v)
-  (when (s:is? v invoice-amount) (to-float v)))
+  (when (s:is? v invoice-amount-schema) (to-float v)))
 
 (defun blank? (v)
-  (or (nil? v) (s:is? v blank-text)))
+  (or (nil? v) (s:is? v blank-text-schema)))
 
 ;; The claim the steps share: the request with the defaults filled in, and
 ;; the run id as the claim id.  The run id names the claim in every system
