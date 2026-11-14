@@ -64,7 +64,11 @@
 
          ;; WF1: find the claim in Oracle, screen the claimant with Equifax,
          ;; open a Teams thread with the result.
-         [record (reply oracle-claim (oracle-claim-event claim) parse-oracle-claim (get claim "amount"))]
+         ;; The settled amounts are read when the reply arrives, in its
+         ;; transaction, so they include every reservation made before it.
+         [record (reply oracle-claim (oracle-claim-event claim) parse-oracle-claim
+                        (get claim "oracle_claim_id") (get claim "policy_id") (get claim "amount")
+                        (settled-cents "claim" (get claim "oracle_claim_id")))]
          [screening (reply equifax-screening (equifax-event claim (get record "claimant"))
                            parse-screening)]
          [thread (reply teams-thread (teams-thread-event claim screening) parse-teams-thread)]
@@ -72,10 +76,12 @@
          ;; WF2: check the claim in Guidewire and the policy in MySQL, check
          ;; the ID document in SharePoint, approve the claim in Guidewire.
          ;; The Oracle reader above holds the invoice to the claim amount
-         ;; and the policy reader holds it to the coverage limit, so the
-         ;; claim is checked before Guidewire marks it for settlement.
+         ;; and the policy reader holds it to the coverage limit, each less
+         ;; what is already settled, so the claim is checked before
+         ;; Guidewire marks it for settlement.
          [guidewire (reply guidewire-claim (guidewire-claim-event claim) parse-guidewire-claim)]
-         [policy (reply policy-check (policy-check-event claim) parse-active-policy (get claim "amount"))]
+         [policy (reply policy-check (policy-check-event claim) parse-active-policy (get claim "amount")
+                        (settled-cents "policy" (get claim "policy_id")))]
          [id-check (reply id-document (id-document-event) parse-id-document (get record "claim_id"))]
          [approval (reply guidewire-approval (guidewire-approval-event claim) parse-guidewire-approval)]
 
@@ -94,10 +100,25 @@
                              (get claim "settlement_document_filename"))]
            [incident (reply servicenow-incident (servicenow-incident-event claim) parse-servicenow-incident)])
 
-      ;; Payment: ask the payment team in the Teams thread, wait for their
-      ;; sign-off, then for ABS to decide.  ABS may report "pending" first,
-      ;; so wait again until it approves or rejects.
-      (reply payment-notice (payment-notice-event claim thread invoice) parse-sent)
+      ;; Payment: record the invoice as settled on the claim and the policy
+      ;; (see "Settled amounts" in claim-steps.lisp), ask the payment team
+      ;; in the Teams thread, wait for their sign-off, then for ABS to
+      ;; decide.  ABS may report "pending" first, so wait again until it
+      ;; approves or rejects.
+      (let ([problem (reserve-settlement claim record policy)])
+        (when problem (fail problem)))
+      ;; The notice is what asks for the payment, so when it does not go
+      ;; no payment can have started: give the amount back before failing.
+      ;; Like every step here, the runtime stamps the step key as the
+      ;; event's idempotency key; Teams does not read one from the payload.
+      (let ([notice (read-reply (await-connector 'payment-notice (payment-notice-event claim thread invoice) ; nolint:flow-event-without-key
+                                                 :on-error (lambda (e)
+                                                             (sorted-map "error" (format-string "{}: {}" (get e "kind")
+                                                                                                (get e "message")))))
+                                parse-sent)])
+        (when (get notice "problem")
+          (release-settlement claim)
+          (fail (get notice "problem"))))
       (let ([approved-by (get (await-input 'payment-approved :from ("Org1MSP")) "signed_by")]
             [status ()])
         (while (or (nil? status) (equal? (payment-decision status) "pending"))
@@ -119,7 +140,11 @@
                          "servicenow_incident" (get incident "number")
                          "payment_approved_by" approved-by
                          "payment_id"          (get status "payment_id"))])
+          ;; Only a rejection gives the amount back: a status the flow does
+          ;; not know may still end in a payment.
           (unless (equal? (payment-decision status) "approved")
+            (when (equal? (payment-decision status) "rejected")
+              (release-settlement claim))
             (done (with-fields summary "decision" "payment rejected")))
 
           ;; WF5: post the payment journal in D365FO, then record the

@@ -7,6 +7,7 @@
 
 (defun test-claim-request ()
   (sorted-map "policy_id"          "POL-8872"
+              "oracle_claim_id"    "CLM-4567"
               "guidewire_claim_id" "GW-1001"
               "invoice_amount"     "2500.00"
               "signer_name"        "Jack Clarke"
@@ -22,7 +23,7 @@
      (sorted-map
        "oracle-claim"        (sorted-map "rows" (vector (sorted-map
                                                           "CLAIM_ID" "CLM-4567" "POLICY_ID" "POL-8872"
-                                                          "AMOUNT" 2500.0 "STATUS" "UnderReview"
+                                                          "AMOUNT" 2500.0 "STATUS" "Open"
                                                           "CLAIMANT_FIRST_NAME" "John" "CLAIMANT_LAST_NAME" "Doe"
                                                           "CLAIMANT_DOB" "1980-05-15"
                                                           "CLAIMANT_ADDRESS" "123 Main Street, London, SW1A 1AA"
@@ -53,9 +54,32 @@
        "d365fo-journal"      (sorted-map "record" (sorted-map "RecId" "5637144576" "Name" "DAT-AP-PAY"))
        "sap-payment"         (sorted-map "payment" (sorted-map "transaction_id" "SAP-TXN-1001" "status" "posted"))))
 
+;; A SharePoint reply with an ID document that names claim-id.  The
+;; connector sends each line base64-encoded as text.
+(defun id-document-reply (claim-id)
+  (sorted-map "type" "text"
+              "content" (vector (to-string (base64:encode (format-string "Claim ID: {}" claim-id))))
+              "line_count" 1))
+
+(defun read-oracle (reply invoice &optional settled)
+  (parse-oracle-claim reply "CLM-4567" "POL-8872" invoice (or settled 0)))
+
+;; The demo's Oracle reply with the fields in kvs changed.
+(defun oracle-row (&rest kvs)
+  (sorted-map "rows" (vector (apply with-fields (first (get (get test-replies "oracle-claim") "rows")) kvs))))
+
+;; The tests share one ledger, and a run that reaches the payment step
+;; records its invoice as settled on its Oracle claim and policy (#39).  A
+;; start on the demo claim CLM-4567 clears that record first, so each test
+;; on the demo claim starts from nothing settled.  The tests of the settled
+;; amounts use claims and policies of their own.
 (defun start-test-claim (key &optional req)
-  (flow-test:as "Org1MSP")
-  (get (flow-test:start 'claim key (or req (test-claim-request))) "run_id"))
+  (let ([req (or req (test-claim-request))])
+    (when (equal? (get req "oracle_claim_id") "CLM-4567")
+      (statedb:del (settled-key "claim" "CLM-4567"))
+      (statedb:del (settled-key "policy" (get req "policy_id"))))
+    (flow-test:as "Org1MSP")
+    (get (flow-test:start 'claim key req) "run_id")))
 
 (defun claim-label (run) (get (flow-test:run 'claim run) "label"))
 (defun claim-state (run) (get (flow-test:run 'claim run) "state"))

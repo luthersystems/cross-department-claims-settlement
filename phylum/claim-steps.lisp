@@ -65,7 +65,7 @@
 ;; ---------------------------------------------------------------------------
 
 (set 'claim-required-fields
-     (vector "policy_id" "guidewire_claim_id" "invoice_amount" "signer_name" "signer_email"
+     (vector "policy_id" "oracle_claim_id" "guidewire_claim_id" "invoice_amount" "signer_name" "signer_email"
              "settlement_document_item_id" "settlement_document_filename"))
 
 ;; Return why a start request cannot start a claim, or nil.  The flow calls
@@ -78,7 +78,8 @@
     (cond
       ((not (empty? missing))
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
-      ((nil? (amount-number (get req "invoice_amount")))
+      ((or (nil? (amount-number (get req "invoice_amount")))
+           (nil? (amount-cents (get req "invoice_amount"))))
        (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
       ;; The demo once fetched the ID document a second time as the
       ;; settlement document (#37), so ServiceNow reviewers saw the wrong
@@ -115,7 +116,8 @@
 (defun new-claim (claim-id req)
   (sorted-map
     "claim_id"           claim-id
-    "policy_id"          (get req "policy_id")
+    "policy_id"          (string:trim-space (to-string (get req "policy_id")))
+    "oracle_claim_id"    (string:trim-space (to-string (get req "oracle_claim_id")))
     "guidewire_claim_id" (get req "guidewire_claim_id")
     "amount"             (get req "invoice_amount")
     "signer_name"        (get req "signer_name")
@@ -153,30 +155,53 @@
 ;; WF1: Oracle claim record, Equifax screening, Teams thread
 ;; ---------------------------------------------------------------------------
 
-;; The policy id is a bound value (:1), never SQL text, so it needs no quoting.
+;; The start request names the Oracle claim (#39).  The lookup once took the
+;; first claim Oracle returned for the policy, so with two claims on a policy
+;; the invoice was held to, and the ID document checked against, whichever
+;; came first.  The ids are bound values (:1, :2), never SQL text, so they
+;; need no quoting.
 (defun oracle-claim-event (claim)
   (claim-event "oracle" "get claim"
     (generic-req "KIND_ORACLE_READONLY" "execute_query"
       (sorted-map
-        "sql"  "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE POLICY_ID = :1"
-        "args" (vector (get claim "policy_id"))))))
+        "sql"  "SELECT CLAIM_ID, POLICY_ID, AMOUNT, STATUS, CLAIMANT_FIRST_NAME, CLAIMANT_LAST_NAME, CLAIMANT_DOB, CLAIMANT_ADDRESS, CLAIMANT_NATIONAL_ID FROM CLAIMS WHERE CLAIM_ID = :1 AND POLICY_ID = :2"
+        "args" (vector (get claim "oracle_claim_id") (get claim "policy_id"))))))
 
+;; The only Oracle claim status that may settle (#39).  The flow once settled
+;; a claim Oracle had closed because Guidewire still said Open.
+(set 'settleable-oracle-status "Open")
+
+;; The reply must be the one claim the request names, on the request's
+;; policy, and Open.  The query asks for exactly that, so the reader checks
+;; the row too: a reply for another claim would hold the invoice to the
+;; wrong amount.
+;;
 ;; The invoice may not ask for more than the claim is for (#37): the demo
-;; once paid an invoice of 25000.00 on an Oracle claim of 2500.00.  So the
-;; reader refuses a record whose AMOUNT is less than the invoice, before the
-;; flow screens the claimant or writes anywhere.
-(defun parse-oracle-claim (reply invoice-amount)
+;; once paid an invoice of 25000.00 on an Oracle claim of 2500.00.  Nor may
+;; it, with what earlier runs settled on this claim, ask for more (#39):
+;; two starts with different request keys could each pay the whole claim.
+;; settled is that amount in pence (see settled-cents).  The reader refuses
+;; before the flow screens the claimant or writes anywhere.
+(defun parse-oracle-claim (reply oracle-claim-id policy-id invoice-amount settled)
   (match reply
-    ((sorted-map "rows" (vector row &rest _))
-     (let ([(sorted-map "CLAIM_ID" id "AMOUNT" amount "STATUS" status
+    ((sorted-map "rows" (vector row))
+     (let ([(sorted-map "CLAIM_ID" id "POLICY_ID" policy "AMOUNT" amount "STATUS" status
                         "CLAIMANT_FIRST_NAME" first-name "CLAIMANT_LAST_NAME" last-name
                         "CLAIMANT_DOB" dob "CLAIMANT_ADDRESS" address
                         "CLAIMANT_NATIONAL_ID" national-id) row])
-       (check-within invoice-amount amount "the Oracle claim amount")
+       (unless (and (equal? (to-string id) oracle-claim-id) (equal? (to-string policy) policy-id))
+         (bad-reply "Oracle returned claim {} on policy {}, not claim {} on policy {}"
+                    id policy oracle-claim-id policy-id))
+       (unless (equal? status settleable-oracle-status)
+         (bad-reply "Oracle claim {} status {} cannot be settled" id status))
+       (check-within invoice-amount settled amount "the Oracle claim amount")
        (sorted-map "claim_id" id "amount" amount "status" status
                    "claimant" (sorted-map "first_name" first-name "last_name" last-name "dob" dob
                                           "address" address "national_id" national-id))))
-    (_ (bad-reply "Oracle has no claim for this policy"))))
+    ((sorted-map "rows" (vector)) (bad-reply "Oracle has no claim {} on policy {}" oracle-claim-id policy-id))
+    ((sorted-map "rows" (vector &rest rows))
+     (bad-reply "Oracle returned {} rows for claim {}" (length rows) oracle-claim-id))
+    (_ (bad-reply "Oracle returned no claim rows"))))
 
 ;; Equifax takes its own typed request, not a generic one.
 (defun equifax-event (claim claimant)
@@ -232,6 +257,78 @@
     (_ (bad-reply "Teams returned no thread"))))
 
 ;; ---------------------------------------------------------------------------
+;; Settled amounts (#39)
+;;
+;; The phylum records, in its own state, how much each Oracle claim and each
+;; policy has settled, in pence.  The readers above hold each new invoice to
+;; the claim amount and the coverage limit less what is recorded.  A run
+;; adds its invoice before it asks the payment team to approve the payment
+;; (reserve-settlement), not after ABS pays, so two runs in flight for the
+;; same claim cannot both pass: the second sees the first's amount.  Each
+;; run's reservation is one transaction that reads and writes both keys, so
+;; Fabric's read-set check refuses one of two that race.  A rejected payment
+;; gives its amount back (release-settlement).
+;;
+;; A run that fails or is cancelled after the payment notice went keeps its
+;; amount recorded: the payment may already be with ABS, and an amount
+;; wrongly held only blocks a later settlement, while an amount wrongly
+;; released could pay a claim twice.  No endpoint releases such an amount
+;; yet.  A notice that does not go releases it (claim.lisp).
+;;
+;; Known limits.  The readers check early, so a claim already settled stops
+;; before anything is written, but only the reservation is binding: two
+;; runs in flight both pass the readers and both write the Guidewire
+;; approval, contract and invoices before one is refused at the
+;; reservation.  On Fabric the two reservations race through the read-set
+;; check: the loser's transaction is invalidated at commit, not refused
+;; with a reason, and as the hub does not resend a reply the run waits out
+;; its connector timeout.  The emulator runs them one after the other, so
+;; the tests see the reason.
+;; ---------------------------------------------------------------------------
+
+(defun settled-key (kind id) (format-string "cdcs:settled:{}:{}" kind id))
+
+;; The pence recorded as settled for an Oracle claim ("claim") or a policy
+;; ("policy").  Stored as decimal text: statedb keeps JSON, and a JSON
+;; number may come back as a float.
+(defun settled-cents (kind id)
+  (let ([v (statedb:get (settled-key kind id))])
+    (if (nil? v) 0 (to-int v))))
+
+(defun put-settled (kind id cents)
+  (when (< cents 0)
+    ;; Only a release of what this run reserved subtracts, so a negative
+    ;; total is a bookkeeping bug.  Fail the transaction rather than hide it.
+    (error 'settled-negative (format-string "settled amount for {} {} would be {} pence" kind id cents)))
+  (statedb:put (settled-key kind id) (to-string cents)))
+
+;; Record the claim's invoice as settled on its Oracle claim and its policy,
+;; and return nil; or return why it does not fit, and record nothing.  The
+;; checks are those of the readers, run again because another run may have
+;; reserved since this one read its replies.
+(defun reserve-settlement (claim record policy)
+  (let* ([amount (get claim "amount")]
+         [claim-id (get claim "oracle_claim_id")]
+         [policy-id (get claim "policy_id")]
+         [on-claim (settled-cents "claim" claim-id)]
+         [on-policy (settled-cents "policy" policy-id)]
+         [problem (or (cap-problem amount on-claim (get record "amount") "the Oracle claim amount")
+                      (cap-problem amount on-policy (get policy "coverage_limit")
+                                   "the policy's coverage limit"))])
+    (unless problem
+      (put-settled "claim" claim-id (+ on-claim (amount-cents amount)))
+      (put-settled "policy" policy-id (+ on-policy (amount-cents amount))))
+    problem))
+
+;; Give back what reserve-settlement recorded for the claim.
+(defun release-settlement (claim)
+  (let ([cents (amount-cents (get claim "amount"))]
+        [claim-id (get claim "oracle_claim_id")]
+        [policy-id (get claim "policy_id")])
+    (put-settled "claim" claim-id (- (settled-cents "claim" claim-id) cents))
+    (put-settled "policy" policy-id (- (settled-cents "policy" policy-id) cents))))
+
+;; ---------------------------------------------------------------------------
 ;; WF2: Guidewire claim, MySQL policy check, SharePoint ID document,
 ;; Guidewire approval
 ;; ---------------------------------------------------------------------------
@@ -271,24 +368,66 @@
 
 ;; The query asks only for an active policy, so no row means the claim's
 ;; policy is not active.  The invoice may not exceed the policy's coverage
-;; limit (#37): the demo once paid 25000.00 against a 20000.00 limit.
-(defun parse-active-policy (reply invoice-amount)
+;; limit (#37): the demo once paid 25000.00 against a 20000.00 limit.  The
+;; limit covers every claim on the policy, so what earlier runs settled on
+;; the policy counts too (#39); settled is that amount in pence.
+(defun parse-active-policy (reply invoice-amount settled)
   (match reply
     ((vector (sorted-map "STATUS" status "COVERAGE_LIMIT" limit) &rest _)
-     (check-within invoice-amount limit "the policy's coverage limit")
+     (check-within invoice-amount settled limit "the policy's coverage limit")
      (sorted-map "status" status "coverage_limit" limit))
     (_ (bad-reply "the policy is not active"))))
 
 ;; Raise a bad reply unless invoice-amount (the start request's decimal
-;; text) is at most the cap a connector returned.  Both the claim amount
-;; and the coverage limit apply, so the invoice is held to the lower one.
-;; A cap that is missing or not a number stops the claim: without it the
-;; flow cannot show the payment is covered.
-(defun check-within (invoice-amount cap what)
-  (let ([n (cap-number cap)])
-    (when (nil? n) (bad-reply "{} is not an amount: {}" what cap))
-    (when (> (amount-number invoice-amount) n)
-      (bad-reply "invoice_amount {} exceeds {} {}" invoice-amount what cap))))
+;; text), with settled pence already settled, is at most the cap a
+;; connector returned.  Both the claim amount and the coverage limit apply,
+;; so the invoice is held to the lower one.
+(defun check-within (invoice-amount settled cap what)
+  (let ([problem (cap-problem invoice-amount settled cap what)])
+    (when problem (bad-reply "{}" problem))))
+
+;; Why invoice-amount and settled pence do not fit under cap, or nil.  A cap
+;; that is missing or not a number stops the claim: without it the flow
+;; cannot show the payment is covered.  Amounts are compared in whole pence,
+;; so 0.10 settled and 0.20 invoiced fit a cap of 0.30.
+(defun cap-problem (invoice-amount settled cap what)
+  (let ([limit (cap-cents cap)]
+        [invoice (amount-cents invoice-amount)])
+    (cond
+      ((nil? limit) (format-string "{} is not an amount: {}" what cap))
+      ((nil? invoice) (format-string "invoice_amount {} is not an amount" invoice-amount))
+      ((<= (+ invoice settled) limit) ())
+      ((= settled 0) (format-string "invoice_amount {} exceeds {} {}" invoice-amount what cap))
+      (else (format-string "invoice_amount {} with {} already settled exceeds {} {}"
+                           invoice-amount (cents-text settled) what cap)))))
+
+;; An invoice amount's text in pence, or nil.  The start request allows at
+;; most two decimal places, so the text converts exactly.  More than 13
+;; whole digits would not fit an int in pence and is no demo invoice.
+(set 'pence-text (regexp:regexp-compile "^[0-9]{1,13}(\\.[0-9]{1,2})?$"))
+
+(defun amount-cents (v)
+  (when (and (string? v) (regexp:regexp-match? pence-text v))
+    (let* ([parts (string:split v ".")]
+           [frac (if (= (length parts) 2) (second parts) "0")])
+      (+ (* 100 (to-int (first parts)))
+         (if (= (length frac) 1) (* 10 (to-int frac)) (to-int frac))))))
+
+;; A cap in whole pence, rounded down: a cap of 19.9999 covers 19.99.  A
+;; cap arrives as a float or as text with any number of decimal places, so
+;; its float times 100 may fall just short of a whole penny (19.99 * 100 is
+;; 1998.9999999999998); the next penny counts when the cap reaches it.
+;; A cap of a trillion pounds or more is no demo cap and is not an amount.
+(defun cap-cents (v)
+  (let ([n (cap-number v)])
+    (when (and n (< n 1e12))
+      (let ([c (to-int (* n 100))])
+        (if (<= (/ (to-float (+ c 1)) 100) n) (+ c 1) c)))))
+
+;; Pence as decimal text: 250010 is "2500.10".
+(defun cents-text (c)
+  (let ([p (mod c 100)])
+    (format-string "{}.{}{}" (to-int (/ c 100)) (if (< p 10) "0" "") p)))
 
 ;; A cap as a database returns it: a JSON number (Oracle NUMBER) or decimal
 ;; text (MySQL DECIMAL).  Zero is a cap (nothing is covered); a negative

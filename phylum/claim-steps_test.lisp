@@ -21,7 +21,7 @@
   (assert-string= "missing policy_id, signer_email"
                   (claim-request-problem (with-fields (test-claim-request)
                                                       "policy_id" "  " "signer_email" ())))
-  (assert-string= "missing policy_id, guidewire_claim_id, invoice_amount, signer_name, signer_email, settlement_document_item_id, settlement_document_filename"
+  (assert-string= "missing policy_id, oracle_claim_id, guidewire_claim_id, invoice_amount, signer_name, signer_email, settlement_document_item_id, settlement_document_filename"
                   (claim-request-problem (sorted-map))))
 
 (test "claim-request-problem refuses the ID document as the settlement document"
@@ -52,7 +52,9 @@
        (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12
              ;; More than two decimal places: as a float it would round to
              ;; a cap it exceeds.
-             "1.005" "20000.000000000000001"))
+             "1.005" "20000.000000000000001"
+             ;; More whole digits than an amount in pence can hold.
+             "12345678901234.00"))
   (map ()
        (lambda (amount)
          (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
@@ -69,8 +71,8 @@
   ;; A quote in the policy id must reach the database as data, never as SQL.
   (let ([claim (with-fields (test-claim) "policy_id" "P'1; DROP TABLE CLAIMS")])
     (let ([oracle (event-args (oracle-claim-event claim))])
-      (assert (string:has-suffix? (get oracle "sql") "POLICY_ID = :1"))
-      (assert-equal (vector "P'1; DROP TABLE CLAIMS") (get oracle "args")))
+      (assert (string:has-suffix? (get oracle "sql") "WHERE CLAIM_ID = :1 AND POLICY_ID = :2"))
+      (assert-equal (vector "CLM-4567" "P'1; DROP TABLE CLAIMS") (get oracle "args")))
     (let ([mysql (event-args (policy-check-event claim))])
       (assert (not (string:contains? (get mysql "sql") "DROP")))
       (assert-equal (vector "P'1; DROP TABLE CLAIMS") (get mysql "args")))))
@@ -84,29 +86,57 @@
     (assert-string= "approved" (nth args 8))
     (assert-string= "5637144576" (nth args 9))))
 
-(test "parse-oracle-claim reads the first row"
-  (let ([record (parse-oracle-claim (get test-replies "oracle-claim") "2500.00")])
+(test "parse-oracle-claim reads the claim the request names"
+  (let ([record (read-oracle (get test-replies "oracle-claim") "2500.00")])
     (assert-string= "CLM-4567" (get record "claim_id"))
+    (assert-string= "Open" (get record "status"))
     (assert-string= "Doe" (get (get record "claimant") "last_name")))
-  (assert-string= "Oracle has no claim for this policy"
-                  (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "rows" (vector)) "2500.00")))))
+  (assert-string= "Oracle has no claim CLM-4567 on policy POL-8872"
+                  (bad-reply-message (lambda () (read-oracle (sorted-map "rows" (vector)) "2500.00")))))
+
+;; #39: the lookup took whichever claim on the policy Oracle returned first.
+(test "parse-oracle-claim refuses a row for another claim or policy, or several rows"
+  (assert-string= "Oracle returned claim CLM-1 on policy POL-8872, not claim CLM-4567 on policy POL-8872"
+                  (bad-reply-message (lambda () (read-oracle (oracle-row "CLAIM_ID" "CLM-1") "1.00"))))
+  (assert-string= "Oracle returned claim CLM-4567 on policy POL-1, not claim CLM-4567 on policy POL-8872"
+                  (bad-reply-message (lambda () (read-oracle (oracle-row "POLICY_ID" "POL-1") "1.00"))))
+  (let ([row (first (get (oracle-row) "rows"))])
+    (assert-string= "Oracle returned 2 rows for claim CLM-4567"
+                    (bad-reply-message (lambda () (read-oracle (sorted-map "rows" (vector row row)) "1.00"))))))
+
+;; #39: a claim Oracle had closed was settled because Guidewire said Open.
+(test "parse-oracle-claim settles only an Open claim"
+  (map ()
+       (lambda (status)
+         (assert-string= (format-string "Oracle claim CLM-4567 status {} cannot be settled" status)
+                         (bad-reply-message (lambda () (read-oracle (oracle-row "STATUS" status) "1.00")))))
+       (list "Closed" "UnderReview" "open" ())))
 
 ;; #37: the demo paid an invoice of 25000.00 on a claim of 2500.00.
 (test "parse-oracle-claim refuses an invoice above the claim amount"
   (let ([reply (get test-replies "oracle-claim")])
-    (assert-nil (bad-reply-message (lambda () (parse-oracle-claim reply "2499.99"))))
+    (assert-nil (bad-reply-message (lambda () (read-oracle reply "2499.99"))))
     (assert-string= "invoice_amount 25000.00 exceeds the Oracle claim amount 2500"
-                    (bad-reply-message (lambda () (parse-oracle-claim reply "25000.00"))))
+                    (bad-reply-message (lambda () (read-oracle reply "25000.00"))))
     (assert-string= "invoice_amount 2500.01 exceeds the Oracle claim amount 2500"
-                    (bad-reply-message (lambda () (parse-oracle-claim reply "2500.01"))))))
+                    (bad-reply-message (lambda () (read-oracle reply "2500.01"))))))
+
+;; #39: two starts for the same claim could each pay the whole claim.
+(test "parse-oracle-claim counts what is already settled on the claim"
+  (let ([reply (get test-replies "oracle-claim")])
+    (assert-nil (bad-reply-message (lambda () (read-oracle reply "1000.00" 150000))))
+    (assert-string= "invoice_amount 1000.01 with 1500.00 already settled exceeds the Oracle claim amount 2500"
+                    (bad-reply-message (lambda () (read-oracle reply "1000.01" 150000))))
+    (assert-string= "invoice_amount 0.01 with 2500.00 already settled exceeds the Oracle claim amount 2500"
+                    (bad-reply-message (lambda () (read-oracle reply "0.01" 250000))))))
 
 (test "parse-oracle-claim refuses a claim with no usable amount"
   (let ([row (first (get (get test-replies "oracle-claim") "rows"))])
     (map ()
          (lambda (amount)
            (assert (string:has-prefix?
-                     (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "rows" (vector (assoc row "AMOUNT" amount)))
-                                                                       "1.00")))
+                     (bad-reply-message (lambda () (read-oracle (sorted-map "rows" (vector (assoc row "AMOUNT" amount)))
+                                                                "1.00")))
                      "the Oracle claim amount is not an amount")))
          (list () "lots" -1 "-1.00" "1e3"))))
 
@@ -143,25 +173,48 @@
     (assert-string= "Equifax Screening Passed" (get passed "title"))))
 
 (test "parse-active-policy needs a row"
-  (assert-string= "Active" (get (parse-active-policy (get test-replies "policy-check") "2500.00") "status"))
+  (assert-string= "Active" (get (parse-active-policy (get test-replies "policy-check") "2500.00" 0) "status"))
   (assert-string= "the policy is not active"
-                  (bad-reply-message (lambda () (parse-active-policy (vector) "2500.00")))))
+                  (bad-reply-message (lambda () (parse-active-policy (vector) "2500.00" 0)))))
 
 ;; #37: the demo paid 25000.00 against a 20000.00 coverage limit.
 (test "parse-active-policy refuses an invoice above the coverage limit"
   (let ([reply (get test-replies "policy-check")])
-    (assert-nil (bad-reply-message (lambda () (parse-active-policy reply "20000.00"))))
+    (assert-nil (bad-reply-message (lambda () (parse-active-policy reply "20000.00" 0))))
     (assert-string= "invoice_amount 25000.00 exceeds the policy's coverage limit 20000.00"
-                    (bad-reply-message (lambda () (parse-active-policy reply "25000.00"))))
+                    (bad-reply-message (lambda () (parse-active-policy reply "25000.00" 0))))
     ;; A zero limit covers nothing; a missing one cannot show the payment
     ;; is covered.
     (assert-string= "invoice_amount 0.01 exceeds the policy's coverage limit 0"
                     (bad-reply-message (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" 0))
-                                                                       "0.01"))))
+                                                                       "0.01" 0))))
     (assert (string:has-prefix?
               (bad-reply-message (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" ()))
-                                                                 "1.00")))
+                                                                 "1.00" 0)))
               "the policy's coverage limit is not an amount"))))
+
+;; #39: the coverage limit covers every claim on the policy.
+(test "parse-active-policy counts what is already settled on the policy"
+  (let ([reply (get test-replies "policy-check")])
+    (assert-nil (bad-reply-message (lambda () (parse-active-policy reply "2500.00" 1750000))))
+    (assert-string= "invoice_amount 2500.00 with 17500.01 already settled exceeds the policy's coverage limit 20000.00"
+                    (bad-reply-message (lambda () (parse-active-policy reply "2500.00" 1750001))))))
+
+(test "amounts compare in whole pence"
+  (assert= 250010 (amount-cents "2500.1"))
+  (assert= 5 (amount-cents "0.05"))
+  (assert= 1200 (amount-cents "12"))
+  (assert-nil (amount-cents "1e3"))
+  (assert-nil (amount-cents "12345678901234"))
+  (assert= 1999 (cap-cents 19.99))
+  (assert= 1999 (cap-cents "19.9999"))
+  (assert= 30 (cap-cents 0.3))
+  (assert= 0 (cap-cents 0))
+  (assert-nil (cap-cents 1e15))
+  (assert-string= "2500.10" (cents-text 250010))
+  (assert-string= "0.05" (cents-text 5))
+  ;; 0.1 + 0.2 is not 0.3 in floats; in pence it is.
+  (assert-nil (cap-problem "0.20" 10 0.3 "the cap")))
 
 ;; #37: the ID document came back as the settlement document.
 (test "parse-document refuses a file other than the settlement document"
@@ -180,7 +233,7 @@
 (test "a coverage limit with more decimal places is still an amount"
   (assert-nil (bad-reply-message
                 (lambda () (parse-active-policy (vector (sorted-map "STATUS" "Active" "COVERAGE_LIMIT" "2500.0000"))
-                                                "2500.00")))))
+                                                "2500.00" 0)))))
 
 (test "parse-guidewire-claim lets only an open claim settle"
   (map ()
@@ -244,8 +297,8 @@
              parse-esignature-contract parse-salesforce-record-id
              parse-zoho-invoice parse-servicenow-incident parse-sap-payment))
   ;; Readers that take an argument as well as the reply.
-  (assert (string? (bad-reply-message (lambda () (parse-oracle-claim (sorted-map "unexpected" true) "1.00")))))
-  (assert (string? (bad-reply-message (lambda () (parse-active-policy (sorted-map "unexpected" true) "1.00")))))
+  (assert (string? (bad-reply-message (lambda () (read-oracle (sorted-map "unexpected" true) "1.00")))))
+  (assert (string? (bad-reply-message (lambda () (parse-active-policy (sorted-map "unexpected" true) "1.00" 0)))))
   (assert (string? (bad-reply-message (lambda () (parse-document (sorted-map "unexpected" true) "f.txt"))))))
 
 (test "with-fields copies and does not change its input"
