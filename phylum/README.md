@@ -90,10 +90,18 @@ Rules the steps apply:
   coverage limit apply to the invoice plus that amount, so two starts
   for one claim with different request keys cannot each pay it in full
   (#39).  A run records its invoice in one transaction just before it
-  asks the payment team to approve, checking the caps again; a rejected
-  payment gives the amount back.  A run that fails or is cancelled after
-  that keeps its amount recorded, because the payment may already be
-  with ABS.  No endpoint releases such an amount yet.
+  asks the payment team to approve, checking the caps again.  A payment
+  ABS rejects, or a payment notice that does not go, gives the amount
+  back.  A run that fails or is cancelled after the notice went keeps
+  its amount recorded, because the payment may already be with ABS.  No
+  endpoint releases such an amount yet.  Two runs in flight for one
+  claim both pass the early checks and only one passes the reservation;
+  on Fabric the loser's reservation is invalidated at commit, so that run
+  waits out its connector timeout (see "Settled amounts" in
+  claim-steps.lisp).
+- The mocked Oracle always returns claim CLM-4567 for 2500.00, so a
+  network settles it once: run the integration tests again on a fresh
+  network (`make down up`), not on the one they already paid on.
 - The Guidewire claim must be `Open`, `UnderReview` or `Approved`.
   `Rejected`, `Closed` and any status the flow does not know fail the
   run.

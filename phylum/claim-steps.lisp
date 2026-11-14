@@ -78,7 +78,8 @@
     (cond
       ((not (empty? missing))
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
-      ((nil? (amount-number (get req "invoice_amount")))
+      ((or (nil? (amount-number (get req "invoice_amount")))
+           (nil? (amount-cents (get req "invoice_amount"))))
        (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
       ;; The demo once fetched the ID document a second time as the
       ;; settlement document (#37), so ServiceNow reviewers saw the wrong
@@ -115,7 +116,7 @@
 (defun new-claim (claim-id req)
   (sorted-map
     "claim_id"           claim-id
-    "policy_id"          (get req "policy_id")
+    "policy_id"          (string:trim-space (to-string (get req "policy_id")))
     "oracle_claim_id"    (string:trim-space (to-string (get req "oracle_claim_id")))
     "guidewire_claim_id" (get req "guidewire_claim_id")
     "amount"             (get req "invoice_amount")
@@ -268,10 +269,21 @@
 ;; Fabric's read-set check refuses one of two that race.  A rejected payment
 ;; gives its amount back (release-settlement).
 ;;
-;; A run that fails or is cancelled after it reserved keeps its amount
-;; recorded: the payment may already be with ABS, and an amount wrongly
-;; held only blocks a later settlement, while an amount wrongly released
-;; could pay a claim twice.  No endpoint releases such an amount yet.
+;; A run that fails or is cancelled after the payment notice went keeps its
+;; amount recorded: the payment may already be with ABS, and an amount
+;; wrongly held only blocks a later settlement, while an amount wrongly
+;; released could pay a claim twice.  No endpoint releases such an amount
+;; yet.  A notice that does not go releases it (claim.lisp).
+;;
+;; Known limits.  The readers check early, so a claim already settled stops
+;; before anything is written, but only the reservation is binding: two
+;; runs in flight both pass the readers and both write the Guidewire
+;; approval, contract and invoices before one is refused at the
+;; reservation.  On Fabric the two reservations race through the read-set
+;; check: the loser's transaction is invalidated at commit, not refused
+;; with a reason, and as the hub does not resend a reply the run waits out
+;; its connector timeout.  The emulator runs them one after the other, so
+;; the tests see the reason.
 ;; ---------------------------------------------------------------------------
 
 (defun settled-key (kind id) (format-string "cdcs:settled:{}:{}" kind id))
@@ -283,9 +295,12 @@
   (let ([v (statedb:get (settled-key kind id))])
     (if (nil? v) 0 (to-int v))))
 
-(defun add-settled (kind id cents)
-  (let ([total (+ (settled-cents kind id) cents)])
-    (statedb:put (settled-key kind id) (to-string (if (< total 0) 0 total)))))
+(defun put-settled (kind id cents)
+  (when (< cents 0)
+    ;; Only a release of what this run reserved subtracts, so a negative
+    ;; total is a bookkeeping bug.  Fail the transaction rather than hide it.
+    (error 'settled-negative (format-string "settled amount for {} {} would be {} pence" kind id cents)))
+  (statedb:put (settled-key kind id) (to-string cents)))
 
 ;; Record the claim's invoice as settled on its Oracle claim and its policy,
 ;; and return nil; or return why it does not fit, and record nothing.  The
@@ -295,20 +310,23 @@
   (let* ([amount (get claim "amount")]
          [claim-id (get claim "oracle_claim_id")]
          [policy-id (get claim "policy_id")]
-         [problem (or (cap-problem amount (settled-cents "claim" claim-id) (get record "amount")
-                                   "the Oracle claim amount")
-                      (cap-problem amount (settled-cents "policy" policy-id) (get policy "coverage_limit")
+         [on-claim (settled-cents "claim" claim-id)]
+         [on-policy (settled-cents "policy" policy-id)]
+         [problem (or (cap-problem amount on-claim (get record "amount") "the Oracle claim amount")
+                      (cap-problem amount on-policy (get policy "coverage_limit")
                                    "the policy's coverage limit"))])
     (unless problem
-      (add-settled "claim" claim-id (amount-cents amount))
-      (add-settled "policy" policy-id (amount-cents amount)))
+      (put-settled "claim" claim-id (+ on-claim (amount-cents amount)))
+      (put-settled "policy" policy-id (+ on-policy (amount-cents amount))))
     problem))
 
 ;; Give back what reserve-settlement recorded for the claim.
 (defun release-settlement (claim)
-  (let ([cents (amount-cents (get claim "amount"))])
-    (add-settled "claim" (get claim "oracle_claim_id") (- cents))
-    (add-settled "policy" (get claim "policy_id") (- cents))))
+  (let ([cents (amount-cents (get claim "amount"))]
+        [claim-id (get claim "oracle_claim_id")]
+        [policy-id (get claim "policy_id")])
+    (put-settled "claim" claim-id (- (settled-cents "claim" claim-id) cents))
+    (put-settled "policy" policy-id (- (settled-cents "policy" policy-id) cents))))
 
 ;; ---------------------------------------------------------------------------
 ;; WF2: Guidewire claim, MySQL policy check, SharePoint ID document,

@@ -215,3 +215,23 @@
     (assert-string= "failed" (claim-state run))
     (assert (string:contains? (json:dump-string (claim-error run))
                               "invoice_amount 2500.00 with 2500.00 already settled exceeds the policy's coverage limit 4000.00"))))
+
+(test "a payment notice that does not go gives the amount back"
+  (let ([run (start-test-claim "notice-fails" (settled-test-request "CLM-S6" "POL-S6" "2500.00"))])
+    (flow-test:reply 'claim run (oracle-row "CLAIM_ID" "CLM-S6" "POLICY_ID" "POL-S6"))
+    (answer-connectors run "id-document")
+    (flow-test:reply 'claim run (id-document-reply "CLM-S6"))
+    (assert-string= "contract-signed" (answer-connectors run))
+    (flow-test:input 'claim 'contract-signed run (sorted-map "signed_by" "jack.clarke@example.com"))
+    (assert-string= "payment-notice" (answer-connectors run "payment-notice"))
+    (assert= 250000 (settled-cents "claim" "CLM-S6"))
+    (flow-test:reply 'claim run (sorted-map "status" "failed"))
+    (assert-string= "failed" (claim-state run))
+    (assert= 0 (settled-cents "claim" "CLM-S6"))
+    (assert= 0 (settled-cents "policy" "POL-S6"))))
+
+(test "a payment status the flow does not know keeps the amount recorded"
+  (let ([run (claim-to-payment-status "unknown-status" (settled-test-request "CLM-S7" "POL-S7" "2500.00"))])
+    (flow-test:input 'claim 'payment-status run (sorted-map "payment_id" "PAY-S7" "status" "processing"))
+    (assert-string= "done" (claim-state run))
+    (assert= 250000 (settled-cents "claim" "CLM-S7"))))

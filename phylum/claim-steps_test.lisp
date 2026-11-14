@@ -52,7 +52,9 @@
        (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12
              ;; More than two decimal places: as a float it would round to
              ;; a cap it exceeds.
-             "1.005" "20000.000000000000001"))
+             "1.005" "20000.000000000000001"
+             ;; More whole digits than an amount in pence can hold.
+             "12345678901234.00"))
   (map ()
        (lambda (amount)
          (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
