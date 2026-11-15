@@ -29,7 +29,7 @@ connectors:
                           "CLAIM_ID": "CLM-4567",
                           "POLICY_ID": "POL-8872",
                           "AMOUNT": 2500.00,
-                          "STATUS": "UnderReview",
+                          "STATUS": "Open",
                           "CLAIMANT_FIRST_NAME": "John",
                           "CLAIMANT_LAST_NAME": "Doe",
                           "CLAIMANT_DOB": "1980-05-15",

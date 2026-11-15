@@ -48,8 +48,12 @@ type StartClaimRequest struct {
 	// Required: the settlement document's file name.  SharePoint picks the
 	// parser by its extension (.txt, .pdf, .docx, ...).
 	SettlementDocumentFilename string `protobuf:"bytes,11,opt,name=settlement_document_filename,json=settlementDocumentFilename,proto3" json:"settlement_document_filename,omitempty"`
-	unknownFields              protoimpl.UnknownFields
-	sizeCache                  protoimpl.SizeCache
+	// Required: the Oracle CLAIMS row's CLAIM_ID.  The claim must be on
+	// policy_id and Open in Oracle.  The invoice, with what earlier claims
+	// settled on it, may not exceed its AMOUNT.
+	OracleClaimId string `protobuf:"bytes,12,opt,name=oracle_claim_id,json=oracleClaimId,proto3" json:"oracle_claim_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StartClaimRequest) Reset() {
@@ -155,6 +159,13 @@ func (x *StartClaimRequest) GetSettlementDocumentItemId() string {
 func (x *StartClaimRequest) GetSettlementDocumentFilename() string {
 	if x != nil {
 		return x.SettlementDocumentFilename
+	}
+	return ""
+}
+
+func (x *StartClaimRequest) GetOracleClaimId() string {
+	if x != nil {
+		return x.OracleClaimId
 	}
 	return ""
 }
@@ -907,7 +918,7 @@ var File_pb_v1_oracle_proto protoreflect.FileDescriptor
 
 const file_pb_v1_oracle_proto_rawDesc = "" +
 	"\n" +
-	"\x12pb/v1/oracle.proto\x12\x05pb.v1\x1a\x19common/v1/exception.proto\x1a\x1cgoogle/protobuf/struct.proto\"\xda\x03\n" +
+	"\x12pb/v1/oracle.proto\x12\x05pb.v1\x1a\x19common/v1/exception.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x82\x04\n" +
 	"\x11StartClaimRequest\x12\x1b\n" +
 	"\tpolicy_id\x18\x01 \x01(\tR\bpolicyId\x12,\n" +
 	"\x12guidewire_claim_id\x18\x02 \x01(\tR\x10guidewireClaimId\x12%\n" +
@@ -923,7 +934,8 @@ const file_pb_v1_oracle_proto_rawDesc = "" +
 	"requestKey\x12=\n" +
 	"\x1bsettlement_document_item_id\x18\n" +
 	" \x01(\tR\x18settlementDocumentItemId\x12@\n" +
-	"\x1csettlement_document_filename\x18\v \x01(\tR\x1asettlementDocumentFilename\",\n" +
+	"\x1csettlement_document_filename\x18\v \x01(\tR\x1asettlementDocumentFilename\x12&\n" +
+	"\x0foracle_claim_id\x18\f \x01(\tR\roracleClaimId\",\n" +
 	"\x0fGetClaimRequest\x12\x19\n" +
 	"\bclaim_id\x18\x01 \x01(\tR\aclaimId\"p\n" +
 	"\x15ContractSignedRequest\x12\x19\n" +

@@ -13,6 +13,7 @@ tests:
     body: |
       {
         "policy_id": "POL-8872",
+        "oracle_claim_id": "CLM-4567",
         "guidewire_claim_id": "GW-1001",
         "invoice_amount": "2500.00",
         "signer_name": "Jack Clarke",
@@ -42,7 +43,7 @@ tests:
       pm.test("refused", () => {
           let data = pm.response.json();
           console.log(data);
-          pm.expect(data.exception.description).to.equal("missing signer_name, signer_email, settlement_document_item_id, settlement_document_filename");
+          pm.expect(data.exception.description).to.equal("missing oracle_claim_id, signer_name, signer_email, settlement_document_item_id, settlement_document_filename");
       });
 
   - name: "Wait for contract-signed"

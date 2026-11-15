@@ -674,6 +674,10 @@
         "settlementDocumentFilename": {
           "type": "string",
           "description": "Required: the settlement document's file name.  SharePoint picks the\nparser by its extension (.txt, .pdf, .docx, ...)."
+        },
+        "oracleClaimId": {
+          "type": "string",
+          "description": "Required: the Oracle CLAIMS row's CLAIM_ID.  The claim must be on\npolicy_id and Open in Oracle.  The invoice, with what earlier claims\nsettled on it, may not exceed its AMOUNT."
         }
       },
       "description": "Request to start a claim.  The phylum fails the start, and writes\nnothing, when a required field is missing."

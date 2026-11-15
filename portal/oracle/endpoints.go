@@ -66,7 +66,7 @@ func refusal(err error) (code, message string, ok bool) {
 // must match claim-required-fields in phylum/claim-steps.lisp
 // (TestStartRequiredFieldsMatchPhylum).
 var startRequiredFields = []string{
-	"policy_id", "guidewire_claim_id", "invoice_amount", "signer_name", "signer_email",
+	"policy_id", "oracle_claim_id", "guidewire_claim_id", "invoice_amount", "signer_name", "signer_email",
 	"settlement_document_item_id", "settlement_document_filename",
 }
 
@@ -136,6 +136,7 @@ func missing(m map[string]string, names ...string) string {
 func (p *portal) StartClaim(ctx context.Context, req *pb.StartClaimRequest) (*pb.StartClaimResponse, error) {
 	start := map[string]string{
 		"policy_id":          req.GetPolicyId(),
+		"oracle_claim_id":    req.GetOracleClaimId(),
 		"guidewire_claim_id": req.GetGuidewireClaimId(),
 		"invoice_amount":     req.GetInvoiceAmount(),
 		"signer_name":        req.GetSignerName(),

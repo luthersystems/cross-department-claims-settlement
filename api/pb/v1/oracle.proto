@@ -134,6 +134,10 @@ message StartClaimRequest {
   // Required: the settlement document's file name.  SharePoint picks the
   // parser by its extension (.txt, .pdf, .docx, ...).
   string settlement_document_filename = 11;
+  // Required: the Oracle CLAIMS row's CLAIM_ID.  The claim must be on
+  // policy_id and Open in Oracle.  The invoice, with what earlier claims
+  // settled on it, may not exceed its AMOUNT.
+  string oracle_claim_id = 12;
 }
 
 // Request to read a claim.
