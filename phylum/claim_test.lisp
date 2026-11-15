@@ -234,4 +234,30 @@
   (let ([run (claim-to-payment-status "unknown-status" (settled-test-request "CLM-S7" "POL-S7" "2500.00"))])
     (flow-test:input 'claim 'payment-status run (sorted-map "payment_id" "PAY-S7" "status" "processing"))
     (assert-string= "done" (claim-state run))
+    (assert-string= "payment status processing" (get (claim-result run) "decision"))
     (assert-string= "2500.00" (settled-text "claim" "CLM-S7"))))
+
+(test "a payment notice the hub cannot confirm keeps the amount recorded"
+  ;; Teams may have posted it, so the payment team may pay.
+  (let ([run (start-test-claim "notice-error" (settled-test-request "CLM-S8" "POL-S8" "2500.00"))])
+    (flow-test:reply 'claim run (oracle-row "CLAIM_ID" "CLM-S8" "POLICY_ID" "POL-S8"))
+    (answer-connectors run "id-document")
+    (flow-test:reply 'claim run (id-document-reply "CLM-S8"))
+    (assert-string= "contract-signed" (answer-connectors run))
+    (flow-test:input 'claim 'contract-signed run (sorted-map "signed_by" "jack.clarke@example.com"))
+    (assert-string= "payment-notice" (answer-connectors run "payment-notice"))
+    (flow-test:reply-error 'claim run "Teams is down")
+    (assert-string= "failed" (claim-state run))
+    (assert (string:contains? (json:dump-string (claim-error run)) "payment notice connector-error"))
+    (assert-string= "2500.00" (settled-text "claim" "CLM-S8"))))
+
+(test "a release of more than is recorded fails the run with the reason"
+  (let ([run (claim-to-payment-status "lost-record" (settled-test-request "CLM-S9" "POL-S9" "2500.00"))])
+    (statedb:del (settled-key "claim" "CLM-S9"))
+    (flow-test:input 'claim 'payment-status run (sorted-map "payment_id" "PAY-S9" "status" "rejected"))
+    (assert-string= "failed" (claim-state run))
+    (assert (string:contains? (json:dump-string (claim-error run)) "cannot give back 2500.00 settled on claim CLM-S9"))
+    (assert-string= "2500.00" (settled-text "policy" "POL-S9"))))
+
+(test "an Oracle id padded by a CHAR column still matches"
+  (assert-string= "CLM-4567" (get (read-oracle (oracle-row "CLAIM_ID" "CLM-4567   " "POLICY_ID" "POL-8872  ") "1.00") "claim_id")))

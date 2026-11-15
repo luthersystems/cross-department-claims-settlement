@@ -107,18 +107,19 @@
       ;; approves or rejects.
       (let ([problem (reserve-settlement claim record policy)])
         (when problem (fail problem)))
-      ;; The notice is what asks for the payment, so when it does not go
-      ;; no payment can have started: give the amount back before failing.
+      ;; The notice is what asks for the payment.  When Teams answers that
+      ;; it did not post it, no payment can have started: give the amount
+      ;; back before failing.  A timeout or a hub error does not show
+      ;; that, since Teams may have posted it, so the amount stays.
       ;; Like every step here, the runtime stamps the step key as the
       ;; event's idempotency key; Teams does not read one from the payload.
       (let ([notice (read-reply (await-connector 'payment-notice (payment-notice-event claim thread invoice) ; nolint:flow-event-without-key
                                                  :on-error (lambda (e)
-                                                             (sorted-map "error" (format-string "{}: {}" (get e "kind")
-                                                                                                (get e "message")))))
+                                                             (fail (format-string "payment notice {}: {}" (get e "kind")
+                                                                                  (get e "message")))))
                                 parse-sent)])
         (when (get notice "problem")
-          (release-settlement claim)
-          (fail (get notice "problem"))))
+          (fail (or (release-settlement claim record) (get notice "problem")))))
       (let ([approved-by (get (await-input 'payment-approved :from ("Org1MSP")) "signed_by")]
             [status ()])
         (while (or (nil? status) (equal? (payment-decision status) "pending"))
@@ -142,10 +143,13 @@
                          "payment_id"          (get status "payment_id"))])
           ;; Only a rejection gives the amount back: a status the flow does
           ;; not know may still end in a payment.
-          (unless (equal? (payment-decision status) "approved")
-            (when (equal? (payment-decision status) "rejected")
-              (release-settlement claim))
+          (when (equal? (payment-decision status) "rejected")
+            (let ([problem (release-settlement claim record)])
+              (when problem (fail problem)))
             (done (with-fields summary "decision" "payment rejected")))
+          (unless (equal? (payment-decision status) "approved")
+            (done (with-fields summary "decision"
+                               (format-string "payment status {}" (get status "status")))))
 
           ;; WF5: post the payment journal in D365FO, then record the
           ;; payment and the journal's id in SAP HANA.

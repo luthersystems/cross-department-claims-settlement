@@ -92,8 +92,10 @@ Rules the steps apply:
   for one claim with different request keys cannot each pay it in full
   (#39).  A run records its invoice in one transaction just before it
   asks the payment team to approve, checking the caps again.  A payment
-  ABS rejects, or a payment notice that does not go, gives the amount
-  back.  A run that fails or is cancelled after the notice went keeps
+  ABS rejects, or a payment notice Teams says it did not post, gives the
+  amount back.  A notice that times out or meets a hub error keeps it,
+  as does a payment status the flow does not know (the run ends with
+  decision `payment status <status>`).  A run that fails or is cancelled after the notice went keeps
   its amount recorded, because the payment may already be with ABS.  No
   endpoint releases such an amount yet.  Two runs in flight for one
   claim both pass the early checks and only one passes the reservation;

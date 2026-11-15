@@ -87,9 +87,8 @@
 ;; them record different amounts, and Inf cannot go into a JSON event.
 ;; At most two decimal places, as GBP has: Zoho gets the amount as a float,
 ;; and "20000.000000000000001" would round to 20000.00 there while SAP
-;; recorded the longer text.  The second
-;; regexp asks for a digit other than 0, which in this form means more than
-;; zero.
+;; recorded the longer text.  The second regexp asks for a digit other
+;; than 0, which in this form means more than zero.
 (set 'invoice-amount-schema
      (s:make-validator "invoice-amount" s:string
                        (s:regexp "^[0-9]+(\\.[0-9]{1,2})?$")
@@ -203,13 +202,15 @@
                         "CLAIMANT_FIRST_NAME" first-name "CLAIMANT_LAST_NAME" last-name
                         "CLAIMANT_DOB" dob "CLAIMANT_ADDRESS" address
                         "CLAIMANT_NATIONAL_ID" national-id) row])
-       (unless (and (equal? (to-string id) oracle-claim-id) (equal? (to-string policy) policy-id))
+       ;; Trimmed: a CHAR column pads its value with spaces.
+       (unless (and (equal? (string:trim-space (to-string id)) oracle-claim-id)
+                    (equal? (string:trim-space (to-string policy)) policy-id))
          (bad-reply "Oracle returned claim {} on policy {}, not claim {} on policy {}"
                     id policy oracle-claim-id policy-id))
        (unless (equal? status settleable-oracle-status)
          (bad-reply "Oracle claim {} status {} cannot be settled" id status))
        (check-within invoice-amount settled amount "the Oracle claim amount")
-       (sorted-map "claim_id" id "amount" amount "status" status
+       (sorted-map "claim_id" (string:trim-space (to-string id)) "amount" amount "status" status
                    "claimant" (sorted-map "first_name" first-name "last_name" last-name "dob" dob
                                           "address" address "national_id" national-id))))
     ((sorted-map "rows" (vector)) (bad-reply "Oracle has no claim {} on policy {}" oracle-claim-id policy-id))
@@ -296,7 +297,9 @@
 ;; reservation.  On Fabric the two reservations race through the read-set
 ;; check: the loser's transaction is invalidated at commit, not refused
 ;; with a reason, and as the hub does not resend a reply the run waits out
-;; its connector timeout.  The emulator runs them one after the other, so
+;; its connector timeout.  The Oracle and policy replies read the settled
+;; keys too, so a reservation that commits in the same block invalidates
+;; them the same way.  The emulator runs them one after the other, so
 ;; the tests see the reason.
 ;; ---------------------------------------------------------------------------
 
@@ -309,20 +312,17 @@
   (decimal:to-decimal (or (statedb:get (settled-key kind id)) "0")))
 
 (defun put-settled (kind id amount)
-  (when (decimal:decimal< amount 0)
-    ;; Only a release of what this run reserved subtracts, so a negative
-    ;; total is a bookkeeping bug.  Fail the transaction rather than hide it.
-    (error 'settled-negative (format-string "settled amount for {} {} would be {}"
-                                            kind id (decimal:decimal-string amount))))
   (statedb:put (settled-key kind id) (decimal:decimal-string amount)))
 
 ;; Record the claim's invoice as settled on its Oracle claim and its policy,
 ;; and return nil; or return why it does not fit, and record nothing.  The
 ;; checks are those of the readers, run again because another run may have
-;; reserved since this one read its replies.
+;; reserved since this one read its replies.  The Oracle claim id is the
+;; record's: the reader made it the request's, and a run started before
+;; requests named the claim has the claim Oracle returned.
 (defun reserve-settlement (claim record policy)
   (let* ([amount (get claim "amount")]
-         [claim-id (get claim "oracle_claim_id")]
+         [claim-id (string:trim-space (to-string (get record "claim_id")))]
          [policy-id (get claim "policy_id")]
          [on-claim (settled-amount "claim" claim-id)]
          [on-policy (settled-amount "policy" policy-id)]
@@ -334,13 +334,24 @@
       (put-settled "policy" policy-id (decimal:decimal+ on-policy amount)))
     problem))
 
-;; Give back what reserve-settlement recorded for the claim.
-(defun release-settlement (claim)
-  (let ([amount (get claim "amount")]
-        [claim-id (get claim "oracle_claim_id")]
-        [policy-id (get claim "policy_id")])
-    (put-settled "claim" claim-id (decimal:decimal- (settled-amount "claim" claim-id) amount))
-    (put-settled "policy" policy-id (decimal:decimal- (settled-amount "policy" policy-id) amount))))
+;; Give back what reserve-settlement recorded for the claim, and return nil.
+;; A total that would go below zero means the record lost this run's
+;; reservation: return why, and change nothing, so the flow fails the run
+;; with the reason instead of hiding the bookkeeping error.  (Raising here
+;; would fail a reply transaction, which the hub does not resend.)
+(defun release-settlement (claim record)
+  (let* ([amount (get claim "amount")]
+         [claim-id (string:trim-space (to-string (get record "claim_id")))]
+         [policy-id (get claim "policy_id")]
+         [on-claim (decimal:decimal- (settled-amount "claim" claim-id) amount)]
+         [on-policy (decimal:decimal- (settled-amount "policy" policy-id) amount)])
+    (if (or (decimal:decimal< on-claim 0) (decimal:decimal< on-policy 0))
+      (format-string "cannot give back {} settled on claim {} and policy {}: less is recorded"
+                     amount claim-id policy-id)
+      (progn
+        (put-settled "claim" claim-id on-claim)
+        (put-settled "policy" policy-id on-policy)
+        ()))))
 
 ;; ---------------------------------------------------------------------------
 ;; WF2: Guidewire claim, MySQL policy check, SharePoint ID document,
