@@ -82,11 +82,12 @@ Rules the steps apply:
 - The invoice may not exceed the Oracle claim `AMOUNT` or the policy's
   `COVERAGE_LIMIT`; both apply, so the lower one wins.  A cap that is
   missing or not a number fails the run too.  Both checks run before
-  Guidewire marks the claim for settlement.  Amounts are compared in
-  whole pence; a cap with more decimal places is rounded down.
+  Guidewire marks the claim for settlement.  Amounts are compared as
+  decimals (the substrate `decimal` package), so a cap's extra decimal
+  places count exactly.
 - The phylum records, in its state, the amount settled on each Oracle
   claim and each policy (`cdcs:settled:claim:<id>` and
-  `cdcs:settled:policy:<id>`, in pence).  The claim amount and the
+  `cdcs:settled:policy:<id>`, as decimal text).  The claim amount and the
   coverage limit apply to the invoice plus that amount, so two starts
   for one claim with different request keys cannot each pay it in full
   (#39).  A run records its invoice in one transaction just before it

@@ -1,6 +1,6 @@
 ;; Copyright © 2025 Luther Systems, Ltd. All right reserved.
 ;; Shared helpers for the claim tests: a start request, the connector replies
-;; the mocked hub gives (fabric/connectorhub.yaml), and a driver that answers
+;; the mocked hub gives (fabric/connectorhub_cdcs.yaml), and a driver that answers
 ;; each step in order.
 (in-package 'cdcs)
 (use-package 'testing)
@@ -60,6 +60,10 @@
   (sorted-map "type" "text"
               "content" (vector (to-string (base64:encode (format-string "Claim ID: {}" claim-id))))
               "line_count" 1))
+
+;; The amount settled on an Oracle claim or a policy, with two places.
+(defun settled-text (kind id)
+  (decimal:decimal-string (settled-amount kind id) :places 2))
 
 (defun read-oracle (reply invoice &optional settled)
   (parse-oracle-claim reply "CLM-4567" "POL-8872" invoice (or settled 0)))

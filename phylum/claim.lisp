@@ -68,7 +68,7 @@
          ;; transaction, so they include every reservation made before it.
          [record (reply oracle-claim (oracle-claim-event claim) parse-oracle-claim
                         (get claim "oracle_claim_id") (get claim "policy_id") (get claim "amount")
-                        (settled-cents "claim" (get claim "oracle_claim_id")))]
+                        (settled-amount "claim" (get claim "oracle_claim_id")))]
          [screening (reply equifax-screening (equifax-event claim (get record "claimant"))
                            parse-screening)]
          [thread (reply teams-thread (teams-thread-event claim screening) parse-teams-thread)]
@@ -81,7 +81,7 @@
          ;; Guidewire marks it for settlement.
          [guidewire (reply guidewire-claim (guidewire-claim-event claim) parse-guidewire-claim)]
          [policy (reply policy-check (policy-check-event claim) parse-active-policy (get claim "amount")
-                        (settled-cents "policy" (get claim "policy_id")))]
+                        (settled-amount "policy" (get claim "policy_id")))]
          [id-check (reply id-document (id-document-event) parse-id-document (get record "claim_id"))]
          [approval (reply guidewire-approval (guidewire-approval-event claim) parse-guidewire-approval)]
 

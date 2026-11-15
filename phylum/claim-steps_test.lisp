@@ -24,6 +24,18 @@
   (assert-string= "missing policy_id, oracle_claim_id, guidewire_claim_id, invoice_amount, signer_name, signer_email, settlement_document_item_id, settlement_document_filename"
                   (claim-request-problem (sorted-map))))
 
+(test "a field of only white space is missing, a value that is not text is not"
+  ;; Blank as string:trim-space reads it: \v and the Unicode spaces too.
+  (map ()
+       (lambda (v)
+         (assert-string= "missing policy_id"
+                         (claim-request-problem (with-fields (test-claim-request) "policy_id" v))))
+       (list "" " " "\t\n\r" "\v" "\u00a0" "\u3000 \u2028"))
+  (assert-nil (claim-request-problem (with-fields (test-claim-request) "policy_id" " a\u00a0")))
+  ;; A number is given: the amount check, not the missing check, refuses it.
+  (assert-string= "invoice_amount 12 is not a positive decimal amount"
+                  (claim-request-problem (with-fields (test-claim-request) "invoice_amount" 12))))
+
 (test "claim-request-problem refuses the ID document as the settlement document"
   (map ()
        (lambda (item-id)
@@ -52,13 +64,11 @@
        (list "abc" "0" "-5" "0.00" "Inf" "+Infinity" "NaN" "0x1p4" "1e3" " 12" "12." 12
              ;; More than two decimal places: as a float it would round to
              ;; a cap it exceeds.
-             "1.005" "20000.000000000000001"
-             ;; More whole digits than an amount in pence can hold.
-             "12345678901234.00"))
+             "1.005" "20000.000000000000001" "00" "0.0" "000.00"))
   (map ()
        (lambda (amount)
          (assert-nil (claim-request-problem (with-fields (test-claim-request) "invoice_amount" amount))))
-       (list "12" "25000.00" "0.5")))
+       (list "12" "25000.00" "0.5" "0.01" "00.10" "100")))
 
 (test "new-claim fills blank fields with the demo defaults"
   (let ([claim (new-claim "run-1" (with-fields (test-claim-request) "recipient_name" ""))])
@@ -124,11 +134,11 @@
 ;; #39: two starts for the same claim could each pay the whole claim.
 (test "parse-oracle-claim counts what is already settled on the claim"
   (let ([reply (get test-replies "oracle-claim")])
-    (assert-nil (bad-reply-message (lambda () (read-oracle reply "1000.00" 150000))))
+    (assert-nil (bad-reply-message (lambda () (read-oracle reply "1000.00" "1500.00"))))
     (assert-string= "invoice_amount 1000.01 with 1500.00 already settled exceeds the Oracle claim amount 2500"
-                    (bad-reply-message (lambda () (read-oracle reply "1000.01" 150000))))
+                    (bad-reply-message (lambda () (read-oracle reply "1000.01" "1500.00"))))
     (assert-string= "invoice_amount 0.01 with 2500.00 already settled exceeds the Oracle claim amount 2500"
-                    (bad-reply-message (lambda () (read-oracle reply "0.01" 250000))))))
+                    (bad-reply-message (lambda () (read-oracle reply "0.01" "2500.00"))))))
 
 (test "parse-oracle-claim refuses a claim with no usable amount"
   (let ([row (first (get (get test-replies "oracle-claim") "rows"))])
@@ -196,25 +206,20 @@
 ;; #39: the coverage limit covers every claim on the policy.
 (test "parse-active-policy counts what is already settled on the policy"
   (let ([reply (get test-replies "policy-check")])
-    (assert-nil (bad-reply-message (lambda () (parse-active-policy reply "2500.00" 1750000))))
+    (assert-nil (bad-reply-message (lambda () (parse-active-policy reply "2500.00" "17500.00"))))
     (assert-string= "invoice_amount 2500.00 with 17500.01 already settled exceeds the policy's coverage limit 20000.00"
-                    (bad-reply-message (lambda () (parse-active-policy reply "2500.00" 1750001))))))
+                    (bad-reply-message (lambda () (parse-active-policy reply "2500.00" "17500.01"))))))
 
-(test "amounts compare in whole pence"
-  (assert= 250010 (amount-cents "2500.1"))
-  (assert= 5 (amount-cents "0.05"))
-  (assert= 1200 (amount-cents "12"))
-  (assert-nil (amount-cents "1e3"))
-  (assert-nil (amount-cents "12345678901234"))
-  (assert= 1999 (cap-cents 19.99))
-  (assert= 1999 (cap-cents "19.9999"))
-  (assert= 30 (cap-cents 0.3))
-  (assert= 0 (cap-cents 0))
-  (assert-nil (cap-cents 1e15))
-  (assert-string= "2500.10" (cents-text 250010))
-  (assert-string= "0.05" (cents-text 5))
-  ;; 0.1 + 0.2 is not 0.3 in floats; in pence it is.
-  (assert-nil (cap-problem "0.20" 10 0.3 "the cap")))
+(test "cap-problem sums amounts as decimals"
+  ;; 0.1 + 0.2 is not 0.3 in floats; in decimals it is.
+  (assert-nil (cap-problem "0.20" "0.10" 0.3 "the cap"))
+  (assert-nil (cap-problem "19.99" 0 19.99 "the cap"))
+  ;; A cap's extra places count exactly: 19.9999 covers 19.99, not 20.00.
+  (assert-nil (cap-problem "19.99" 0 "19.9999" "the cap"))
+  (assert-string= "invoice_amount 20.00 exceeds the cap 19.9999"
+                  (cap-problem "20.00" 0 "19.9999" "the cap"))
+  (assert-string= "invoice_amount 0.01 with 2500.10 already settled exceeds the cap 2500.1"
+                  (cap-problem "0.01" (decimal:to-decimal "2500.1") "2500.1" "the cap")))
 
 ;; #37: the ID document came back as the settlement document.
 (test "parse-document refuses a file other than the settlement document"

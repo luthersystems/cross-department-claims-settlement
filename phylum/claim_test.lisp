@@ -156,8 +156,8 @@
 
 (test "a second run for a claim may settle only what the first left"
   (let ([first-run (claim-to-payment-status "settle-1" (settled-test-request "CLM-S1" "POL-S1" "2000.00"))])
-    (assert= 200000 (settled-cents "claim" "CLM-S1"))
-    (assert= 200000 (settled-cents "policy" "POL-S1"))
+    (assert-string= "2000.00" (settled-text "claim" "CLM-S1"))
+    (assert-string= "2000.00" (settled-text "policy" "POL-S1"))
     ;; The whole claim again is refused at the Oracle reply.
     (let ([again (start-test-claim "settle-2" (settled-test-request "CLM-S1" "POL-S1" "2500.00"))])
       (flow-test:reply 'claim again (oracle-row "CLAIM_ID" "CLM-S1" "POLICY_ID" "POL-S1"))
@@ -166,14 +166,14 @@
                                 "invoice_amount 2500.00 with 2000.00 already settled exceeds the Oracle claim amount 2500")))
     ;; What is left may settle.
     (let ([rest-run (claim-to-payment-status "settle-3" (settled-test-request "CLM-S1" "POL-S1" "500.00"))])
-      (assert= 250000 (settled-cents "claim" "CLM-S1"))
+      (assert-string= "2500.00" (settled-text "claim" "CLM-S1"))
       (flow-test:input 'claim 'payment-status rest-run (sorted-map "payment_id" "PAY-S3" "status" "approved"))
       (answer-connectors rest-run)
       (assert-string= "paid" (get (claim-result rest-run) "decision")))
     (flow-test:input 'claim 'payment-status first-run (sorted-map "payment_id" "PAY-S1" "status" "approved"))
     (answer-connectors first-run)
     (assert-string= "paid" (get (claim-result first-run) "decision"))
-    (assert= 250000 (settled-cents "claim" "CLM-S1"))))
+    (assert-string= "2500.00" (settled-text "claim" "CLM-S1"))))
 
 (test "two runs in flight cannot both take the same claim amount"
   ;; Both pass the Oracle and policy readers before either reserves; the
@@ -196,15 +196,15 @@
     (assert-string= "failed" (claim-state b))
     (assert (string:contains? (json:dump-string (claim-error b))
                               "invoice_amount 2000.00 with 2000.00 already settled exceeds the Oracle claim amount 2500"))
-    (assert= 200000 (settled-cents "claim" "CLM-S2"))))
+    (assert-string= "2000.00" (settled-text "claim" "CLM-S2"))))
 
 (test "a rejected payment gives its amount back"
   (let ([run (claim-to-payment-status "settle-rejected" (settled-test-request "CLM-S3" "POL-S3" "2500.00"))])
-    (assert= 250000 (settled-cents "claim" "CLM-S3"))
+    (assert-string= "2500.00" (settled-text "claim" "CLM-S3"))
     (flow-test:input 'claim 'payment-status run (sorted-map "payment_id" "PAY-S4" "status" "rejected"))
     (assert-string= "payment rejected" (get (claim-result run) "decision"))
-    (assert= 0 (settled-cents "claim" "CLM-S3"))
-    (assert= 0 (settled-cents "policy" "POL-S3"))))
+    (assert-string= "0.00" (settled-text "claim" "CLM-S3"))
+    (assert-string= "0.00" (settled-text "policy" "POL-S3"))))
 
 (test "the coverage limit counts every claim on the policy"
   (claim-to-payment-status "policy-1" (settled-test-request "CLM-S4" "POL-S4" "2500.00"))
@@ -224,14 +224,14 @@
     (assert-string= "contract-signed" (answer-connectors run))
     (flow-test:input 'claim 'contract-signed run (sorted-map "signed_by" "jack.clarke@example.com"))
     (assert-string= "payment-notice" (answer-connectors run "payment-notice"))
-    (assert= 250000 (settled-cents "claim" "CLM-S6"))
+    (assert-string= "2500.00" (settled-text "claim" "CLM-S6"))
     (flow-test:reply 'claim run (sorted-map "status" "failed"))
     (assert-string= "failed" (claim-state run))
-    (assert= 0 (settled-cents "claim" "CLM-S6"))
-    (assert= 0 (settled-cents "policy" "POL-S6"))))
+    (assert-string= "0.00" (settled-text "claim" "CLM-S6"))
+    (assert-string= "0.00" (settled-text "policy" "POL-S6"))))
 
 (test "a payment status the flow does not know keeps the amount recorded"
   (let ([run (claim-to-payment-status "unknown-status" (settled-test-request "CLM-S7" "POL-S7" "2500.00"))])
     (flow-test:input 'claim 'payment-status run (sorted-map "payment_id" "PAY-S7" "status" "processing"))
     (assert-string= "done" (claim-state run))
-    (assert= 250000 (settled-cents "claim" "CLM-S7"))))
+    (assert-string= "2500.00" (settled-text "claim" "CLM-S7"))))

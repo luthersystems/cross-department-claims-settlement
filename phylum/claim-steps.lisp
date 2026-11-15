@@ -16,7 +16,7 @@
 
 ;; ---------------------------------------------------------------------------
 ;; Demo settings.  This example runs against mocked connectors
-;; (fabric/connectorhub.yaml), so these name records in the demo tenants.
+;; (fabric/connectorhub_cdcs.yaml), so these name records in the demo tenants.
 ;; ---------------------------------------------------------------------------
 
 ;; Equifax needs a postal code and country that the claim record lacks.
@@ -68,6 +68,33 @@
      (vector "policy_id" "oracle_claim_id" "guidewire_claim_id" "invoice_amount" "signer_name" "signer_email"
              "settlement_document_item_id" "settlement_document_filename"))
 
+;; The start request's checks, as validators of the ELPS schema package (s).
+;; claim-request-problem turns their results into the reasons the portal
+;; returns as business errors, so the reasons do not depend on the
+;; package's own error text.
+
+;; A blank value: text of only white space.  () is blank too (see blank?).
+;; The class holds what Go's unicode.IsSpace does, as string:trim-space
+;; trims it: \s alone misses \v, U+0085 and the Unicode spaces (U+00A0).
+(set 'blank-text-schema (s:make-validator "blank-text" s:string
+                                   (s:regexp "^[\\t\\n\\v\\f\\r\\x{85}\\p{Z}]*$")))
+
+;; An invoice amount: positive plain decimal text.  The Zoho step needs a
+;; number, and it runs in a reply transaction where an error would leave the
+;; run waiting, so the start checks the amount once.  Only plain decimal text
+;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
+;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
+;; them record different amounts, and Inf cannot go into a JSON event.
+;; At most two decimal places, as GBP has: Zoho gets the amount as a float,
+;; and "20000.000000000000001" would round to 20000.00 there while SAP
+;; recorded the longer text.  The second
+;; regexp asks for a digit other than 0, which in this form means more than
+;; zero.
+(set 'invoice-amount-schema
+     (s:make-validator "invoice-amount" s:string
+                       (s:regexp "^[0-9]+(\\.[0-9]{1,2})?$")
+                       (s:regexp "[1-9]")))
+
 ;; Return why a start request cannot start a claim, or nil.  The flow calls
 ;; this before its first await, so a bad request fails the start with this
 ;; reason and writes no run.
@@ -78,8 +105,7 @@
     (cond
       ((not (empty? missing))
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
-      ((or (nil? (amount-number (get req "invoice_amount")))
-           (nil? (amount-cents (get req "invoice_amount"))))
+      ((not (s:is? (get req "invoice_amount") invoice-amount-schema))
        (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
       ;; The demo once fetched the ID document a second time as the
       ;; settlement document (#37), so ServiceNow reviewers saw the wrong
@@ -91,24 +117,12 @@
        "settlement_document_item_id names the ID verification document, not a settlement document")
       (else ()))))
 
-;; Return v as a positive float, or nil.  The Zoho step needs a number, and
-;; it runs in a reply transaction where an error would leave the run
-;; waiting, so the start checks the amount once.  Only plain decimal text
-;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
-;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
-;; them record different amounts, and Inf cannot go into a JSON event.
-;; At most two decimal places, as GBP has: the coverage checks compare the
-;; amount as a float, and "20000.000000000000001" would round to the
-;; 20000.00 limit and pass while SAP recorded the longer text.
-(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]{1,2})?$"))
-
+;; Return v as a float if it is an invoice amount, or nil.
 (defun amount-number (v)
-  (when (and (string? v) (regexp:regexp-match? decimal-amount v))
-    (let ([n (to-float v)])
-      (when (> n 0) n))))
+  (when (s:is? v invoice-amount-schema) (to-float v)))
 
 (defun blank? (v)
-  (or (nil? v) (and (string? v) (empty? (string:trim-space v)))))
+  (or (nil? v) (s:is? v blank-text-schema)))
 
 ;; The claim the steps share: the request with the defaults filled in, and
 ;; the run id as the claim id.  The run id names the claim in every system
@@ -133,7 +147,7 @@
   (if (blank? v) fallback v))
 
 ;; Build a connector event.  sys is the connector's id in
-;; fabric/connectorhub.yaml.  The runtime adds the step key as the event's
+;; fabric/connectorhub_cdcs.yaml.  The runtime adds the step key as the event's
 ;; idempotency key, so a resend cannot run the operation twice.
 (defun claim-event (sys what req)
   (connector:mk-event sys req :msp "Org1MSP" :eng what))
@@ -180,7 +194,7 @@
 ;; once paid an invoice of 25000.00 on an Oracle claim of 2500.00.  Nor may
 ;; it, with what earlier runs settled on this claim, ask for more (#39):
 ;; two starts with different request keys could each pay the whole claim.
-;; settled is that amount in pence (see settled-cents).  The reader refuses
+;; settled is that amount, a decimal (see settled-amount).  The reader refuses
 ;; before the flow screens the claimant or writes anywhere.
 (defun parse-oracle-claim (reply oracle-claim-id policy-id invoice-amount settled)
   (match reply
@@ -260,7 +274,7 @@
 ;; Settled amounts (#39)
 ;;
 ;; The phylum records, in its own state, how much each Oracle claim and each
-;; policy has settled, in pence.  The readers above hold each new invoice to
+;; policy has settled, as decimal text.  The readers above hold each new invoice to
 ;; the claim amount and the coverage limit less what is recorded.  A run
 ;; adds its invoice before it asks the payment team to approve the payment
 ;; (reserve-settlement), not after ABS pays, so two runs in flight for the
@@ -288,19 +302,19 @@
 
 (defun settled-key (kind id) (format-string "cdcs:settled:{}:{}" kind id))
 
-;; The pence recorded as settled for an Oracle claim ("claim") or a policy
-;; ("policy").  Stored as decimal text: statedb keeps JSON, and a JSON
-;; number may come back as a float.
-(defun settled-cents (kind id)
-  (let ([v (statedb:get (settled-key kind id))])
-    (if (nil? v) 0 (to-int v))))
+;; The amount recorded as settled for an Oracle claim ("claim") or a policy
+;; ("policy"), as a decimal.  Stored as decimal text: statedb keeps JSON,
+;; and a JSON number may come back as a float.
+(defun settled-amount (kind id)
+  (decimal:to-decimal (or (statedb:get (settled-key kind id)) "0")))
 
-(defun put-settled (kind id cents)
-  (when (< cents 0)
+(defun put-settled (kind id amount)
+  (when (decimal:decimal< amount 0)
     ;; Only a release of what this run reserved subtracts, so a negative
     ;; total is a bookkeeping bug.  Fail the transaction rather than hide it.
-    (error 'settled-negative (format-string "settled amount for {} {} would be {} pence" kind id cents)))
-  (statedb:put (settled-key kind id) (to-string cents)))
+    (error 'settled-negative (format-string "settled amount for {} {} would be {}"
+                                            kind id (decimal:decimal-string amount))))
+  (statedb:put (settled-key kind id) (decimal:decimal-string amount)))
 
 ;; Record the claim's invoice as settled on its Oracle claim and its policy,
 ;; and return nil; or return why it does not fit, and record nothing.  The
@@ -310,23 +324,23 @@
   (let* ([amount (get claim "amount")]
          [claim-id (get claim "oracle_claim_id")]
          [policy-id (get claim "policy_id")]
-         [on-claim (settled-cents "claim" claim-id)]
-         [on-policy (settled-cents "policy" policy-id)]
+         [on-claim (settled-amount "claim" claim-id)]
+         [on-policy (settled-amount "policy" policy-id)]
          [problem (or (cap-problem amount on-claim (get record "amount") "the Oracle claim amount")
                       (cap-problem amount on-policy (get policy "coverage_limit")
                                    "the policy's coverage limit"))])
     (unless problem
-      (put-settled "claim" claim-id (+ on-claim (amount-cents amount)))
-      (put-settled "policy" policy-id (+ on-policy (amount-cents amount))))
+      (put-settled "claim" claim-id (decimal:decimal+ on-claim amount))
+      (put-settled "policy" policy-id (decimal:decimal+ on-policy amount)))
     problem))
 
 ;; Give back what reserve-settlement recorded for the claim.
 (defun release-settlement (claim)
-  (let ([cents (amount-cents (get claim "amount"))]
+  (let ([amount (get claim "amount")]
         [claim-id (get claim "oracle_claim_id")]
         [policy-id (get claim "policy_id")])
-    (put-settled "claim" claim-id (- (settled-cents "claim" claim-id) cents))
-    (put-settled "policy" policy-id (- (settled-cents "policy" policy-id) cents))))
+    (put-settled "claim" claim-id (decimal:decimal- (settled-amount "claim" claim-id) amount))
+    (put-settled "policy" policy-id (decimal:decimal- (settled-amount "policy" policy-id) amount))))
 
 ;; ---------------------------------------------------------------------------
 ;; WF2: Guidewire claim, MySQL policy check, SharePoint ID document,
@@ -347,7 +361,7 @@
     (_ (bad-reply "Guidewire returned no claim status"))))
 
 ;; The Guidewire claim statuses (the OUTBOUNDGW spec in
-;; fabric/connectorhub.yaml) from which a claim may go on to settlement.
+;; fabric/connectorhub_cdcs.yaml) from which a claim may go on to settlement.
 ;; Rejected and Closed are final decisions in Guidewire, and the flow once
 ;; marked such a claim ApprovedForSettlement and paid it (#37).  The flow
 ;; approves the claim itself in a later step, so a claim still Open or
@@ -370,7 +384,7 @@
 ;; policy is not active.  The invoice may not exceed the policy's coverage
 ;; limit (#37): the demo once paid 25000.00 against a 20000.00 limit.  The
 ;; limit covers every claim on the policy, so what earlier runs settled on
-;; the policy counts too (#39); settled is that amount in pence.
+;; the policy counts too (#39); settled is that amount, a decimal.
 (defun parse-active-policy (reply invoice-amount settled)
   (match reply
     ((vector (sorted-map "STATUS" status "COVERAGE_LIMIT" limit) &rest _)
@@ -379,67 +393,38 @@
     (_ (bad-reply "the policy is not active"))))
 
 ;; Raise a bad reply unless invoice-amount (the start request's decimal
-;; text), with settled pence already settled, is at most the cap a
-;; connector returned.  Both the claim amount and the coverage limit apply,
-;; so the invoice is held to the lower one.
+;; text), with the settled amount, is at most the cap a connector returned.
+;; Both the claim amount and the coverage limit apply, so the invoice is
+;; held to the lower one.
 (defun check-within (invoice-amount settled cap what)
   (let ([problem (cap-problem invoice-amount settled cap what)])
     (when problem (bad-reply "{}" problem))))
 
-;; Why invoice-amount and settled pence do not fit under cap, or nil.  A cap
-;; that is missing or not a number stops the claim: without it the flow
-;; cannot show the payment is covered.  Amounts are compared in whole pence,
-;; so 0.10 settled and 0.20 invoiced fit a cap of 0.30.
+;; Why invoice-amount and the settled amount do not fit under cap, or nil.
+;; A cap that is missing or not a number stops the claim: without it the
+;; flow cannot show the payment is covered.  The sums are decimal, so 0.10
+;; settled and 0.20 invoiced fit a cap of 0.30, and a cap's extra decimal
+;; places count exactly.
 (defun cap-problem (invoice-amount settled cap what)
-  (let ([limit (cap-cents cap)]
-        [invoice (amount-cents invoice-amount)])
+  (let ([limit (cap-decimal cap)])
     (cond
       ((nil? limit) (format-string "{} is not an amount: {}" what cap))
-      ((nil? invoice) (format-string "invoice_amount {} is not an amount" invoice-amount))
-      ((<= (+ invoice settled) limit) ())
-      ((= settled 0) (format-string "invoice_amount {} exceeds {} {}" invoice-amount what cap))
+      ((decimal:decimal<= (decimal:decimal+ invoice-amount settled) limit) ())
+      ((decimal:decimal= settled 0) (format-string "invoice_amount {} exceeds {} {}" invoice-amount what cap))
       (else (format-string "invoice_amount {} with {} already settled exceeds {} {}"
-                           invoice-amount (cents-text settled) what cap)))))
+                           invoice-amount (decimal:decimal-string settled :places 2) what cap)))))
 
-;; An invoice amount's text in pence, or nil.  The start request allows at
-;; most two decimal places, so the text converts exactly.  More than 13
-;; whole digits would not fit an int in pence and is no demo invoice.
-(set 'pence-text (regexp:regexp-compile "^[0-9]{1,13}(\\.[0-9]{1,2})?$"))
-
-(defun amount-cents (v)
-  (when (and (string? v) (regexp:regexp-match? pence-text v))
-    (let* ([parts (string:split v ".")]
-           [frac (if (= (length parts) 2) (second parts) "0")])
-      (+ (* 100 (to-int (first parts)))
-         (if (= (length frac) 1) (* 10 (to-int frac)) (to-int frac))))))
-
-;; A cap in whole pence, rounded down: a cap of 19.9999 covers 19.99.  A
-;; cap arrives as a float or as text with any number of decimal places, so
-;; its float times 100 may fall just short of a whole penny (19.99 * 100 is
-;; 1998.9999999999998); the next penny counts when the cap reaches it.
-;; A cap of a trillion pounds or more is no demo cap and is not an amount.
-(defun cap-cents (v)
-  (let ([n (cap-number v)])
-    (when (and n (< n 1e12))
-      (let ([c (to-int (* n 100))])
-        (if (<= (/ (to-float (+ c 1)) 100) n) (+ c 1) c)))))
-
-;; Pence as decimal text: 250010 is "2500.10".
-(defun cents-text (c)
-  (let ([p (mod c 100)])
-    (format-string "{}.{}{}" (to-int (/ c 100)) (if (< p 10) "0" "") p)))
-
-;; A cap as a database returns it: a JSON number (Oracle NUMBER) or decimal
-;; text (MySQL DECIMAL).  Zero is a cap (nothing is covered); a negative
-;; number or other text is not an amount.
+;; A cap as a database returns it, as a decimal, or nil: a JSON number
+;; (Oracle NUMBER) or decimal text (MySQL DECIMAL).  Zero is a cap (nothing
+;; is covered); a negative number or other text is not an amount.
 ;; A database may return more decimal places than an invoice may have
 ;; (DECIMAL(12,4)), so a cap's text may have any number of them.
 (set 'decimal-text (regexp:regexp-compile "^[0-9]+(\\.[0-9]+)?$"))
 
-(defun cap-number (v)
+(defun cap-decimal (v)
   (cond
-    ((number? v) (when (>= v 0) (to-float v)))
-    ((and (string? v) (regexp:regexp-match? decimal-text v)) (to-float v))
+    ((number? v) (when (>= v 0) (decimal:to-decimal v)))
+    ((and (string? v) (regexp:regexp-match? decimal-text v)) (decimal:to-decimal v))
     (else ())))
 
 (defun id-document-event ()
@@ -473,7 +458,7 @@
   (claim-event "outboundgw" "update approval"
     (generic-req "KIND_HTTP_OUTBOUND_REST" "updateClaimApproval"
       ;; Field names as the OpenAPI spec of OUTBOUNDGW declares them
-      ;; (fabric/connectorhub.yaml): claim_id fills the path.
+      ;; (fabric/connectorhub_cdcs.yaml): claim_id fills the path.
       (sorted-map "claim_id"    (get claim "guidewire_claim_id")
                   "approval"    "ApprovedForSettlement"
                   "approved_by" "Handler"))))
