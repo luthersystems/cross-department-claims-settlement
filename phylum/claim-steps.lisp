@@ -16,7 +16,7 @@
 
 ;; ---------------------------------------------------------------------------
 ;; Demo settings.  This example runs against mocked connectors
-;; (fabric/connectorhub.yaml), so these name records in the demo tenants.
+;; (fabric/connectorhub_cdcs.yaml), so these name records in the demo tenants.
 ;; ---------------------------------------------------------------------------
 
 ;; Equifax needs a postal code and country that the claim record lacks.
@@ -68,6 +68,33 @@
      (vector "policy_id" "guidewire_claim_id" "invoice_amount" "signer_name" "signer_email"
              "settlement_document_item_id" "settlement_document_filename"))
 
+;; The start request's checks, as validators of the ELPS schema package (s).
+;; claim-request-problem turns their results into the reasons the portal
+;; returns as business errors, so the reasons do not depend on the
+;; package's own error text.
+
+;; A blank value: text of only white space.  () is blank too (see blank?).
+;; The class holds what Go's unicode.IsSpace does, as string:trim-space
+;; trims it: \s alone misses \v, U+0085 and the Unicode spaces (U+00A0).
+(set 'blank-text-schema (s:make-validator "blank-text" s:string
+                                   (s:regexp "^[\\t\\n\\v\\f\\r\\x{85}\\p{Z}]*$")))
+
+;; An invoice amount: positive plain decimal text.  The Zoho step needs a
+;; number, and it runs in a reply transaction where an error would leave the
+;; run waiting, so the start checks the amount once.  Only plain decimal text
+;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
+;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
+;; them record different amounts, and Inf cannot go into a JSON event.
+;; At most two decimal places, as GBP has: the coverage checks compare the
+;; amount as a float, and "20000.000000000000001" would round to the
+;; 20000.00 limit and pass while SAP recorded the longer text.  The second
+;; regexp asks for a digit other than 0, which in this form means more than
+;; zero.
+(set 'invoice-amount-schema
+     (s:make-validator "invoice-amount" s:string
+                       (s:regexp "^[0-9]+(\\.[0-9]{1,2})?$")
+                       (s:regexp "[1-9]")))
+
 ;; Return why a start request cannot start a claim, or nil.  The flow calls
 ;; this before its first await, so a bad request fails the start with this
 ;; reason and writes no run.
@@ -78,7 +105,7 @@
     (cond
       ((not (empty? missing))
        (format-string "missing {}" (string:join (map 'list to-string missing) ", ")))
-      ((nil? (amount-number (get req "invoice_amount")))
+      ((not (s:is? (get req "invoice_amount") invoice-amount-schema))
        (format-string "invoice_amount {} is not a positive decimal amount" (get req "invoice_amount")))
       ;; The demo once fetched the ID document a second time as the
       ;; settlement document (#37), so ServiceNow reviewers saw the wrong
@@ -90,24 +117,12 @@
        "settlement_document_item_id names the ID verification document, not a settlement document")
       (else ()))))
 
-;; Return v as a positive float, or nil.  The Zoho step needs a number, and
-;; it runs in a reply transaction where an error would leave the run
-;; waiting, so the start checks the amount once.  Only plain decimal text
-;; passes: Zoho gets the number and SAP and Salesforce get the text, so a
-;; form that only a float parser reads ("Inf", "0x1p4", "1e3") would make
-;; them record different amounts, and Inf cannot go into a JSON event.
-;; At most two decimal places, as GBP has: the coverage checks compare the
-;; amount as a float, and "20000.000000000000001" would round to the
-;; 20000.00 limit and pass while SAP recorded the longer text.
-(set 'decimal-amount (regexp:regexp-compile "^[0-9]+(\\.[0-9]{1,2})?$"))
-
+;; Return v as a float if it is an invoice amount, or nil.
 (defun amount-number (v)
-  (when (and (string? v) (regexp:regexp-match? decimal-amount v))
-    (let ([n (to-float v)])
-      (when (> n 0) n))))
+  (when (s:is? v invoice-amount-schema) (to-float v)))
 
 (defun blank? (v)
-  (or (nil? v) (and (string? v) (empty? (string:trim-space v)))))
+  (or (nil? v) (s:is? v blank-text-schema)))
 
 ;; The claim the steps share: the request with the defaults filled in, and
 ;; the run id as the claim id.  The run id names the claim in every system
@@ -131,7 +146,7 @@
   (if (blank? v) fallback v))
 
 ;; Build a connector event.  sys is the connector's id in
-;; fabric/connectorhub.yaml.  The runtime adds the step key as the event's
+;; fabric/connectorhub_cdcs.yaml.  The runtime adds the step key as the event's
 ;; idempotency key, so a resend cannot run the operation twice.
 (defun claim-event (sys what req)
   (connector:mk-event sys req :msp "Org1MSP" :eng what))
@@ -250,7 +265,7 @@
     (_ (bad-reply "Guidewire returned no claim status"))))
 
 ;; The Guidewire claim statuses (the OUTBOUNDGW spec in
-;; fabric/connectorhub.yaml) from which a claim may go on to settlement.
+;; fabric/connectorhub_cdcs.yaml) from which a claim may go on to settlement.
 ;; Rejected and Closed are final decisions in Guidewire, and the flow once
 ;; marked such a claim ApprovedForSettlement and paid it (#37).  The flow
 ;; approves the claim itself in a later step, so a claim still Open or
@@ -334,7 +349,7 @@
   (claim-event "outboundgw" "update approval"
     (generic-req "KIND_HTTP_OUTBOUND_REST" "updateClaimApproval"
       ;; Field names as the OpenAPI spec of OUTBOUNDGW declares them
-      ;; (fabric/connectorhub.yaml): claim_id fills the path.
+      ;; (fabric/connectorhub_cdcs.yaml): claim_id fills the path.
       (sorted-map "claim_id"    (get claim "guidewire_claim_id")
                   "approval"    "ApprovedForSettlement"
                   "approved_by" "Handler"))))

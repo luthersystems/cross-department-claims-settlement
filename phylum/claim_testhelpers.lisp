@@ -1,6 +1,6 @@
 ;; Copyright © 2025 Luther Systems, Ltd. All right reserved.
 ;; Shared helpers for the claim tests: a start request, the connector replies
-;; the mocked hub gives (fabric/connectorhub.yaml), and a driver that answers
+;; the mocked hub gives (fabric/connectorhub_cdcs.yaml), and a driver that answers
 ;; each step in order.
 (in-package 'cdcs)
 (use-package 'testing)

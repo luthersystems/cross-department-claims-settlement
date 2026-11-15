@@ -101,7 +101,7 @@ can read the private keys.
 
 ## 🔌 Configuring the Connector Hub
 
-The `connectorhub.yaml` file defines how your local network routes process
+The `connectorhub_<ccname>.yaml` file (here `connectorhub_cdcs.yaml`) defines how your local network routes process
 actions to external systems (or their mocks) via **connectors**. Each
 connector maps to a business system — like Stripe, Postgres, or Equifax —
 and enables your COS logic to interact with it during execution.
