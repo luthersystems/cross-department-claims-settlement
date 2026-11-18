@@ -15,7 +15,7 @@ jobs:
     steps:
       # On a pull request this checks out the merge commit. Its first parent
       # is the base branch tip, so depth 2 is enough for the diff.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2
           persist-credentials: false
@@ -36,9 +36,9 @@ jobs:
     if: needs.changes.outputs.code != 'false'
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
       # No golangci-lint step: the shared Quality workflow
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Start and stop the local Fabric network
         run: make -C fabric fnb-smoke
 
