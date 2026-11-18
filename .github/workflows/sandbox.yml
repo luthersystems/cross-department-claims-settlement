@@ -1,10 +1,39 @@
 name: CI Tests
 on:
+  # No paths filter: the gate job below is a required check, so every PR must
+  # start a run. The changes job skips the heavy jobs on docs-only PRs.
   pull_request:
     branches:
       - main
 jobs:
+  # Decides whether the build and test jobs must run (scripts/ci-changes.sh).
+  changes:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.decide.outputs.code }}
+    steps:
+      # On a pull request this checks out the merge commit. Its first parent
+      # is the base branch tip, so depth 2 is enough for the diff.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Test the decision script and the gate's needs list
+        run: bash scripts/ci-changes-test.sh
+      - id: decide
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            bash scripts/ci-changes.sh HEAD^1 HEAD | tee -a "$GITHUB_OUTPUT"
+          else
+            bash scripts/ci-changes.sh | tee -a "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: changes
+    if: needs.changes.outputs.code != 'false'
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
@@ -24,9 +53,41 @@ jobs:
   # Start and stop the local Fabric network (fabric/Makefile fnb-smoke) with
   # the builder as the runner's user, not root, as `make up` does.
   fabric-network:
+    needs: changes
+    if: needs.changes.outputs.code != 'false'
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
       - name: Start and stop the local Fabric network
         run: make -C fabric fnb-smoke
+
+  # The one check the main ruleset requires from this workflow.
+  ci-all:
+    name: CI (all required checks)
+    # always(), so the gate reports on every run. A cancelled or failed job
+    # then fails the gate below. A gate that did not run, or was skipped,
+    # could count as passing for the required check.
+    if: always()
+    needs: [changes, build, fabric-network]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      # Pass only if the changes job succeeded and every other job succeeded,
+      # or was skipped because the changes job said the PR is docs-only
+      # (code=false). Any other skip fails, so a job skipped by mistake
+      # cannot pass the gate.
+      - name: Fail unless every required job passed
+        if: >-
+          needs.changes.result != 'success'
+          || contains(needs.*.result, 'failure')
+          || contains(needs.*.result, 'cancelled')
+          || (needs.changes.outputs.code != 'false' && contains(needs.*.result, 'skipped'))
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS_JSON"
+          echo "::error::A required CI job failed, was cancelled or was skipped."
+          exit 1
+      - name: Every required job passed or was skipped as docs-only
+        run: echo "ok"
